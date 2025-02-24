@@ -1,5 +1,3 @@
 # Dateabase
 
 Dateabase redefines social connection and dating for Princeton undergraduates by shifting the focus from profiles to shared experiences. Instead of swiping through faces, users discover potential matches through activities they enjoy—like coffee meetups, concerts, or study sessions. Through Princeton CAS authentication, a recommender system powered by interest-based matching, and a swipe-based mobile web interface, Dateabase ensures a secure, engaging, and personalized approach to connecting on campus.
-
-Dateabase is a mobile web application designed exclusively for Princeton undergraduates, aiming to revolutionize how students meet and form connections on campus. The platform encourages users to match based on shared experiences rather than traditional appearance-based profiles. By leveraging Princeton CAS authentication for secure sign-in and a recommendation algorithm to identify compatible users, Dateabase creates meaningful matches rooted in common interests and activities.
