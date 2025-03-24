@@ -1,6 +1,7 @@
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect, session, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from cas import CASClient
 from datetime import datetime, timedelta, timezone
 import os
 import jwt
@@ -627,3 +628,414 @@ def refresh_demo_user():
         print(f"Error refreshing demo user: {e}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+def seed_demo_data():
+    """Seed demo users and experiences if they don't exist already"""
+    try:
+        # Check if demo user exists
+        demo_user = User.query.filter_by(username='demo_user').first()
+        
+        if not demo_user:
+            print("Creating demo user...")
+            demo_user = User(
+                username='demo_user',
+                name='Demo User',
+                gender='Other',
+                class_year=2024,
+                interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
+                profile_image='https://ui-avatars.com/api/?name=Demo+User&background=orange&color=fff'
+            )
+            demo_user.set_password('demo123')
+            db.session.add(demo_user)
+            db.session.commit()  # Commit first to get the user ID
+            
+            # Get the demo user's actual ID
+            demo_user = User.query.filter_by(username='demo_user').first()
+            
+            # Add experiences for the demo user
+            experiences = [
+                Experience(
+                    user_id=demo_user.id,
+                    experience_type='Dining',
+                    location='Prospect Garden',
+                    description='Picnic under the cherry blossoms',
+                    latitude=40.3465,
+                    longitude=-74.6514,
+                    location_image='https://source.unsplash.com/random/800x600/?garden+princeton'
+                ),
+                Experience(
+                    user_id=demo_user.id,
+                    experience_type='Study',
+                    location='Firestone Library',
+                    description='Late night study session with coffee',
+                    latitude=40.3500,
+                    longitude=-74.6572,
+                    location_image='https://source.unsplash.com/random/800x600/?library+princeton'
+                ),
+                Experience(
+                    user_id=demo_user.id,
+                    experience_type='Activity',
+                    location='Lake Carnegie',
+                    description='Morning rowing and watching the sunrise',
+                    latitude=40.3353,
+                    longitude=-74.6389,
+                    location_image='https://source.unsplash.com/random/800x600/?lake+princeton'
+                )
+            ]
+            
+            for exp in experiences:
+                db.session.add(exp)
+                
+            db.session.commit()
+            print("Demo user experiences created")
+        else:
+            print(f"Demo user already exists with ID: {demo_user.id}")
+            
+        # Check if other users exist
+        alex = User.query.filter_by(username='alex23').first()
+        if not alex:
+            alex = User(
+                username='alex23',
+                name='Alex Johnson',
+                gender='Male',
+                class_year=2023,
+                interests='{"coffee": true, "music": true, "hiking": true}',
+                profile_image='https://ui-avatars.com/api/?name=Alex+Johnson&background=blue&color=fff'
+            )
+            alex.set_password('pass123')
+            db.session.add(alex)
+            # Commit to get the user ID
+            db.session.commit()
+            print("User alex23 created")
+            
+            # Now add experiences for Alex
+            alex_experiences = [
+                Experience(
+                    user_id=alex.id,
+                    experience_type='Coffee',
+                    location='Small World Coffee',
+                    description='Morning coffee date with good conversation',
+                    latitude=40.3507,
+                    longitude=-74.6604,
+                    location_image='https://source.unsplash.com/random/800x600/?coffee+shop'
+                ),
+                Experience(
+                    user_id=alex.id,
+                    experience_type='Hiking',
+                    location='Mountain Lakes Preserve',
+                    description='Afternoon hike through the woods',
+                    latitude=40.3704,
+                    longitude=-74.6728,
+                    location_image='https://source.unsplash.com/random/800x600/?hiking+trail'
+                )
+            ]
+            
+            for exp in alex_experiences:
+                db.session.add(exp)
+            db.session.commit()
+        else:
+            print("User alex23 already exists")
+            
+        emma = User.query.filter_by(username='emma_p').first()
+        if not emma:
+            emma = User(
+                username='emma_p',
+                name='Emma Parker',
+                gender='Female',
+                class_year=2025,
+                interests='{"art": true, "dining": true, "movies": true}',
+                profile_image='https://ui-avatars.com/api/?name=Emma+Parker&background=purple&color=fff'
+            )
+            emma.set_password('pass123')
+            db.session.add(emma)
+            # Commit to get the user ID
+            db.session.commit()
+            
+            # Add experiences for Emma
+            emma_experiences = [
+                Experience(
+                    user_id=emma.id,
+                    experience_type='Movie',
+                    location='Princeton Garden Theatre',
+                    description='Classic film night followed by dessert',
+                    latitude=40.3499,
+                    longitude=-74.6589,
+                    location_image='https://source.unsplash.com/random/800x600/?movie+theater'
+                ),
+                Experience(
+                    user_id=emma.id,
+                    experience_type='Art',
+                    location='Princeton University Art Museum',
+                    description='Exploring art exhibits followed by coffee',
+                    latitude=40.3463,
+                    longitude=-74.6577,
+                    location_image='https://source.unsplash.com/random/800x600/?art+museum'
+                )
+            ]
+            
+            for exp in emma_experiences:
+                db.session.add(exp)
+            db.session.commit()
+        else:
+            print("User emma_p already exists")
+            
+        taylor = User.query.filter_by(username='taylor_m').first()
+        if not taylor:
+            taylor = User(
+                username='taylor_m',
+                name='Taylor Mitchell',
+                gender='Non-binary',
+                class_year=2024,
+                interests='{"music": true, "tech": true, "food": true}',
+                profile_image='https://ui-avatars.com/api/?name=Taylor+Mitchell&background=green&color=fff'
+            )
+            taylor.set_password('pass123')
+            db.session.add(taylor)
+            # Commit to get the user ID
+            db.session.commit()
+            
+            # Add experiences for Taylor
+            taylor_experiences = [
+                Experience(
+                    user_id=taylor.id,
+                    experience_type='Concert',
+                    location='Richardson Auditorium',
+                    description='Chamber music concert and discussion',
+                    latitude=40.3482,
+                    longitude=-74.6595,
+                    location_image='https://source.unsplash.com/random/800x600/?concert+hall'
+                ),
+                Experience(
+                    user_id=taylor.id,
+                    experience_type='Dining',
+                    location='Mistral',
+                    description='Fine dining experience with seasonal menu',
+                    latitude=40.3500,
+                    longitude=-74.6611,
+                    location_image='https://source.unsplash.com/random/800x600/?fine+dining'
+                )
+            ]
+            
+            for exp in taylor_experiences:
+                db.session.add(exp)
+            db.session.commit()
+        else:
+            print("User taylor_m already exists")
+        
+    except Exception as e:
+        print(f"Error seeding demo user: {e}")
+        db.session.rollback()
+
+def create_demo_matches():
+    """Create some demo matches between users"""
+    try:
+        # Get users
+        demo_user = User.query.filter_by(username='demo_user').first()
+        alex = User.query.filter_by(username='alex23').first()
+        emma = User.query.filter_by(username='emma_p').first()
+        taylor = User.query.filter_by(username='taylor_m').first()
+        
+        if not (demo_user and alex and emma and taylor):
+            print("Cannot create matches: missing users")
+            return
+            
+        # Get some experiences
+        demo_exps = Experience.query.filter_by(user_id=demo_user.id).all()
+        alex_exps = Experience.query.filter_by(user_id=alex.id).all()
+        emma_exps = Experience.query.filter_by(user_id=emma.id).all()
+        taylor_exps = Experience.query.filter_by(user_id=taylor.id).all()
+        
+        if not (demo_exps and alex_exps and emma_exps and taylor_exps):
+            print("Cannot create matches: missing experiences")
+            return
+        
+        # Use the first experience from each user
+        demo_exp = demo_exps[0]
+        alex_exp = alex_exps[0]
+        emma_exp = emma_exps[0]
+        taylor_exp = taylor_exps[0]
+            
+        # Create swipes to generate matches
+        # Demo user likes Alex's experience
+        if not UserSwipe.query.filter_by(user_id=demo_user.id, experience_id=alex_exp.id).first():
+            demo_swipe_alex = UserSwipe(
+                user_id=demo_user.id,
+                experience_id=alex_exp.id,
+                direction=True  # True for like
+            )
+            db.session.add(demo_swipe_alex)
+            
+        # Alex likes Demo user's experience
+        if not UserSwipe.query.filter_by(user_id=alex.id, experience_id=demo_exp.id).first():
+            alex_swipe_demo = UserSwipe(
+                user_id=alex.id,
+                experience_id=demo_exp.id,
+                direction=True  # True for like
+            )
+            db.session.add(alex_swipe_demo)
+            
+        # Emma likes Demo user's experience
+        if not UserSwipe.query.filter_by(user_id=emma.id, experience_id=demo_exp.id).first():
+            emma_swipe_demo = UserSwipe(
+                user_id=emma.id,
+                experience_id=demo_exp.id,
+                direction=True  # True for like
+            )
+            db.session.add(emma_swipe_demo)
+        
+        # Demo user likes Emma's experience
+        if not UserSwipe.query.filter_by(user_id=demo_user.id, experience_id=emma_exp.id).first():
+            demo_swipe_emma = UserSwipe(
+                user_id=demo_user.id,
+                experience_id=emma_exp.id,
+                direction=True  # True for like
+            )
+            db.session.add(demo_swipe_emma)
+        
+        # Create a match with Taylor for variety
+        if not UserSwipe.query.filter_by(user_id=demo_user.id, experience_id=taylor_exp.id).first():
+            demo_swipe_taylor = UserSwipe(
+                user_id=demo_user.id,
+                experience_id=taylor_exp.id,
+                direction=True  # True for like
+            )
+            db.session.add(demo_swipe_taylor)
+            
+        if not UserSwipe.query.filter_by(user_id=taylor.id, experience_id=demo_exp.id).first():
+            taylor_swipe_demo = UserSwipe(
+                user_id=taylor.id,
+                experience_id=demo_exp.id,
+                direction=True  # True for like
+            )
+            db.session.add(taylor_swipe_demo)
+        
+        # Commit all the swipes
+        db.session.commit()
+        
+        # Now create the matches
+        # Check for match between demo user and Alex
+        match_alex = Match.query.filter(
+            ((Match.user1_id == demo_user.id) & (Match.user2_id == alex.id)) |
+            ((Match.user1_id == alex.id) & (Match.user2_id == demo_user.id))
+        ).first()
+        
+        if not match_alex:
+            match_alex = Match(
+                user1_id=demo_user.id, 
+                user2_id=alex.id,
+                experience_id=alex_exp.id,
+                status='confirmed'
+            )
+            db.session.add(match_alex)
+            
+        # Check for match between demo user and Emma    
+        match_emma = Match.query.filter(
+            ((Match.user1_id == demo_user.id) & (Match.user2_id == emma.id)) |
+            ((Match.user1_id == emma.id) & (Match.user2_id == demo_user.id))
+        ).first()
+        
+        if not match_emma:
+            match_emma = Match(
+                user1_id=demo_user.id, 
+                user2_id=emma.id,
+                experience_id=emma_exp.id,
+                status='confirmed'
+            )
+            db.session.add(match_emma)
+            
+        # Check for match between demo user and Taylor
+        match_taylor = Match.query.filter(
+            ((Match.user1_id == demo_user.id) & (Match.user2_id == taylor.id)) |
+            ((Match.user1_id == taylor.id) & (Match.user2_id == demo_user.id))
+        ).first()
+        
+        if not match_taylor:
+            match_taylor = Match(
+                user1_id=demo_user.id, 
+                user2_id=taylor.id,
+                experience_id=taylor_exp.id,
+                status='confirmed'
+            )
+            db.session.add(match_taylor)
+            
+        # Commit all matches    
+        db.session.commit()
+        print("Demo matches created successfully")
+        
+    except Exception as e:
+        print(f"Error creating demo matches: {e}")
+        db.session.rollback()
+
+# Function to check if profile_image column exists in the user table
+def check_profile_image_column():
+    try:
+        conn = sqlite3.connect('dateabase.db')
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(user)")
+        columns = cursor.fetchall()
+        column_names = [column[1] for column in columns]
+        
+        if 'profile_image' not in column_names:
+            print("Adding profile_image column to user table...")
+            cursor.execute("ALTER TABLE user ADD COLUMN profile_image TEXT;")
+            conn.commit()
+            print("profile_image column added successfully")
+        else:
+            print("profile_image column already exists")
+            
+        conn.close()
+    except Exception as e:
+        print(f"Error checking profile_image column: {e}")
+
+# Create database tables (moved from before_first_request decorator)
+def create_tables():
+    with app.app_context():
+        # First create all tables
+        db.create_all()
+        print("All database tables created successfully")
+        
+        # Check if demo user exists and create if not
+        try:
+            seed_demo_data()
+            print("Demo data seeded successfully")
+        except Exception as e:
+            print(f"Error seeding demo data: {e}")
+
+# Initialize database
+with app.app_context():
+    try:
+        print("Creating database tables...")
+        db.create_all()
+        print("Tables created successfully")
+        
+        # Seed demo data
+        seed_demo_data()
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+
+# New route to get current user profile (always returns demo user)
+@app.route('/api/users/me', methods=['GET'])
+def get_current_user():
+    """Get current user profile - always returns demo user profile"""
+    try:
+        user = User.query.filter_by(username='demo_user').first()
+        if not user:
+            return jsonify({'detail': 'Demo user not found'}), 404
+            
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'name': user.name,
+            'gender': user.gender,
+            'class_year': user.class_year,
+            'interests': user.interests,
+            'profile_image': user.profile_image
+        })
+    except Exception as e:
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+        seed_demo_data()
+    app.run(debug=True, port=5001) 
