@@ -1,0 +1,352 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom color variables */
+:root {
+  --color-orange-100: #fff7ed;
+  --color-orange-200: #ffedd5;
+  --color-orange-300: #fed7aa;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+}
+
+/* Custom animation keyframes */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: .8;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+  .animate-blob {
+    animation: blob 10s infinite;
+  }
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out forwards;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.4s ease-out forwards;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-slow {
+    animation: pulse 3s ease-in-out infinite;
+  }
+}
+
+/* Core layout utilities */
+.container-narrow {
+  @apply max-w-5xl mx-auto px-4 sm:px-6;
+}
+
+.container-wide {
+  @apply max-w-6xl mx-auto px-4 sm:px-6;
+}
+
+.section {
+  @apply py-6 sm:py-8 md:py-12;
+}
+
+.section-divide {
+  @apply border-t border-gray-100 my-8;
+}
+
+/* Custom styles */
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-xl shadow-card border border-orange-100 overflow-hidden transition-all duration-300;
+}
+
+.card:hover {
+  @apply shadow-card-hover;
+}
+
+/* Glass effect for UI elements */
+.glass-panel {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;
+}
+
+/* Orange gradient variations */
+.bg-orange-gradient {
+  @apply bg-gradient-to-r from-orange-start to-orange-end;
+}
+
+.bg-orange-gradient-light {
+  @apply bg-gradient-to-r from-orange-50 to-orange-100;
+}
+
+.text-orange-gradient {
+  @apply text-transparent bg-clip-text bg-gradient-to-r from-orange-start to-orange-end;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg shadow-md hover:shadow-lg transition-all;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-white text-orange-600 rounded-lg border border-orange-100 shadow-sm hover:bg-orange-50 transition-colors;
+}
+
+/* Custom animations */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Form controls with orange theme */
+.form-input {
+  @apply w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50;
+}
+
+.form-select {
+  @apply w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50;
+}
+
+.form-checkbox {
+  @apply rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50;
+}
+
+.form-radio {
+  @apply border-gray-300 text-orange-600 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50;
+}
+
+/* Gradient backgrounds */
+.bg-gradient-primary {
+  @apply bg-gradient-to-r from-orange-500 to-orange-600;
+}
+
+.bg-gradient-light {
+  @apply bg-gradient-to-br from-orange-50 via-white to-orange-50;
+}
+
+.bg-white-gradient {
+  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%);
+}
+
+/* Card styles */
+.card-highlight {
+  @apply bg-white rounded-xl shadow-lg border border-orange-100 overflow-hidden hover:shadow-xl transition-shadow;
+}
+
+/* Text gradients */
+.text-gradient-primary {
+  @apply text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600;
+}
+
+/* Transitions */
+.transition-short {
+  @apply transition-all duration-150 ease-in-out;
+}
+
+.transition-medium {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Hover and interaction effects */
+.paper-effect {
+  @apply transition-all duration-300;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.paper-effect:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
+}
+
+.float-effect:hover {
+  transform: translateY(-5px);
+  @apply transition-all duration-300;
+}
+
+/* Navigation */
+.nav-link {
+  @apply px-3 py-2 rounded-full text-sm font-medium text-gray-700 hover:bg-orange-50 transition-colors;
+}
+
+.nav-link-active {
+  @apply px-3 py-2 rounded-full text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-orange-600 shadow-md;
+}
+
+/* Experience badges */
+.experience-badge {
+  @apply inline-block px-3 py-1 text-sm font-medium rounded-full text-orange-700 bg-orange-100;
+}
+
+/* Map container */
+.map-container {
+  @apply rounded-lg overflow-hidden border border-gray-200 shadow-sm;
+  height: 200px;
+}
+
+/* Tags */
+.tag {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800;
+}
+
+/* Spacing utility */
+.space-content > * + * {
+  @apply mt-4;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  @apply animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto;
+}
+
+/* Match card */
+.match-card {
+  @apply bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow;
+}
+
+/* Hinge Card Styles */
+.hinge-card {
+  @apply bg-white rounded-2xl shadow-xl overflow-hidden;
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+.hinge-card-image {
+  @apply relative;
+  height: 600px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+}
+
+.card-gradient-overlay {
+  @apply absolute inset-0 pointer-events-none;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.6) 80%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  z-index: 1;
+}
+
+.card-info-section {
+  @apply absolute bottom-0 left-0 w-full p-6;
+  z-index: 2;
+}
+
+.prompt-section {
+  @apply mt-3 bg-black/20 backdrop-blur-sm rounded-lg p-3;
+}
+
+.creator-info {
+  @apply mt-2;
+}
+
+/* Swipe Controls */
+.swipe-controls {
+  @apply flex justify-center items-center space-x-6 mt-8;
+}
+
+.swipe-button {
+  @apply flex items-center justify-center rounded-full bg-white shadow-lg border border-gray-200 transition-colors;
+}
+
+.swipe-button--pass {
+  @apply w-16 h-16 hover:border-red-400;
+}
+
+.swipe-button--refresh {
+  @apply w-12 h-12 hover:border-blue-400;
+}
+
+.swipe-button--like {
+  @apply w-16 h-16 hover:border-green-400;
+} 
