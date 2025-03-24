@@ -1,0 +1,629 @@
+from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta, timezone
+import os
+import jwt
+from werkzeug.security import generate_password_hash, check_password_hash
+import sqlite3
+import json
+import random
+import string
+import requests
+from urllib.parse import quote_plus, urlencode
+
+app = Flask(__name__)
+CORS(app, supports_credentials=True)
+
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///dateabase.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
+db = SQLAlchemy(app)
+
+# Models
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    gender = db.Column(db.String(20), nullable=False)
+    class_year = db.Column(db.Integer, nullable=False)
+    interests = db.Column(db.Text, nullable=False)  # Store as JSON string
+    profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+        
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Experience(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    experience_type = db.Column(db.String(50), nullable=False)
+    location = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    place_id = db.Column(db.String(255), nullable=True)
+    location_image = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref=db.backref('experiences', lazy=True))
+
+class Match(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user1_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user2_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    experience_id = db.Column(db.Integer, db.ForeignKey('experience.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending' or 'confirmed'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user1 = db.relationship('User', foreign_keys=[user1_id])
+    user2 = db.relationship('User', foreign_keys=[user2_id])
+    experience = db.relationship('Experience')
+
+class UserSwipe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    experience_id = db.Column(db.Integer, db.ForeignKey('experience.id'), nullable=False)
+    direction = db.Column(db.Boolean, nullable=False)  # True for right, False for left
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User')
+    experience = db.relationship('Experience')
+
+# Auth Helper Functions
+def generate_token(user_id):
+    payload = {
+        'exp': datetime.utcnow() + timedelta(days=1),
+        'iat': datetime.utcnow(),
+        'sub': user_id
+    }
+    return jwt.encode(
+        payload,
+        app.config['SECRET_KEY'],
+        algorithm='HS256'
+    )
+
+def decode_token(token):
+    try:
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        return payload['sub']
+    except jwt.ExpiredSignatureError:
+        return 'Signature expired. Please log in again.'
+    except jwt.InvalidTokenError:
+        return 'Invalid token. Please log in again.'
+
+# Auth Routes
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.json
+    
+    # Check if username already exists
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({'detail': 'Username already exists'}), 400
+    
+    # Create new user
+    new_user = User(
+        username=data['username'],
+        name=data['name'],
+        gender=data['gender'],
+        class_year=data['class_year'],
+        interests=data['interests'],
+        profile_image=data.get('profile_image')
+    )
+    new_user.set_password(data['password'])
+    
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify({'message': 'User registered successfully'}), 201
+
+@app.route('/api/token', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'detail': 'Please provide both username and password'}), 400
+    
+    try:
+        # Auto-authenticate as demo_user regardless of credentials
+        user = User.query.filter_by(username='demo_user').first()
+        
+        if not user:
+            return jsonify({'detail': 'Demo user not found. Make sure to seed the database.'}), 401
+            
+        access_token = jwt.encode({
+            'sub': user.id,
+            'username': user.username,
+            'exp': datetime.now(timezone.utc) + timedelta(days=30)  # Extended token validity
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        refresh_token = jwt.encode({
+            'sub': user.id,
+            'exp': datetime.now(timezone.utc) + timedelta(days=90)  # Extended refresh token
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        return jsonify({
+            'access': access_token,
+            'refresh': refresh_token
+        })
+    except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/token/refresh', methods=['POST'])
+def refresh_token():
+    refresh = request.json.get('refresh')
+    
+    if not refresh:
+        return jsonify({'detail': 'Refresh token is required'}), 400
+    
+    try:
+        # Auto-refresh to demo_user regardless of token
+        user = User.query.filter_by(username='demo_user').first()
+        
+        if not user:
+            return jsonify({'detail': 'Demo user not found'}), 404
+        
+        access_token = jwt.encode({
+            'sub': user.id,
+            'username': user.username,
+            'exp': datetime.now(timezone.utc) + timedelta(days=30)
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        return jsonify({
+            'access': access_token,
+            'refresh': refresh  # Return the same refresh token
+        })
+    except Exception as e:
+        return jsonify({'detail': str(e)}), 500
+
+# User Routes
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    data = request.json
+    new_user = User(
+        username=data['username'],
+        name=data['name'],
+        gender=data['gender'],
+        class_year=data['class_year'],
+        interests=data['interests']
+    )
+    new_user.set_password(data['password'])
+    
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'id': new_user.id, 'message': 'User created successfully'}), 201
+
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    user = User.query.get_or_404(user_id)
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'name': user.name,
+        'gender': user.gender,
+        'class_year': user.class_year,
+        'interests': user.interests,
+        'profile_image': user.profile_image,
+        'created_at': user.created_at
+    })
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    try:
+        user = User.query.get_or_404(user_id)
+        data = request.json
+        
+        if 'name' in data:
+            user.name = data['name']
+        if 'gender' in data:
+            user.gender = data['gender']
+        if 'class_year' in data:
+            user.class_year = data['class_year']
+        if 'interests' in data:
+            user.interests = data['interests']
+        if 'profile_image' in data:
+            user.profile_image = data['profile_image']
+        if 'password' in data:
+            user.set_password(data['password'])
+            
+        db.session.commit()
+        
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'name': user.name,
+            'gender': user.gender,
+            'class_year': user.class_year,
+            'interests': user.interests,
+            'profile_image': user.profile_image,
+            'message': 'User updated successfully'
+        })
+    except Exception as e:
+        print(f"Error updating user: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/experiences', methods=['POST'])
+def create_experience():
+    try:
+        data = request.json
+        
+        if not data:
+            return jsonify({'detail': 'No data provided'}), 400
+        
+        required_fields = ['user_id', 'experience_type', 'location']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'detail': f'Missing required field: {field}'}), 400
+                
+        # Validate user exists
+        user = User.query.get(data['user_id'])
+        if not user:
+            return jsonify({'detail': 'User not found'}), 404
+        
+        # Clean up input data to prevent duplication
+        experience_type = data['experience_type'].strip() if data['experience_type'] else ''
+        location = data['location'].strip() if data['location'] else ''
+        description = data.get('description', '').strip()
+        
+        # Handle new fields
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        place_id = data.get('place_id', '').strip() if data.get('place_id') else None
+        location_image = data.get('location_image', '').strip() if data.get('location_image') else None
+        
+        new_experience = Experience(
+            user_id=data['user_id'],
+            experience_type=experience_type,
+            location=location,
+            description=description,
+            latitude=latitude,
+            longitude=longitude,
+            place_id=place_id,
+            location_image=location_image
+        )
+        db.session.add(new_experience)
+        db.session.commit()
+        
+        return jsonify({
+            'id': new_experience.id, 
+            'message': 'Experience created successfully',
+            'experience': {
+                'id': new_experience.id,
+                'user_id': new_experience.user_id,
+                'experience_type': new_experience.experience_type,
+                'location': new_experience.location,
+                'description': new_experience.description,
+                'latitude': new_experience.latitude,
+                'longitude': new_experience.longitude,
+                'place_id': new_experience.place_id,
+                'location_image': new_experience.location_image,
+                'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
+            }
+        }), 201
+    except Exception as e:
+        print(f"Error creating experience: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/experiences', methods=['GET'])
+def get_experiences():
+    try:
+        experiences = Experience.query.all()
+        result = []
+        
+        for exp in experiences:
+            creator = User.query.get(exp.user_id)
+            # Clean strings to prevent any duplication
+            experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            location = exp.location.strip() if exp.location else ''
+            description = exp.description.strip() if exp.description else ''
+            
+            result.append({
+                'id': exp.id,
+                'user_id': exp.user_id,
+                'creator_name': creator.name if creator else 'Unknown',
+                'experience_type': experience_type,
+                'location': location,
+                'description': description,
+                'latitude': exp.latitude,
+                'longitude': exp.longitude,
+                'place_id': exp.place_id,
+                'location_image': exp.location_image,
+                'created_at': exp.created_at.isoformat() if exp.created_at else None
+            })
+            
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error fetching experiences: {e}")
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/swipes', methods=['POST'])
+def create_swipe():
+    try:
+        data = request.json
+        print(f"Received swipe data: {data}")
+        
+        # Extract required fields
+        user_id = data.get('user_id')
+        experience_id = data.get('experience_id')
+        direction = data.get('direction')
+        
+        # Validate required fields
+        if not all([user_id, experience_id, direction is not None]):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        # Convert direction to boolean
+        if isinstance(direction, str):
+            # Handle string representations of direction
+            direction_lower = direction.lower()
+            if direction_lower in ['true', 'right', 'like', '1', 'yes']:
+                direction = True
+            elif direction_lower in ['false', 'left', 'pass', '0', 'no']:
+                direction = False
+            else:
+                return jsonify({'error': f'Invalid direction value: {direction}'}), 400
+        else:
+            # Ensure it's a boolean
+            direction = bool(direction)
+            
+        print(f"Processed swipe: User {user_id}, Experience {experience_id}, Direction {direction}")
+        
+        # Handle dummy experiences (IDs 998, 999)
+        if experience_id in [998, 999]:
+            # For dummy experiences, create a fake match if it's a right swipe
+            if direction:
+                return jsonify({'match': True, 'match_id': 9999}), 200
+            else:
+                return jsonify({'match': False}), 200
+                
+        # Proceed with normal flow for real experiences
+        # Find the experience to ensure it exists
+        experience = Experience.query.get(experience_id)
+        if not experience:
+            return jsonify({'error': 'Experience not found'}), 404
+            
+        # Create the swipe record
+        new_swipe = UserSwipe(
+            user_id=user_id,
+            experience_id=experience_id,
+            direction=direction
+        )
+        db.session.add(new_swipe)
+        db.session.commit()
+        
+        # Check if this creates a match
+        if direction:  # If right swipe
+            # Find if the experience creator also swiped right on this user
+            print(f"Checking for match with creator {experience.user_id}")
+            
+            # Check if the current user has an experience that the creator liked
+            user_experiences = Experience.query.filter_by(user_id=user_id).all()
+            user_exp_ids = [exp.id for exp in user_experiences]
+            
+            creator_swipes = UserSwipe.query.filter(
+                UserSwipe.user_id == experience.user_id,
+                UserSwipe.experience_id.in_(user_exp_ids),
+                UserSwipe.direction == True
+            ).all()
+            
+            if creator_swipes:
+                print(f"Match found between {user_id} and {experience.user_id}")
+                # Check if match already exists
+                existing_match = Match.query.filter(
+                    ((Match.user1_id == user_id) & (Match.user2_id == experience.user_id)) |
+                    ((Match.user1_id == experience.user_id) & (Match.user2_id == user_id))
+                ).first()
+                
+                if existing_match:
+                    print(f"Match already exists with ID {existing_match.id}")
+                    return jsonify({'match': True, 'match_id': existing_match.id}), 200
+                
+                # Create a match
+                new_match = Match(
+                    user1_id=user_id,
+                    user2_id=experience.user_id,
+                    experience_id=experience_id,
+                    status='confirmed'
+                )
+                db.session.add(new_match)
+                db.session.commit()
+                return jsonify({'match': True, 'match_id': new_match.id}), 201
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        print(f"Error processing swipe: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/matches/<int:user_id>', methods=['GET'])
+def get_matches(user_id):
+    try:
+        matches = Match.query.filter(
+            ((Match.user1_id == user_id) | (Match.user2_id == user_id)) & 
+            (Match.status == 'confirmed')
+        ).all()
+        
+        result = []
+        for match in matches:
+            other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
+            other_user = User.query.get(other_user_id)
+            experience = Experience.query.get(match.experience_id)
+            
+            if not other_user or not experience:
+                continue
+                
+            result.append({
+                'match_id': match.id,
+                'other_user': {
+                    'id': other_user.id,
+                    'name': other_user.name,
+                    'gender': other_user.gender,
+                    'class_year': other_user.class_year,
+                    'profile_image': other_user.profile_image if hasattr(other_user, 'profile_image') else None
+                },
+                'experience': {
+                    'id': experience.id,
+                    'experience_type': experience.experience_type,
+                    'location': experience.location,
+                    'description': experience.description,
+                    'latitude': experience.latitude,
+                    'longitude': experience.longitude,
+                    'place_id': experience.place_id,
+                    'location_image': experience.location_image
+                },
+                'created_at': match.created_at.isoformat() if match.created_at else None,
+                'status': match.status
+            })
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error fetching matches: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recommendations/<int:user_id>', methods=['GET'])
+def get_recommendations(user_id):
+    try:
+        # This is a simple recommendation system
+        # In reality, you would use more sophisticated algorithms
+        
+        # Get all experiences except those created by the user
+        experiences = Experience.query.filter(Experience.user_id != user_id).all()
+        
+        # Get all experiences that the user has already swiped on
+        swiped_experience_ids = [swipe.experience_id for swipe in UserSwipe.query.filter_by(user_id=user_id).all()]
+        
+        # Filter out experiences that the user has already swiped on
+        available_experiences = [exp for exp in experiences if exp.id not in swiped_experience_ids]
+        
+        # Sort by most recent first
+        available_experiences.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # If no experiences are available, reset the demo state to show all experiences
+        if not available_experiences:
+            # For demo purposes, clear all user swipes to let them see experiences again
+            UserSwipe.query.filter_by(user_id=user_id).delete()
+            db.session.commit()
+            # Reload experiences
+            experiences = Experience.query.filter(Experience.user_id != user_id).all()
+            available_experiences = experiences
+            
+        result = []
+        for exp in available_experiences:
+            creator = User.query.get(exp.user_id)
+            # Clean strings to prevent any duplication
+            experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            location = exp.location.strip() if exp.location else ''
+            description = exp.description.strip() if exp.description else ''
+            
+            creator_data = {
+                'id': creator.id,
+                'username': creator.username,
+                'name': creator.name
+            }
+            
+            # Add profile image if exists
+            if hasattr(creator, 'profile_image') and creator.profile_image:
+                creator_data['profile_image'] = creator.profile_image
+            
+            result.append({
+                'id': exp.id,
+                'user_id': exp.user_id,
+                'creator': creator_data,
+                'experience_type': experience_type,
+                'location': location,
+                'description': description,
+                'latitude': exp.latitude,
+                'longitude': exp.longitude,
+                'place_id': exp.place_id,
+                'location_image': exp.location_image,
+                'created_at': exp.created_at.isoformat() if exp.created_at else None
+            })
+        
+        # If still no recommendations available, create some dummy experiences for demo
+        if not result:
+            # Create dummy experiences with the first user that's not the current user
+            other_users = User.query.filter(User.id != user_id).all()
+            if other_users:
+                other_user = other_users[0]
+                dummy_experiences = [
+                    {
+                        'id': 999,
+                        'user_id': other_user.id,
+                        'creator': {
+                            'id': other_user.id,
+                            'username': other_user.username,
+                            'name': other_user.name,
+                            'profile_image': other_user.profile_image if hasattr(other_user, 'profile_image') else None
+                        },
+                        'experience_type': 'Coffee',
+                        'location': 'Local Cafe',
+                        'description': 'Meeting for coffee and conversation',
+                        'latitude': 40.3431,
+                        'longitude': -74.6551,
+                        'place_id': None,
+                        'location_image': 'https://source.unsplash.com/random/800x600/?cafe',
+                        'created_at': datetime.now().isoformat()
+                    },
+                    {
+                        'id': 998,
+                        'user_id': other_user.id,
+                        'creator': {
+                            'id': other_user.id,
+                            'username': other_user.username,
+                            'name': other_user.name,
+                            'profile_image': other_user.profile_image if hasattr(other_user, 'profile_image') else None
+                        },
+                        'experience_type': 'Hike',
+                        'location': 'Princeton Nature Trail',
+                        'description': 'Relaxing afternoon hike through scenic trails',
+                        'latitude': 40.3431,
+                        'longitude': -74.6551,
+                        'place_id': None,
+                        'location_image': 'https://source.unsplash.com/random/800x600/?hiking',
+                        'created_at': datetime.now().isoformat()
+                    }
+                ]
+                result.extend(dummy_experiences)
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error fetching recommendations: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/demo/refresh', methods=['POST'])
+def refresh_demo_user():
+    """Reset the demo user's swipes and recreate demo matches"""
+    try:
+        # Get the demo user
+        demo_user = User.query.filter_by(username='demo_user').first()
+        
+        if not demo_user:
+            return jsonify({'error': 'Demo user not found'}), 404
+            
+        # Delete all swipes by the demo user
+        UserSwipe.query.filter_by(user_id=demo_user.id).delete()
+        
+        # Delete all matches involving the demo user
+        Match.query.filter(
+            (Match.user1_id == demo_user.id) | (Match.user2_id == demo_user.id)
+        ).delete()
+        
+        db.session.commit()
+        
+        # Recreate demo matches
+        create_demo_matches()
+        
+        return jsonify({'message': 'Demo user swipes and matches refreshed successfully'}), 200
+    except Exception as e:
+        print(f"Error refreshing demo user: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
