@@ -1,64 +1,40 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 
 const Login = () => {
   const [error, setError] = useState('');
-  const [demoLoading, setDemoLoading] = useState(false);
+  const [casLoading, setCasLoading] = useState(false);
   
-  const { setAuthTokens, setUser } = useContext(AuthContext);
+  const { loginWithCAS } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the callback URL from state or default to home
+  const callbackUrl = location.state?.from?.pathname || '/';
 
-  const handleDemoLogin = async () => {
-    setDemoLoading(true);
+  // Initiate Princeton CAS login
+  const handleCASLogin = async () => {
+    setCasLoading(true);
     setError('');
     
-    console.log('Demo login initiated');
-    
     try {
-      // Demo login credentials
-      const credentials = {
-        username: 'demo_user',
-        password: 'demo123'
-      };
+      console.log('Initiating Princeton CAS login');
+      const success = await loginWithCAS(callbackUrl);
       
-      console.log('Sending demo login request');
-      
-      // Direct API call without using fetch
-      const response = await fetch('http://localhost:5001/api/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'include'
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Login successful');
-        
-        // Set auth tokens in context and localStorage
-        setAuthTokens(data);
-        setUser(data);
-        localStorage.setItem('authTokens', JSON.stringify(data));
-        
-        // Navigate to home page
-        navigate('/');
-      } else {
-        const errorData = await response.text();
-        console.error('Login failed:', errorData);
-        setError('Demo login failed. Please try again.');
+      if (!success) {
+        setError('Failed to initiate CAS login. Please try again.');
       }
+      // No need to navigate - the loginWithCAS function redirects to CAS
     } catch (err) {
-      console.error('Demo login error:', err);
+      console.error('CAS login error:', err);
       setError(`Error: ${err.message}`);
     } finally {
-      setDemoLoading(false);
+      setCasLoading(false);
     }
   };
+  
+  // Only Princeton CAS login is available now
   
   return (
     <div className="flex items-center justify-center min-h-screen bg-white-gradient px-4 py-12 relative">
@@ -86,15 +62,16 @@ const Login = () => {
           
           <div className="space-y-4">
             <p className="text-gray-600 text-center mb-4">
-              Experience the application with our demo account
+              Sign in with your Princeton account to continue
             </p>
             
+            {/* Princeton CAS Login Button */}
             <button
-              onClick={handleDemoLogin}
-              className="w-full px-4 py-3 flex items-center justify-center bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors"
-              disabled={demoLoading}
+              onClick={handleCASLogin}
+              className="w-full px-4 py-3 flex items-center justify-center bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+              disabled={casLoading}
             >
-              {demoLoading ? (
+              {casLoading ? (
                 <span className="flex items-center">
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -105,12 +82,14 @@ const Login = () => {
               ) : (
                 <span className="flex items-center">
                   <svg className="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  Continue as Demo User
+                  Sign in with Princeton CAS
                 </span>
               )}
             </button>
+            
+            {/* Only Princeton CAS login is available */}
             
             <div className="text-center mt-4">
               <Link to="/" className="text-orange-600 hover:text-orange-500 font-medium">

@@ -15,6 +15,7 @@ const CASCallback = () => {
         // Get the ticket from the URL query parameters
         const params = new URLSearchParams(location.search);
         const ticket = params.get('ticket');
+        const callbackUrl = params.get('callback_url') || '/';
 
         if (!ticket) {
           setError('No CAS ticket found in the URL');
@@ -25,7 +26,16 @@ const CASCallback = () => {
         // Process the CAS callback
         const result = await handleCASCallback(ticket);
         
-        if (!result.success) {
+        if (result.success) {
+          console.log('CAS authentication successful');
+          // Check if user needs to complete profile
+          if (result.needs_profile) {
+            navigate('/complete-profile');
+          } else {
+            // Navigate to the callback URL or home page
+            navigate(result.callback_url || callbackUrl || '/');
+          }
+        } else {
           setError(result.message || 'CAS authentication failed');
         }
       } catch (err) {

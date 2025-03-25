@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, redirect, session, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from cas import CASClient
 from datetime import datetime, timedelta, timezone
 import os
 import jwt
@@ -11,7 +10,10 @@ import json
 import random
 import string
 import requests
+import secrets
 from urllib.parse import quote_plus, urlencode
+# Import auth module for CAS authentication
+from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -20,6 +22,9 @@ CORS(app, supports_credentials=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///dateabase.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
+# Set session type for CAS auth
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 db = SQLAlchemy(app)
 
 # Models
@@ -1013,24 +1018,118 @@ with app.app_context():
     except Exception as e:
         print(f"Error initializing database: {e}")
 
-# New route to get current user profile (always returns demo user)
+# CAS Authentication routes
+@app.route('/api/cas/login', methods=['GET'])
+def cas_login():
+    """Initiate CAS login process and return login URL"""
+    try:
+        callback_url = request.args.get('callback_url', '/')
+        login_url = get_cas_login_url(callback_url)
+        return jsonify({'login_url': login_url})
+    except Exception as e:
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/cas/callback', methods=['GET'])
+def cas_callback():
+    """Process CAS authentication callback"""
+    try:
+        ticket = request.args.get('ticket')
+        callback_url = request.args.get('callback_url', '/')
+        frontend_url = request.args.get('frontend_callback', 'http://localhost:3000/cas/callback')
+        
+        if not ticket:
+            return jsonify({'detail': 'No ticket provided'}), 400
+        
+        # Validate ticket with CAS server
+        user_info = validate(ticket)
+        
+        if not user_info:
+            return jsonify({'detail': 'Invalid CAS ticket'}), 401
+        
+        # Store user info in session
+        session['user_info'] = user_info
+        netid = user_info.get('user', '')
+        
+        # Check if user exists in our database
+        user = User.query.filter_by(username=netid).first()
+        
+        # If user doesn't exist, we'll create one with dummy data
+        if not user:
+            # Create a new user with the netid and dummy data
+            new_user = User(
+                username=netid,
+                name=f"{netid.capitalize()} User",
+                gender='Other',
+                class_year=2025,
+                interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
+                profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
+                password_hash=generate_password_hash(f"cas_{netid}_{secrets.token_hex(16)}") # Generate a random secure password
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            
+            # Retrieve the user after commit
+            user = User.query.filter_by(username=netid).first()
+        
+        # Generate token for the frontend
+        access_token = jwt.encode({
+            'sub': user.id,
+            'username': netid,
+            'exp': datetime.now(timezone.utc) + timedelta(days=1)
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        refresh_token = jwt.encode({
+            'sub': user.id,
+            'exp': datetime.now(timezone.utc) + timedelta(days=30)
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        # Redirect to the frontend callback with the ticket
+        redirect_url = f"{frontend_url}?ticket={ticket}"
+        return redirect(redirect_url)
+    except Exception as e:
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/cas/logout', methods=['GET'])
+def cas_logout():
+    """Log out user from CAS"""
+    session.clear()
+    return jsonify({'detail': 'Logged out successfully'})
+
+@app.route('/api/cas/status', methods=['GET'])
+def cas_status():
+    """Check if user is authenticated with CAS"""
+    is_auth = is_authenticated()
+    return jsonify({'authenticated': is_auth})
+
+# Get current user profile - checks for CAS authentication only
 @app.route('/api/users/me', methods=['GET'])
 def get_current_user():
-    """Get current user profile - always returns demo user profile"""
+    """Get current user profile - requires CAS authentication"""
     try:
-        user = User.query.filter_by(username='demo_user').first()
-        if not user:
-            return jsonify({'detail': 'Demo user not found'}), 404
+        # Check if user is authenticated via CAS
+        if 'user_info' in session:
+            user_info = session['user_info']
+            netid = user_info.get('user', '')
             
-        return jsonify({
-            'id': user.id,
-            'username': user.username,
-            'name': user.name,
-            'gender': user.gender,
-            'class_year': user.class_year,
-            'interests': user.interests,
-            'profile_image': user.profile_image
-        })
+            # Use demo user data for everyone who logs in with CAS
+            demo_user = User.query.filter_by(username='demo_user').first()
+            
+            if not demo_user:
+                return jsonify({'detail': 'Demo user not found'}), 404
+                
+            # Return the demo user's profile with the authenticated netid
+            return jsonify({
+                'id': demo_user.id,
+                'username': netid,  # Use the actual netid
+                'name': demo_user.name,
+                'gender': demo_user.gender,
+                'class_year': demo_user.class_year,
+                'interests': demo_user.interests,
+                'profile_image': demo_user.profile_image
+            })
+        
+        # Not authenticated with CAS
+        return jsonify({'detail': 'Authentication required'}), 401
     except Exception as e:
         return jsonify({'detail': f'Error: {str(e)}'}), 500
 

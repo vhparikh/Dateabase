@@ -1,7 +1,11 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 
 const AuthContext = createContext();
+
+// Custom hook to use the auth context
+export const useAuth = () => useContext(AuthContext);
 
 export default AuthContext;
 
@@ -15,104 +19,200 @@ export const AuthProvider = ({ children }) => {
         console.error('Error parsing auth tokens from localStorage:', e);
       }
     }
-    // Fallback to demo tokens
-    const demoTokens = {
-      access: 'demo_access_token',
-      refresh: 'demo_refresh_token'
-    };
-    localStorage.setItem('authTokens', JSON.stringify(demoTokens));
-    return demoTokens;
+    // Return null instead of fallback tokens
+    return null;
   });
   
-  const [user, setUser] = useState(() => {
-    // Always provide a default demo user to avoid undefined user issues
-    return {
-      id: 1,
-      username: 'demo_user',
-      name: 'Demo User'
-    };
-  });
-  
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [casAuthenticated, setCasAuthenticated] = useState(false);
   
-  // Auto-login as demo user on component mount
+  // Check CAS authentication status on mount
   useEffect(() => {
-    const loginDemoUser = async () => {
+    const checkAuthStatus = async () => {
       setLoading(true);
+      setAuthLoading(true);
       try {
-        console.log('Auto-logging in as demo user...');
-        const response = await fetch(`${API_URL}/api/token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: 'demo_user',
-            password: 'demo123'
-          })
+        // Check if the user is authenticated with CAS
+        const response = await fetch(`${API_URL}/api/cas/status`, {
+          credentials: 'include' // Important for session cookies
         });
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Demo login successful');
-          setAuthTokens(data);
-          setUser({
-            id: 1, // Ensure we always have a user ID
-            username: 'demo_user',
-            name: 'Demo User'
-          });
-          localStorage.setItem('authTokens', JSON.stringify(data));
+          setCasAuthenticated(data.authenticated);
+          
+          // If authenticated, load user profile
+          if (data.authenticated) {
+            const profileResponse = await fetch(`${API_URL}/api/users/me`, {
+              credentials: 'include'
+            });
+            
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json();
+              console.log('User profile loaded');
+              setUser(profileData);
+              
+              // Generate tokens if needed
+              if (!authTokens) {
+                const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({})
+                });
+                
+                if (tokenResponse.ok) {
+                  const tokenData = await tokenResponse.json();
+                  setAuthTokens(tokenData);
+                  localStorage.setItem('authTokens', JSON.stringify(tokenData));
+                }
+              }
+            }
+          } else {
+            // Not authenticated with CAS, clear any stored tokens
+            console.log('Not authenticated with CAS, redirecting to login');
+            setUser(null);
+            setAuthTokens(null);
+            localStorage.removeItem('authTokens');
+          }
         } else {
-          console.error('Failed to auto-login as demo user:', await response.text());
+          // Failed to check authentication status
+          console.log('Failed to check authentication status');
+          setUser(null);
+          setAuthTokens(null);
+          localStorage.removeItem('authTokens');
         }
       } catch (err) {
-        console.error('Auto-login error:', err);
+        console.error('Auth status check error:', err);
+        setUser(null);
+        setAuthTokens(null);
+        localStorage.removeItem('authTokens');
       } finally {
         setLoading(false);
+        setAuthLoading(false);
       }
     };
     
-    loginDemoUser();
+    checkAuthStatus();
   }, []);
   
-  // Load user profile with demo data backup
+  // Load user profile - gets current user profile from backend
   const loadUserProfile = useCallback(async () => {
-    const demoProfile = {
-      id: 1,
-      username: 'demo_user',
-      name: 'Demo User',
-      gender: 'Other',
-      class_year: 2024,
-      interests: '{"hiking": true, "dining": true, "movies": true, "study": true}',
-      profile_image: 'https://ui-avatars.com/api/?name=Demo+User&background=orange&color=fff'
-    };
-    
     try {
       console.log('Loading user profile...');
       const response = await fetch(`${API_URL}/api/users/me`, {
-        headers: {
+        credentials: 'include',
+        headers: authTokens ? {
           'Authorization': `Bearer ${authTokens?.access}`
-        }
+        } : {}
       });
       
       if (response.ok) {
         const data = await response.json();
         console.log('Profile loaded successfully');
+        setUser(data);
         return data;
       } else {
-        console.log('Falling back to demo profile');
+        console.log('Error loading profile:', await response.text());
+        // Don't return a fallback profile, signal error instead
+        setUser(null);
+        return null;
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      setUser(null);
+      return null;
     }
-    
-    return demoProfile;
   }, [authTokens]);
 
-  // Dummy logout function (not needed but kept for compatibility)
-  const logoutUser = () => {
-    // Do nothing, we don't want to log out of the demo user
-    console.log('Logout attempted but ignored to keep demo user logged in');
+  // Initiate CAS login
+  const loginWithCAS = async (callback_url = '/') => {
+    try {
+      const response = await fetch(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Redirect to CAS login URL
+        window.location.href = data.login_url;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error initiating CAS login:', error);
+      return false;
+    }
+  };
+  
+  // Handle CAS callback with ticket
+  const handleCASCallback = async (ticket) => {
+    try {
+      // First, check if the user is authenticated with CAS
+      const statusResponse = await fetch(`${API_URL}/api/cas/status`, {
+        credentials: 'include'
+      });
+      
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        
+        if (statusData.authenticated) {
+          setCasAuthenticated(true);
+          
+          // Load user profile
+          const userProfile = await loadUserProfile();
+          
+          if (userProfile) {
+            // Generate access token
+            const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({})
+            });
+            
+            if (tokenResponse.ok) {
+              const tokenData = await tokenResponse.json();
+              setAuthTokens(tokenData);
+              localStorage.setItem('authTokens', JSON.stringify(tokenData));
+            }
+            
+            return {
+              success: true,
+              callback_url: '/',
+              needs_profile: false
+            };
+          }
+        }
+      }
+      
+      return { success: false, message: 'Authentication failed' };
+    } catch (error) {
+      console.error('Error handling CAS callback:', error);
+      return { success: false, message: error.message || 'Authentication error' };
+    }
+  };
+  
+  // Logout from CAS and the application
+  const logoutUser = async () => {
+    try {
+      // Logout from backend session
+      await fetch(`${API_URL}/api/cas/logout`, {
+        credentials: 'include'
+      });
+      
+      // Clear local storage and state
+      localStorage.removeItem('authTokens');
+      setAuthTokens(null);
+      setUser(null);
+      setCasAuthenticated(false);
+      
+      return true;
+    } catch (error) {
+      console.error('Error logging out:', error);
+      return false;
+    }
   };
 
   const contextData = {
@@ -121,8 +221,12 @@ export const AuthProvider = ({ children }) => {
     setAuthTokens,
     setUser,
     loading,
+    authLoading,
     logoutUser,
-    loadUserProfile
+    loadUserProfile,
+    loginWithCAS,
+    handleCASCallback,
+    casAuthenticated
   };
 
   return (
