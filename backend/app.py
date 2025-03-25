@@ -11,9 +11,9 @@ import random
 import string
 import requests
 import secrets
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote_plus, urlencode, quote
 # Import auth module for CAS authentication
-from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket
+from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -1092,8 +1092,17 @@ def cas_callback():
 @app.route('/api/cas/logout', methods=['GET'])
 def cas_logout():
     """Log out user from CAS"""
+    # Clear the session
     session.clear()
-    return jsonify({'detail': 'Logged out successfully'})
+    # Create CAS logout URL that redirects back to the login page
+    frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+    redirect_url = f"{frontend_url}/login"
+    logout_url = f"{_CAS_URL}logout?service={quote(redirect_url)}"
+    # Return the logout URL to the frontend so it can redirect
+    return jsonify({
+        'detail': 'Logged out successfully',
+        'logout_url': logout_url
+    })
 
 @app.route('/api/cas/status', methods=['GET'])
 def cas_status():

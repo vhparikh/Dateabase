@@ -198,7 +198,7 @@ export const AuthProvider = ({ children }) => {
   const logoutUser = async () => {
     try {
       // Logout from backend session
-      await fetch(`${API_URL}/api/cas/logout`, {
+      const response = await fetch(`${API_URL}/api/cas/logout`, {
         credentials: 'include'
       });
       
@@ -207,6 +207,12 @@ export const AuthProvider = ({ children }) => {
       setAuthTokens(null);
       setUser(null);
       setCasAuthenticated(false);
+      
+      // Get the CAS logout URL from response
+      if (response.ok) {
+        const data = await response.json();
+        return data;  // Return data containing logout_url
+      }
       
       return true;
     } catch (error) {

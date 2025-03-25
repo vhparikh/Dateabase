@@ -4,7 +4,7 @@ import AuthContext from '../context/AuthContext';
 import { getExperiences } from '../services/api';
 
 const Profile = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logoutUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [userExperiences, setUserExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,9 +29,21 @@ const Profile = () => {
     fetchUserExperiences();
   }, [user.id]);
   
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      const result = await logoutUser();
+      if (result && result.logout_url) {
+        // Redirect to CAS logout URL which will then redirect back to login page
+        window.location.href = result.logout_url;
+      } else {
+        // Fallback to just redirecting to login page
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Fallback to just redirecting to login page
+      navigate('/login');
+    }
   };
   
   // Function to parse and render interest badges
