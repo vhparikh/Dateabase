@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
@@ -520,6 +521,10 @@ const MatchModal = ({ match, onClose }) => {
 };
 
 const Home = () => {
+  const navigate = useNavigate();
+  const handleCreateExperienceClick = () => {
+    navigate('/experiences', { state: { shouldCallAddExperience: true }});
+  };
   const { user } = useContext(AuthContext);
   const [experiences, setExperiences] = useState([]);
   const [popularExperiences, setPopularExperiences] = useState([]);
@@ -681,12 +686,12 @@ const Home = () => {
                 >
                   Start Swiping
                 </a>
-                <a 
-                  href="/experiences/create" 
+                <button 
+                  onClick = {handleCreateExperienceClick}
                   className="px-6 py-3 bg-white text-orange-600 font-medium rounded-lg shadow border border-orange-100 hover:bg-orange-50 transition-colors"
                 >
                   Create Experience
-                </a>
+                </button>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -453,6 +454,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, experienceId }) =
 };
 
 const Experiences = () => {
+  const location = useLocation();
   const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -463,6 +465,7 @@ const Experiences = () => {
   const { user } = useContext(AuthContext);
   
   const fetchExperiences = async () => {
+    
     try {
       setLoading(true);
       setError('');
@@ -473,6 +476,7 @@ const Experiences = () => {
         setLoading(false);
         return;
       }
+    
       
       // Fetch from API if not in demo mode
       const response = await axios.get(`${API_URL}/experiences/${user?.id || '1'}`);
@@ -489,6 +493,11 @@ const Experiences = () => {
     }
   };
   
+  useEffect(() => {
+    if (location.state?.shouldCallAddExperience) {
+      handleAddExperience();
+    }
+  }, [location.state]);
   useEffect(() => {
     fetchExperiences();
   }, [user?.id, demoMode]);
