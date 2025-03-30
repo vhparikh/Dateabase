@@ -67,8 +67,8 @@ const Profile = () => {
       }
     }
     
-    // Convert to array of interest names
-    const interestNames = Object.keys(interestsObj).filter(key => interestsObj[key]);
+    // Convert to array of interest names - only ones that are true
+    const interestNames = Object.keys(interestsObj).filter(key => interestsObj[key] === true);
     
     return (
       <div className="flex flex-wrap gap-2 mt-3">
@@ -102,11 +102,10 @@ const Profile = () => {
         <div className="bg-white rounded-xl shadow-card mb-8 p-6">
           <div className="flex flex-col md:flex-row items-center">
             <div className="w-28 h-28 md:w-32 md:h-32 bg-gradient-to-r from-orange-start to-orange-end rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-md">
-              {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="ml-0 md:ml-8 mt-6 md:mt-0 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-gray-800">{user?.username || 'User'}</h1>
-              <p className="mt-2 text-orange-600">{user?.email || 'No email provided'}</p>
+              <h1 className="text-3xl font-bold text-gray-800">{user?.name || 'User'}</h1>
               
               <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {renderInterests()}
@@ -124,7 +123,17 @@ const Profile = () => {
                 </button>
                 
                 <Link 
-                  to="/create-experience" 
+                  to="/profile/edit" 
+                  className="px-4 py-2 bg-white text-orange-600 border border-orange-300 rounded-lg font-medium shadow-sm hover:bg-orange-50 transition-colors flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                  Edit Profile
+                </Link>
+                
+                <Link 
+                  to="/experiences/add" 
                   className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -171,13 +180,8 @@ const Profile = () => {
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">Username</h3>
-                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{user?.username || 'Not set'}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">Email</h3>
-                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{user?.email || 'Not set'}</p>
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">Name</h3>
+                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{user?.name || 'Not set'}</p>
                 </div>
                 
                 <div>

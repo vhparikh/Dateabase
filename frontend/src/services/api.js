@@ -18,6 +18,10 @@ export const getUser = (userId) => {
   return api.get(`/users/${userId}`);
 };
 
+export const updateUser = (userId, userData) => {
+  return api.put(`/users/${userId}`, userData);
+};
+
 // Experience endpoints
 export const createExperience = (experienceData) => {
   return api.post('/experiences', experienceData);
