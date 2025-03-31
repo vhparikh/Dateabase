@@ -3,11 +3,11 @@ auth.py
 CAS Authentication for Dateabase application
 """
 
-import urllib.request
 import urllib.parse
 import re
 import json
 import flask
+import requests
 from flask import session, request, redirect, url_for, abort, current_app
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
@@ -30,24 +30,34 @@ def validate(ticket):
         + '&ticket='
         + urllib.parse.quote(ticket)
         + '&format=json')
-    with urllib.request.urlopen(val_url) as flo:
-        result = json.loads(flo.read().decode('utf-8'))
+    
+    try:
+        # Use requests instead of urllib and verify=False for development
+        response = requests.get(val_url, verify=False)
+        if response.status_code != 200:
+            print('CAS validation failed:', response.status_code)
+            return None
+            
+        result = response.json()
+        
+        if (not result) or ('serviceResponse' not in result):
+            return None
 
-    if (not result) or ('serviceResponse' not in result):
+        service_response = result['serviceResponse']
+
+        if 'authenticationSuccess' in service_response:
+            user_info = service_response['authenticationSuccess']
+            return user_info
+
+        if 'authenticationFailure' in service_response:
+            print('CAS authentication failure:', service_response)
+            return None
+
+        print('Unexpected CAS response:', service_response)
         return None
-
-    service_response = result['serviceResponse']
-
-    if 'authenticationSuccess' in service_response:
-        user_info = service_response['authenticationSuccess']
-        return user_info
-
-    if 'authenticationFailure' in service_response:
-        print('CAS authentication failure:', service_response)
+    except Exception as e:
+        print('Error validating CAS ticket:', str(e))
         return None
-
-    print('Unexpected CAS response:', service_response)
-    return None
 
 # Authenticate the user, and return the user's info.
 # Do not return unless the user is successfully authenticated.

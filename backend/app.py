@@ -1035,7 +1035,10 @@ def cas_callback():
     try:
         ticket = request.args.get('ticket')
         callback_url = request.args.get('callback_url', '/')
-        frontend_url = request.args.get('frontend_callback', 'http://localhost:3000/cas/callback')
+        
+        # Get the frontend URL from the Origin header or use localhost:3000 as fallback
+        frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        frontend_callback = f"{frontend_url}/cas/callback"
         
         if not ticket:
             return jsonify({'detail': 'No ticket provided'}), 400
@@ -1084,7 +1087,7 @@ def cas_callback():
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
         # Redirect to the frontend callback with the ticket
-        redirect_url = f"{frontend_url}?ticket={ticket}"
+        redirect_url = f"{frontend_callback}?ticket={ticket}"
         return redirect(redirect_url)
     except Exception as e:
         return jsonify({'detail': f'Error: {str(e)}'}), 500
