@@ -24,13 +24,13 @@ const CASCallback = () => {
         }
 
         // Process the CAS callback
-        const result = await handleCASCallback(ticket);
+        const result = await handleCASCallback(ticket, params);
         
         if (result.success) {
           console.log('CAS authentication successful');
-          // Check if user needs to complete profile
-          if (result.needs_profile) {
-            navigate('/complete-profile');
+          // Check if user needs to complete onboarding
+          if (result.needs_onboarding) {
+            navigate('/onboarding');
           } else {
             // Navigate to the callback URL or home page
             navigate(result.callback_url || callbackUrl || '/');

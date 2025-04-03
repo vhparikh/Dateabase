@@ -147,8 +147,11 @@ export const AuthProvider = ({ children }) => {
   };
   
   // Handle CAS callback with ticket
-  const handleCASCallback = async (ticket) => {
+  const handleCASCallback = async (ticket, params) => {
     try {
+      // Get needs_onboarding from URL params if available
+      const needsOnboarding = params?.get('needs_onboarding') === 'true';
+      
       // First, check if the user is authenticated with CAS
       const statusResponse = await fetch(`${API_URL}/api/cas/status`, {
         credentials: 'include'
@@ -178,10 +181,14 @@ export const AuthProvider = ({ children }) => {
               localStorage.setItem('authTokens', JSON.stringify(tokenData));
             }
             
+            // Check if onboarding is needed (from URL param or user profile)
+            const needsOnboardingFromProfile = userProfile.onboarding_completed === false;
+            const redirectToOnboarding = needsOnboarding || needsOnboardingFromProfile;
+            
             return {
               success: true,
-              callback_url: '/',
-              needs_profile: false
+              callback_url: redirectToOnboarding ? '/onboarding' : '/',
+              needs_onboarding: redirectToOnboarding
             };
           }
         }

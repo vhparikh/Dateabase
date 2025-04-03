@@ -36,6 +36,7 @@ class User(db.Model):
     interests = db.Column(db.Text, nullable=False)  # Store as JSON string
     profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -1084,8 +1085,11 @@ def cas_callback():
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
-        # Redirect to the frontend callback with the ticket
-        redirect_url = f"{frontend_callback}?ticket={ticket}"
+        # Get onboarding status to pass to frontend
+        needs_onboarding = not user.onboarding_completed
+        
+        # Redirect to the frontend callback with the ticket and onboarding status
+        redirect_url = f"{frontend_callback}?ticket={ticket}&needs_onboarding={str(needs_onboarding).lower()}"
         return redirect(redirect_url)
     except Exception as e:
         return jsonify({'detail': f'Error: {str(e)}'}), 500
@@ -1121,13 +1125,21 @@ def get_current_user():
             user_info = session['user_info']
             netid = user_info.get('user', '')
             
-            # Use demo user data for everyone who logs in with CAS
+            # Check if user exists in our system
+            user = User.query.filter_by(username=netid).first()
+            
+            # Use demo user data for profile fields, but use the actual user's onboarding status
             demo_user = User.query.filter_by(username='demo_user').first()
             
             if not demo_user:
                 return jsonify({'detail': 'Demo user not found'}), 404
+            
+            # If the user doesn't exist yet, use demo_user's onboarding status
+            onboarding_status = False
+            if user:
+                onboarding_status = user.onboarding_completed
                 
-            # Return the demo user's profile with the authenticated netid
+            # Return the demo user's profile with the authenticated netid and real onboarding status
             return jsonify({
                 'id': demo_user.id,
                 'username': netid,  # Use the actual netid
@@ -1135,12 +1147,68 @@ def get_current_user():
                 'gender': demo_user.gender,
                 'class_year': demo_user.class_year,
                 'interests': demo_user.interests,
-                'profile_image': demo_user.profile_image
+                'profile_image': demo_user.profile_image,
+                'onboarding_completed': onboarding_status  # Use the real user's onboarding status
             })
         
         # Not authenticated with CAS
         return jsonify({'detail': 'Authentication required'}), 401
     except Exception as e:
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+# Endpoint to complete onboarding
+@app.route('/api/users/complete-onboarding', methods=['POST'])
+def complete_onboarding():
+    """Mark user's onboarding as completed"""
+    try:
+        # Check if user is authenticated via CAS
+        if 'user_info' in session:
+            user_info = session['user_info']
+            netid = user_info.get('user', '')
+            
+            # Find the user by netid
+            user = User.query.filter_by(username=netid).first()
+            
+            if not user:
+                return jsonify({'detail': 'User not found'}), 404
+            
+            # Update user data from request if provided
+            if request.json:
+                data = request.json
+                if 'name' in data:
+                    user.name = data['name']
+                if 'gender' in data:
+                    user.gender = data['gender']
+                if 'class_year' in data:
+                    user.class_year = data['class_year']
+                if 'interests' in data:
+                    user.interests = data['interests']
+                if 'profile_image' in data:
+                    user.profile_image = data['profile_image']
+            
+            # Mark onboarding as completed
+            user.onboarding_completed = True
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Onboarding completed successfully',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'name': user.name,
+                    'gender': user.gender,
+                    'class_year': user.class_year,
+                    'interests': user.interests,
+                    'profile_image': user.profile_image,
+                    'onboarding_completed': user.onboarding_completed
+                }
+            })
+        
+        # Not authenticated with CAS
+        return jsonify({'detail': 'Authentication required'}), 401
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'detail': f'Error: {str(e)}'}), 500
 
 if __name__ == '__main__':

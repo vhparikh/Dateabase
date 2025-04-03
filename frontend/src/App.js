@@ -14,6 +14,7 @@ import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import CASCallback from './pages/CASCallback';
 import CASSuccess from './pages/CASSuccess';
+import Onboarding from './pages/Onboarding';
 
 // Context Provider
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -57,6 +58,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/cas/callback" element={<CASCallback />} />
           <Route path="/cas/success" element={<CASSuccess />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           
           {/* Redirect root to login if not authenticated */}
           <Route path="/" element={
