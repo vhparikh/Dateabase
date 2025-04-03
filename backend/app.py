@@ -13,7 +13,7 @@ import requests
 import secrets
 from urllib.parse import quote_plus, urlencode, quote
 # Import auth module for CAS authentication
-from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+from .auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
