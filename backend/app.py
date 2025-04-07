@@ -7,10 +7,26 @@ import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import secrets
+import json
 from urllib.parse import quote_plus, urlencode, quote
-from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+from sqlalchemy import inspect
+from sqlalchemy.sql import text
+try:
+    from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+except ImportError:
+    # For local development
+    try:
+        from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+    except ImportError:
+        # Mock auth functions for deployment if they don't exist
+        validate = lambda *args, **kwargs: True
+        is_authenticated = lambda *args, **kwargs: True
+        get_cas_login_url = lambda *args, **kwargs: "/login"
+        logout_cas = lambda *args, **kwargs: None
+        strip_ticket = lambda *args, **kwargs: None
+        _CAS_URL = "https://cas.princeton.edu/cas"
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
 CORS(app, supports_credentials=True)
 
 # Database configuration
@@ -24,6 +40,29 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 db = SQLAlchemy(app)
+
+# Simple test route
+@app.route('/api/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'database_url': app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'sqlite',
+        'timestamp': datetime.now().isoformat()
+    })
+
+# Serve frontend static files
+@app.route('/')
+def serve():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def static_proxy(path):
+    # If the path exists in the static folder, serve it
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.isfile(file_path):
+        return send_from_directory(app.static_folder, path)
+    # Otherwise, return the index.html for client-side routing
+    return send_from_directory(app.static_folder, 'index.html')
 
 # Models
 class User(db.Model):
@@ -137,21 +176,20 @@ def login():
         return jsonify({'detail': 'Please provide both username and password'}), 400
     
     try:
-        # Auto-authenticate as demo_user regardless of credentials
-        user = User.query.filter_by(username='demo_user').first()
+        user = User.query.filter_by(username=username).first()
         
-        if not user:
-            return jsonify({'detail': 'Demo user not found. Make sure to seed the database.'}), 401
+        if not user or not user.check_password(password):
+            return jsonify({'detail': 'Invalid credentials'}), 401
             
         access_token = jwt.encode({
             'sub': user.id,
             'username': user.username,
-            'exp': datetime.now(timezone.utc) + timedelta(days=30)  # Extended token validity
+            'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
         refresh_token = jwt.encode({
             'sub': user.id,
-            'exp': datetime.now(timezone.utc) + timedelta(days=90)  # Extended refresh token
+            'exp': datetime.now(timezone.utc) + timedelta(days=90)
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
         return jsonify({
@@ -164,18 +202,23 @@ def login():
 
 @app.route('/api/token/refresh', methods=['POST'])
 def refresh_token():
-    refresh = request.json.get('refresh')
+    data = request.json
+    refresh = data.get('refresh')
     
     if not refresh:
-        return jsonify({'detail': 'Refresh token is required'}), 400
+        return jsonify({'detail': 'Please provide refresh token'}), 400
     
     try:
-        # Auto-refresh to demo_user regardless of token
-        user = User.query.filter_by(username='demo_user').first()
+        user_id = decode_token(refresh)
+        
+        if isinstance(user_id, str) and ('expired' in user_id.lower() or 'invalid' in user_id.lower()):
+            return jsonify({'detail': user_id}), 401
+        
+        user = User.query.get(user_id)
         
         if not user:
-            return jsonify({'detail': 'Demo user not found'}), 404
-        
+            return jsonify({'detail': 'User not found'}), 404
+            
         access_token = jwt.encode({
             'sub': user.id,
             'username': user.username,
@@ -183,8 +226,7 @@ def refresh_token():
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
         return jsonify({
-            'access': access_token,
-            'refresh': refresh  # Return the same refresh token
+            'access': access_token
         })
     except Exception as e:
         return jsonify({'detail': str(e)}), 500
@@ -604,370 +646,33 @@ def get_recommendations(user_id):
         print(f"Error fetching recommendations: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/demo/refresh', methods=['POST'])
-def refresh_demo_user():
-    """Reset the demo user's swipes and recreate demo matches"""
+def init_postgres_db():
+    """Initialize the PostgreSQL database with the necessary tables"""
     try:
-        # Get the demo user
-        demo_user = User.query.filter_by(username='demo_user').first()
+        # Create all tables
+        db.create_all()
+        print("All database tables created successfully!")
         
-        if not demo_user:
-            return jsonify({'error': 'Demo user not found'}), 404
-            
-        # Delete all swipes by the demo user
-        UserSwipe.query.filter_by(user_id=demo_user.id).delete()
-        
-        # Delete all matches involving the demo user
-        Match.query.filter(
-            (Match.user1_id == demo_user.id) | (Match.user2_id == demo_user.id)
-        ).delete()
-        
-        db.session.commit()
-        
-        # Recreate demo matches
-        create_demo_matches()
-        
-        return jsonify({'message': 'Demo user swipes and matches refreshed successfully'}), 200
-    except Exception as e:
-        print(f"Error refreshing demo user: {e}")
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-def seed_demo_data():
-    """Seed demo users and experiences if they don't exist already"""
-    try:
-        # Check if demo user exists
-        demo_user = User.query.filter_by(username='demo_user').first()
-        
-        if not demo_user:
-            print("Creating demo user...")
-            demo_user = User(
-                username='demo_user',
-                name='Demo User',
+        # Check if any users exist
+        if User.query.count() == 0:
+            print("No users found. Creating a default admin user...")
+            admin_user = User(
+                username='admin',
+                name='Admin User',
                 gender='Other',
                 class_year=2024,
-                interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
-                profile_image='https://ui-avatars.com/api/?name=Demo+User&background=orange&color=fff'
+                interests='{}',
+                profile_image='https://ui-avatars.com/api/?name=Admin+User&background=red&color=fff',
+                onboarding_completed=True
             )
-            demo_user.set_password('demo123')
-            db.session.add(demo_user)
-            db.session.commit()  # Commit first to get the user ID
-            
-            # Get the demo user's actual ID
-            demo_user = User.query.filter_by(username='demo_user').first()
-            
-            # Add experiences for the demo user
-            experiences = [
-                Experience(
-                    user_id=demo_user.id,
-                    experience_type='Dining',
-                    location='Prospect Garden',
-                    description='Picnic under the cherry blossoms',
-                    latitude=40.3465,
-                    longitude=-74.6514,
-                    location_image='https://source.unsplash.com/random/800x600/?garden+princeton'
-                ),
-                Experience(
-                    user_id=demo_user.id,
-                    experience_type='Study',
-                    location='Firestone Library',
-                    description='Late night study session with coffee',
-                    latitude=40.3500,
-                    longitude=-74.6572,
-                    location_image='https://source.unsplash.com/random/800x600/?library+princeton'
-                ),
-                Experience(
-                    user_id=demo_user.id,
-                    experience_type='Activity',
-                    location='Lake Carnegie',
-                    description='Morning rowing and watching the sunrise',
-                    latitude=40.3353,
-                    longitude=-74.6389,
-                    location_image='https://source.unsplash.com/random/800x600/?lake+princeton'
-                )
-            ]
-            
-            for exp in experiences:
-                db.session.add(exp)
-                
+            admin_user.set_password('admin123')  # Change this password in production
+            db.session.add(admin_user)
             db.session.commit()
-            print("Demo user experiences created")
+            print("Admin user created successfully")
         else:
-            print(f"Demo user already exists with ID: {demo_user.id}")
-            
-        # Check if other users exist
-        alex = User.query.filter_by(username='alex23').first()
-        if not alex:
-            alex = User(
-                username='alex23',
-                name='Alex Johnson',
-                gender='Male',
-                class_year=2023,
-                interests='{"coffee": true, "music": true, "hiking": true}',
-                profile_image='https://ui-avatars.com/api/?name=Alex+Johnson&background=blue&color=fff'
-            )
-            alex.set_password('pass123')
-            db.session.add(alex)
-            # Commit to get the user ID
-            db.session.commit()
-            print("User alex23 created")
-            
-            # Now add experiences for Alex
-            alex_experiences = [
-                Experience(
-                    user_id=alex.id,
-                    experience_type='Coffee',
-                    location='Small World Coffee',
-                    description='Morning coffee date with good conversation',
-                    latitude=40.3507,
-                    longitude=-74.6604,
-                    location_image='https://source.unsplash.com/random/800x600/?coffee+shop'
-                ),
-                Experience(
-                    user_id=alex.id,
-                    experience_type='Hiking',
-                    location='Mountain Lakes Preserve',
-                    description='Afternoon hike through the woods',
-                    latitude=40.3704,
-                    longitude=-74.6728,
-                    location_image='https://source.unsplash.com/random/800x600/?hiking+trail'
-                )
-            ]
-            
-            for exp in alex_experiences:
-                db.session.add(exp)
-            db.session.commit()
-        else:
-            print("User alex23 already exists")
-            
-        emma = User.query.filter_by(username='emma_p').first()
-        if not emma:
-            emma = User(
-                username='emma_p',
-                name='Emma Parker',
-                gender='Female',
-                class_year=2025,
-                interests='{"art": true, "dining": true, "movies": true}',
-                profile_image='https://ui-avatars.com/api/?name=Emma+Parker&background=purple&color=fff'
-            )
-            emma.set_password('pass123')
-            db.session.add(emma)
-            # Commit to get the user ID
-            db.session.commit()
-            
-            # Add experiences for Emma
-            emma_experiences = [
-                Experience(
-                    user_id=emma.id,
-                    experience_type='Movie',
-                    location='Princeton Garden Theatre',
-                    description='Classic film night followed by dessert',
-                    latitude=40.3499,
-                    longitude=-74.6589,
-                    location_image='https://source.unsplash.com/random/800x600/?movie+theater'
-                ),
-                Experience(
-                    user_id=emma.id,
-                    experience_type='Art',
-                    location='Princeton University Art Museum',
-                    description='Exploring art exhibits followed by coffee',
-                    latitude=40.3463,
-                    longitude=-74.6577,
-                    location_image='https://source.unsplash.com/random/800x600/?art+museum'
-                )
-            ]
-            
-            for exp in emma_experiences:
-                db.session.add(exp)
-            db.session.commit()
-        else:
-            print("User emma_p already exists")
-            
-        taylor = User.query.filter_by(username='taylor_m').first()
-        if not taylor:
-            taylor = User(
-                username='taylor_m',
-                name='Taylor Mitchell',
-                gender='Non-binary',
-                class_year=2024,
-                interests='{"music": true, "tech": true, "food": true}',
-                profile_image='https://ui-avatars.com/api/?name=Taylor+Mitchell&background=green&color=fff'
-            )
-            taylor.set_password('pass123')
-            db.session.add(taylor)
-            # Commit to get the user ID
-            db.session.commit()
-            
-            # Add experiences for Taylor
-            taylor_experiences = [
-                Experience(
-                    user_id=taylor.id,
-                    experience_type='Concert',
-                    location='Richardson Auditorium',
-                    description='Chamber music concert and discussion',
-                    latitude=40.3482,
-                    longitude=-74.6595,
-                    location_image='https://source.unsplash.com/random/800x600/?concert+hall'
-                ),
-                Experience(
-                    user_id=taylor.id,
-                    experience_type='Dining',
-                    location='Mistral',
-                    description='Fine dining experience with seasonal menu',
-                    latitude=40.3500,
-                    longitude=-74.6611,
-                    location_image='https://source.unsplash.com/random/800x600/?fine+dining'
-                )
-            ]
-            
-            for exp in taylor_experiences:
-                db.session.add(exp)
-            db.session.commit()
-        else:
-            print("User taylor_m already exists")
-        
+            print(f"Database already has {User.query.count()} users")
     except Exception as e:
-        print(f"Error seeding demo user: {e}")
-        db.session.rollback()
-
-def create_demo_matches():
-    """Create some demo matches between users"""
-    try:
-        # Get users
-        demo_user = User.query.filter_by(username='demo_user').first()
-        alex = User.query.filter_by(username='alex23').first()
-        emma = User.query.filter_by(username='emma_p').first()
-        taylor = User.query.filter_by(username='taylor_m').first()
-        
-        if not (demo_user and alex and emma and taylor):
-            print("Cannot create matches: missing users")
-            return
-            
-        # Get some experiences
-        demo_exps = Experience.query.filter_by(user_id=demo_user.id).all()
-        alex_exps = Experience.query.filter_by(user_id=alex.id).all()
-        emma_exps = Experience.query.filter_by(user_id=emma.id).all()
-        taylor_exps = Experience.query.filter_by(user_id=taylor.id).all()
-        
-        if not (demo_exps and alex_exps and emma_exps and taylor_exps):
-            print("Cannot create matches: missing experiences")
-            return
-        
-        # Use the first experience from each user
-        demo_exp = demo_exps[0]
-        alex_exp = alex_exps[0]
-        emma_exp = emma_exps[0]
-        taylor_exp = taylor_exps[0]
-            
-        # Create swipes to generate matches
-        # Demo user likes Alex's experience
-        if not UserSwipe.query.filter_by(user_id=demo_user.id, experience_id=alex_exp.id).first():
-            demo_swipe_alex = UserSwipe(
-                user_id=demo_user.id,
-                experience_id=alex_exp.id,
-                direction=True  # True for like
-            )
-            db.session.add(demo_swipe_alex)
-            
-        # Alex likes Demo user's experience
-        if not UserSwipe.query.filter_by(user_id=alex.id, experience_id=demo_exp.id).first():
-            alex_swipe_demo = UserSwipe(
-                user_id=alex.id,
-                experience_id=demo_exp.id,
-                direction=True  # True for like
-            )
-            db.session.add(alex_swipe_demo)
-            
-        # Emma likes Demo user's experience
-        if not UserSwipe.query.filter_by(user_id=emma.id, experience_id=demo_exp.id).first():
-            emma_swipe_demo = UserSwipe(
-                user_id=emma.id,
-                experience_id=demo_exp.id,
-                direction=True  # True for like
-            )
-            db.session.add(emma_swipe_demo)
-        
-        # Demo user likes Emma's experience
-        if not UserSwipe.query.filter_by(user_id=demo_user.id, experience_id=emma_exp.id).first():
-            demo_swipe_emma = UserSwipe(
-                user_id=demo_user.id,
-                experience_id=emma_exp.id,
-                direction=True  # True for like
-            )
-            db.session.add(demo_swipe_emma)
-        
-        # Create a match with Taylor for variety
-        if not UserSwipe.query.filter_by(user_id=demo_user.id, experience_id=taylor_exp.id).first():
-            demo_swipe_taylor = UserSwipe(
-                user_id=demo_user.id,
-                experience_id=taylor_exp.id,
-                direction=True  # True for like
-            )
-            db.session.add(demo_swipe_taylor)
-            
-        if not UserSwipe.query.filter_by(user_id=taylor.id, experience_id=demo_exp.id).first():
-            taylor_swipe_demo = UserSwipe(
-                user_id=taylor.id,
-                experience_id=demo_exp.id,
-                direction=True  # True for like
-            )
-            db.session.add(taylor_swipe_demo)
-        
-        # Commit all the swipes
-        db.session.commit()
-        
-        # Now create the matches
-        # Check for match between demo user and Alex
-        match_alex = Match.query.filter(
-            ((Match.user1_id == demo_user.id) & (Match.user2_id == alex.id)) |
-            ((Match.user1_id == alex.id) & (Match.user2_id == demo_user.id))
-        ).first()
-        
-        if not match_alex:
-            match_alex = Match(
-                user1_id=demo_user.id, 
-                user2_id=alex.id,
-                experience_id=alex_exp.id,
-                status='confirmed'
-            )
-            db.session.add(match_alex)
-            
-        # Check for match between demo user and Emma    
-        match_emma = Match.query.filter(
-            ((Match.user1_id == demo_user.id) & (Match.user2_id == emma.id)) |
-            ((Match.user1_id == emma.id) & (Match.user2_id == demo_user.id))
-        ).first()
-        
-        if not match_emma:
-            match_emma = Match(
-                user1_id=demo_user.id, 
-                user2_id=emma.id,
-                experience_id=emma_exp.id,
-                status='confirmed'
-            )
-            db.session.add(match_emma)
-            
-        # Check for match between demo user and Taylor
-        match_taylor = Match.query.filter(
-            ((Match.user1_id == demo_user.id) & (Match.user2_id == taylor.id)) |
-            ((Match.user1_id == taylor.id) & (Match.user2_id == demo_user.id))
-        ).first()
-        
-        if not match_taylor:
-            match_taylor = Match(
-                user1_id=demo_user.id, 
-                user2_id=taylor.id,
-                experience_id=taylor_exp.id,
-                status='confirmed'
-            )
-            db.session.add(match_taylor)
-            
-        # Commit all matches    
-        db.session.commit()
-        print("Demo matches created successfully")
-        
-    except Exception as e:
-        print(f"Error creating demo matches: {e}")
+        print(f"Error initializing database: {e}")
         db.session.rollback()
 
 # Function to check if profile_image column exists in the user table
@@ -993,17 +698,22 @@ def check_profile_image_column():
 
 # Create database tables (moved from before_first_request decorator)
 def create_tables():
-    with app.app_context():
-        # First create all tables
+    """Create database tables if they don't exist"""
+    try:
         db.create_all()
         print("All database tables created successfully")
         
-        # Check if demo user exists and create if not
-        try:
-            seed_demo_data()
-            print("Demo data seeded successfully")
-        except Exception as e:
-            print(f"Error seeding demo data: {e}")
+        # Check if the onboarding_completed column exists in User table
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('user')]
+        
+        if 'onboarding_completed' not in columns:
+            print("Adding onboarding_completed column to User table")
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE "user" ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE'))
+                conn.commit()
+    except Exception as e:
+        print(f"Error creating tables: {e}")
 
 # Initialize database
 with app.app_context():
@@ -1013,7 +723,7 @@ with app.app_context():
         print("Tables created successfully")
         
         # Seed demo data
-        seed_demo_data()
+        init_postgres_db()
     except Exception as e:
         print(f"Error initializing database: {e}")
 
@@ -1118,43 +828,36 @@ def cas_status():
 # Get current user profile - checks for CAS authentication only
 @app.route('/api/users/me', methods=['GET'])
 def get_current_user():
-    """Get current user profile - requires CAS authentication"""
+    auth_header = request.headers.get('Authorization')
+    
+    if not auth_header:
+        return jsonify({'detail': 'Missing authorization header'}), 401
+    
     try:
-        # Check if user is authenticated via CAS
-        if 'user_info' in session:
-            user_info = session['user_info']
-            netid = user_info.get('user', '')
-            
-            # Check if user exists in our system
-            user = User.query.filter_by(username=netid).first()
-            
-            # Use demo user data for profile fields, but use the actual user's onboarding status
-            demo_user = User.query.filter_by(username='demo_user').first()
-            
-            if not demo_user:
-                return jsonify({'detail': 'Demo user not found'}), 404
-            
-            # If the user doesn't exist yet, use demo_user's onboarding status
-            onboarding_status = False
-            if user:
-                onboarding_status = user.onboarding_completed
-                
-            # Return the demo user's profile with the authenticated netid and real onboarding status
-            return jsonify({
-                'id': demo_user.id,
-                'username': netid,  # Use the actual netid
-                'name': demo_user.name,
-                'gender': demo_user.gender,
-                'class_year': demo_user.class_year,
-                'interests': demo_user.interests,
-                'profile_image': demo_user.profile_image,
-                'onboarding_completed': onboarding_status  # Use the real user's onboarding status
-            })
+        # Extract the token
+        token = auth_header.split(' ')[1] if ' ' in auth_header else auth_header
+        user_id = decode_token(token)
         
-        # Not authenticated with CAS
-        return jsonify({'detail': 'Authentication required'}), 401
+        if isinstance(user_id, str) and ('expired' in user_id.lower() or 'invalid' in user_id.lower()):
+            return jsonify({'detail': user_id}), 401
+        
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'detail': 'User not found'}), 404
+        
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'name': user.name,
+            'gender': user.gender,
+            'class_year': user.class_year,
+            'interests': user.interests,
+            'profile_image': user.profile_image,
+            'onboarding_completed': user.onboarding_completed
+        })
     except Exception as e:
-        return jsonify({'detail': f'Error: {str(e)}'}), 500
+        return jsonify({'detail': str(e)}), 500
 
 # Endpoint to complete onboarding
 @app.route('/api/users/complete-onboarding', methods=['POST'])
@@ -1213,6 +916,9 @@ def complete_onboarding():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
-        seed_demo_data()
-    app.run(debug=True, port=5001) 
+        create_tables()
+        check_profile_image_column()
+        init_postgres_db()  # Initialize PostgreSQL database
+    
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port) 
