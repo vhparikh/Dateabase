@@ -5,7 +5,6 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { SAMPLE_EXPERIENCES } from '../components/DemoData';
 
 // Experience card component with orange gradient theme
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
@@ -461,28 +460,24 @@ const Experiences = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentExperience, setCurrentExperience] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, experienceId: null });
-  const [demoMode, setDemoMode] = useState(true);
   const { user } = useContext(AuthContext);
   
   const fetchExperiences = async () => {
-    
     try {
       setLoading(true);
       setError('');
       
-      // Use sample data in demo mode
-      if (demoMode) {
-        setExperiences(SAMPLE_EXPERIENCES);
-        setLoading(false);
-        return;
-      }
-    
-      
-      // Fetch from API if not in demo mode
-      const response = await axios.get(`${API_URL}/experiences/${user?.id || '1'}`);
-      
-      if (response.data) {
-        setExperiences(response.data);
+      // Only fetch data from the API if user is logged in
+      if (user?.id) {
+        const response = await axios.get(`${API_URL}/experiences/${user.id}`, {
+          withCredentials: true
+        });
+        
+        if (response.data) {
+          setExperiences(response.data);
+        }
+      } else {
+        setExperiences([]);
       }
       
       setLoading(false);
@@ -500,7 +495,7 @@ const Experiences = () => {
   }, [location.state]);
   useEffect(() => {
     fetchExperiences();
-  }, [user?.id, demoMode]);
+  }, [user?.id]);
   
   const handleAddExperience = () => {
     setCurrentExperience(null);
@@ -516,40 +511,26 @@ const Experiences = () => {
     try {
       setLoading(true);
       
-      if (demoMode) {
-        // In demo mode, simulate saving
-        if (experienceData.id) {
-          // Update existing experience
-          setExperiences(prev => 
-            prev.map(exp => exp.id === experienceData.id ? { ...experienceData } : exp)
-          );
-        } else {
-          // Add new experience with fake ID
-          const newExperience = {
-            ...experienceData,
-            id: `demo-${Date.now()}`,
-            created_at: new Date().toISOString()
-          };
-          setExperiences(prev => [newExperience, ...prev]);
-        }
+      // Real API call for saving
+      if (experienceData.id) {
+        await axios.put(`${API_URL}/experiences/${experienceData.id}`, experienceData, {
+          withCredentials: true
+        });
       } else {
-        // Real API call for saving
-        if (experienceData.id) {
-          await axios.put(`${API_URL}/experiences/${experienceData.id}`, experienceData);
-        } else {
-          const response = await axios.post(`${API_URL}/experiences`, {
-            ...experienceData,
-            user_id: user.id
-          });
-          
-          if (response.data) {
-            setExperiences(prev => [response.data, ...prev]);
-          }
-        }
+        const response = await axios.post(`${API_URL}/experiences`, {
+          ...experienceData,
+          user_id: user.id
+        }, {
+          withCredentials: true
+        });
         
-        // Refresh experiences after save
-        fetchExperiences();
+        if (response.data) {
+          setExperiences(prev => [response.data, ...prev]);
+        }
       }
+      
+      // Refresh experiences after save
+      fetchExperiences();
       
       setIsModalOpen(false);
       setLoading(false);
@@ -568,14 +549,11 @@ const Experiences = () => {
     try {
       setLoading(true);
       
-      if (demoMode) {
-        // Simulate delete in demo mode
-        setExperiences(prev => prev.filter(exp => exp.id !== experienceId));
-      } else {
-        // Real API call
-        await axios.delete(`${API_URL}/experiences/${experienceId}`);
-        fetchExperiences();
-      }
+      // Real API call
+      await axios.delete(`${API_URL}/experiences/${experienceId}`, {
+        withCredentials: true
+      });
+      fetchExperiences();
       
       setDeleteModal({ isOpen: false, experienceId: null });
       setLoading(false);
@@ -586,10 +564,6 @@ const Experiences = () => {
     }
   };
   
-  const toggleDemoMode = () => {
-    setDemoMode(!demoMode);
-  };
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
@@ -598,12 +572,6 @@ const Experiences = () => {
         <div className="mb-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Your Experiences</h1>
-            <button 
-              onClick={toggleDemoMode}
-              className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium"
-            >
-              {demoMode ? 'Using Demo Data' : 'Using API Data'}
-            </button>
           </div>
           <p className="text-gray-600 mt-2">Share your favorite places and activities</p>
         </div>
