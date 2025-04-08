@@ -1034,6 +1034,57 @@ with app.app_context():
     except Exception as e:
         print(f"Error initializing database: {e}")
 
+# Root route handler to serve the frontend React app
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    # Let the API routes handle API requests
+    if path.startswith('api'):
+        return jsonify({'error': 'Not found'}), 404
+        
+    try:
+        # Get the static folder path (handle both development and production environments)
+        static_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+        print(f"Looking for static files in: {static_folder}")
+        
+        # For empty path, serve index.html
+        if path == '':
+            return send_from_directory(static_folder, 'index.html')
+        
+        # Special handling for static/css and static/js paths
+        if path.startswith('static/'):
+            parts = path.split('/')
+            if len(parts) >= 3:
+                # Check if the file exists directly in static folder
+                direct_path = '/'.join(parts[1:])
+                if os.path.exists(os.path.join(static_folder, direct_path)):
+                    return send_from_directory(static_folder, direct_path)
+                # Try nested static directory
+                if os.path.exists(os.path.join(static_folder, path)):
+                    return send_from_directory(static_folder, path)
+        
+        # Try to serve directly from static folder
+        if os.path.exists(os.path.join(static_folder, path)):
+            return send_from_directory(static_folder, path)
+        
+        # Try to serve from css or js folders directly
+        if path.endswith('.css') and os.path.exists(os.path.join(static_folder, 'css', os.path.basename(path))):
+            return send_from_directory(os.path.join(static_folder, 'css'), os.path.basename(path))
+        
+        if path.endswith('.js') and os.path.exists(os.path.join(static_folder, 'js', os.path.basename(path))):
+            return send_from_directory(os.path.join(static_folder, 'js'), os.path.basename(path))
+            
+        # For all other routes, serve index.html for client-side routing
+        return send_from_directory(static_folder, 'index.html')
+    except Exception as e:
+        print(f"Error serving static file: {e}, path: {path}")
+        # Try one more time with the base static folder
+        try:
+            return send_from_directory(static_folder, 'index.html')
+        except Exception as e2:
+            print(f"Second error serving index.html: {e2}")
+            return jsonify({'error': 'Failed to serve static file'}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

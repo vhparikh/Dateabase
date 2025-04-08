@@ -9,9 +9,14 @@
     "install:frontend": "cd frontend && npm install",
     "install:backend": "cd backend && pip install -r requirements.txt",
     "install": "npm run install:frontend && npm run install:backend",
-    "build": "cd frontend && npm run build"
+    "build": "cd frontend && npm run build",
+    "postinstall": "cd frontend && npm install && npm run build && rm -rf ../backend/static/* && cp -r build/* ../backend/static/ && cp -r build/static/* ../backend/static/"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": "16.x",
+    "npm": "8.x"
   }
 }
