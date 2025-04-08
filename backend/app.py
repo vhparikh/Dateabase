@@ -5,11 +5,15 @@ import os
 import jwt
 import secrets
 from urllib.parse import quote_plus, urlencode, quote
-from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+try:
+    # Try local import first (for local development)
+    from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+    from database import db, init_db, User, Experience, Match, UserSwipe
+except ImportError:
+    # Fall back to package import (for Heroku)
+    from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+    from backend.database import db, init_db, User, Experience, Match, UserSwipe
 from functools import wraps
-
-# Import database and models from database.py
-from database import db, init_db, User, Experience, Match, UserSwipe
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
