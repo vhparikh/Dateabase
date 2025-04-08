@@ -552,7 +552,16 @@ const Home = () => {
       setMatchesLoading(true);
       setMatchesError(null);
       
-      const response = await axios.get(`${API_URL}/api/matches/${user?.id || user?.sub || 1}`);
+      // Only fetch matches if user is logged in
+      if (!user?.id && !user?.sub) {
+        setMatches([]);
+        setMatchesLoading(false);
+        return;
+      }
+      
+      const response = await axios.get(`${API_URL}/api/matches/${user?.id || user?.sub}`, {
+        withCredentials: true
+      });
       
       if (response.data && Array.isArray(response.data)) {
         setMatches(response.data.slice(0, 3)); // Only show up to 3 matches
@@ -570,17 +579,24 @@ const Home = () => {
     }
   };
   
-  const fetchExperiences = async (resetDemo = false) => {
+  const fetchExperiences = async () => {
     try {
       setLoading(true);
       setError('');
       
-      let url = `${API_URL}/api/recommendations/${user?.id || user?.sub || 1}`;
-      if (resetDemo) {
-        url += '?reset=true';
+      // Only fetch experiences if the user is logged in
+      if (!user?.id && !user?.sub) {
+        setExperiences([]);
+        setPopularExperiences([]);
+        setVisibleExperiences([]);
+        setLoading(false);
+        return;
       }
       
-      const response = await axios.get(url);
+      const url = `${API_URL}/api/recommendations/${user?.id || user?.sub}`;
+      const response = await axios.get(url, {
+        withCredentials: true
+      });
       
       if (response.data && Array.isArray(response.data)) {
         const fetchedExperiences = response.data;
@@ -602,9 +618,9 @@ const Home = () => {
     }
   };
   
-  // Reset experiences and restart
+  // Refresh experiences
   const resetExperiences = () => {
-    fetchExperiences(true);
+    fetchExperiences();
   };
   
   const handleSwipe = async (experienceId, direction) => {
@@ -687,7 +703,7 @@ const Home = () => {
                   Start Swiping
                 </a>
                 <button 
-                  onClick = {handleCreateExperienceClick}
+                  onClick={handleCreateExperienceClick}
                   className="px-6 py-3 bg-white text-orange-600 font-medium rounded-lg shadow border border-orange-100 hover:bg-orange-50 transition-colors"
                 >
                   Create Experience

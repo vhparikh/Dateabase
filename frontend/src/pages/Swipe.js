@@ -21,10 +21,19 @@ const Swipe = () => {
       setLoading(true);
       setError(null);
       
+      // Check if user is logged in
+      if (!user?.id) {
+        setExperiences([]);
+        setError('Please log in to view experiences');
+        setLoading(false);
+        return;
+      }
+      
       const response = await fetch(`${API_URL}/api/recommendations/${user.id}`, {
         headers: {
           'Authorization': `Bearer ${authTokens?.access}`
-        }
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -105,6 +114,7 @@ const Swipe = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authTokens?.access}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           user_id: user.id,
           experience_id: currentExperience.id,
