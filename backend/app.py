@@ -1046,24 +1046,29 @@ with app.app_context():
         print(f"Error initializing database: {e}")
 
 # Serve React frontend at root URL and handle client-side routing
+# All API routes should be defined above this point
+
+# Catch-all route to serve the React app for all frontend routes
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    # Special handling for API routes
-    if path.startswith('api/'):
+    # If this is an API route that wasn't matched by a specific handler,
+    # return 404 as it's an invalid API endpoint
+    if path.startswith('api/') or path.startswith('/api/'):
         return jsonify({'error': 'API endpoint not found'}), 404
-        
-    # Handle client-side routes and static files
-    if path:
-        # First try to serve as a static file (CSS, JS, etc.)
+    
+    # For all static files, try to serve them directly
+    if path and '.' in path.split('/')[-1]:
         try:
             return app.send_static_file(path)
-        except:
-            # For paths like /cas/callback, /profile, etc. - serve index.html
-            # This enables client-side routing
-            pass
+        except Exception as e:
+            print(f"Error serving static file {path}: {e}")
+            # Fall through to serving index.html
     
-    # Default: serve the React app's index.html
+    # For all other routes, serve the React app's index.html
+    # This ensures that React Router can handle all client-side routes
+    # including /cas/callback which is crucial for the CAS authentication flow
+    print(f"Serving React app for path: {path}")
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
