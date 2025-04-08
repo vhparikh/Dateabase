@@ -103,5 +103,7 @@ def get_cas_login_url(callback_url=None):
     if callback_url is None:
         callback_url = request.args.get('callback_url', request.referrer or '/')
     
-    service_url = f"{request.url_root.rstrip('/')}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
+    # Get base URL dynamically from current request
+    base_url = request.url_root.rstrip('/')
+    service_url = f"{base_url}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
     return f"{_CAS_URL}login?service={urllib.parse.quote(service_url)}"

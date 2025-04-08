@@ -710,8 +710,16 @@ def cas_callback():
         ticket = request.args.get('ticket')
         callback_url = request.args.get('callback_url', '/')
         
-        # Get the frontend URL from the Origin header or use localhost:3000 as fallback
-        frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        # Determine the frontend URL based on environment
+        # In production, the app is served from the same domain
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+            # In production, use the same host
+            scheme = request.headers.get('X-Forwarded-Proto', 'https')
+            frontend_url = f"{scheme}://{request.host}"
+        else:
+            # In development, get from Origin header or use localhost:3000 as fallback
+            frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        
         frontend_callback = f"{frontend_url}/cas/callback"
         
         if not ticket:
@@ -1037,20 +1045,26 @@ with app.app_context():
     except Exception as e:
         print(f"Error initializing database: {e}")
 
-# Serve React frontend at root URL in production
-@app.route('/')
-def serve_frontend():
-    return app.send_static_file('index.html')
-
-# Catch-all route to handle React Router paths
+# Serve React frontend at root URL and handle client-side routing
+@app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def catch_all(path):
-    # First try to serve as a static file (CSS, JS, etc.)
-    try:
-        return app.send_static_file(path)
-    except:
-        # If not a static file, serve the index.html for client-side routing
-        return app.send_static_file('index.html')
+def serve_frontend(path):
+    # Special handling for API routes
+    if path.startswith('api/'):
+        return jsonify({'error': 'API endpoint not found'}), 404
+        
+    # Handle client-side routes and static files
+    if path:
+        # First try to serve as a static file (CSS, JS, etc.)
+        try:
+            return app.send_static_file(path)
+        except:
+            # For paths like /cas/callback, /profile, etc. - serve index.html
+            # This enables client-side routing
+            pass
+    
+    # Default: serve the React app's index.html
+    return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():
