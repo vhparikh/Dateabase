@@ -15,7 +15,10 @@ except ImportError:
     from backend.database import db, init_db, User, Experience, Match, UserSwipe
 from functools import wraps
 
-app = Flask(__name__)
+# Setup Flask app with proper static folder configuration for production deployment
+app = Flask(__name__, 
+           static_folder='../frontend/build',  # Path to the React build directory
+           static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
 
 # Set up app configuration
@@ -1034,8 +1037,25 @@ with app.app_context():
     except Exception as e:
         print(f"Error initializing database: {e}")
 
+# Serve React frontend at root URL in production
+@app.route('/')
+def serve_frontend():
+    return app.send_static_file('index.html')
+
+# Catch-all route to handle React Router paths
+@app.route('/<path:path>')
+def catch_all(path):
+    # First try to serve as a static file (CSS, JS, etc.)
+    try:
+        return app.send_static_file(path)
+    except:
+        # If not a static file, serve the index.html for client-side routing
+        return app.send_static_file('index.html')
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         # Removed demo data seeding
-    app.run(debug=True, port=5001) 
+    # Use PORT environment variable for Heroku compatibility
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=False, host='0.0.0.0', port=port)

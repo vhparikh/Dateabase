@@ -9,6 +9,7 @@
     "install:frontend": "cd frontend && npm install",
     "install:backend": "cd backend && pip install -r requirements.txt",
     "install": "npm run install:frontend && npm run install:backend",
+    "heroku-postbuild": "cd frontend && npm install && npm run build",
     "build": "cd frontend && npm run build"
   },
   "devDependencies": {
