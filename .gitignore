@@ -63,6 +63,3 @@ frontend/dist/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# Add this to .gitignore if needed
-!backend/static/
