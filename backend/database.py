@@ -11,7 +11,7 @@ db = SQLAlchemy()
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=True)  # Made nullable for CAS users
+    password_hash = db.Column(db.String(255), nullable=True)  # Increased from 128 to 255
     cas_id = db.Column(db.String(50), unique=True, nullable=True)  # CAS unique identifier
     netid = db.Column(db.String(50), unique=True, nullable=True)  # Princeton NetID
     name = db.Column(db.String(100), nullable=False)
@@ -98,7 +98,7 @@ def add_onboarding_column(app):
 # Function to initialize the database with the Flask app
 def init_db(app):
     # Database configuration
-    db_url = os.environ.get('DATABASE_URL', 'sqlite:///dateabase.db')
+    db_url = os.environ.get('DATABASE_URL', 'postgresql://ueaqcj622ro270:pf6999e838eb1f1f2e5af5b4b9d17b2fcdc2475e46597ea2d0dcdbd6bdb1e13af@ceqbglof0h8enj.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dc26u3dpl6nepd')
     if db_url.startswith('postgres://'):
         db_url = db_url.replace('postgres://', 'postgresql://', 1)
     
