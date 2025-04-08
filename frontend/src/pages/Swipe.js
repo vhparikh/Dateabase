@@ -29,10 +29,7 @@ const Swipe = () => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/recommendations/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${authTokens?.access}`
-        },
+      const response = await fetch(`${API_URL}/api/swipe-experiences`, {
         credentials: 'include'
       });
       
@@ -100,49 +97,52 @@ const Swipe = () => {
     setSwipeDirection(null);
   };
 
-  const handleSwipe = async (direction) => {
-    if (experiences.length === 0 || currentIndex >= experiences.length) {
-      return;
-    }
-    
-    const currentExperience = experiences[currentIndex];
-    
+  const handleSwipe = async (isLike) => {
     try {
+      const currentExperience = experiences[currentIndex];
+      if (!currentExperience) return;
+
+      // Send swipe to backend
       const response = await fetch(`${API_URL}/api/swipes`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authTokens?.access}`
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({
           user_id: user.id,
           experience_id: currentExperience.id,
-          direction: direction
+          is_like: isLike
         })
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to record swipe: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to record swipe');
       }
-      
-      const result = await response.json();
-      
-      // Check if this swipe resulted in a match
-      if (result.match) {
-        setMatchFound(true);
-        setTimeout(() => {
-          setMatchFound(false);
-          setCurrentIndex(prev => prev + 1);
-        }, 2000);
-      } else {
-        // If no match, just move to the next card
-        setCurrentIndex(prev => prev + 1);
+
+      // Check for match
+      const matchResponse = await fetch(`${API_URL}/api/matches/${user.id}`, {
+        credentials: 'include'
+      });
+
+      if (matchResponse.ok) {
+        const matchData = await matchResponse.json();
+        if (matchData.length > 0) {
+          setMatchFound(true);
+          setTimeout(() => setMatchFound(false), 3000);
+        }
       }
+
+      // Move to next experience
+      setCurrentIndex(prev => prev + 1);
       
+      // If no more experiences, fetch new ones
+      if (currentIndex >= experiences.length - 1) {
+        fetchExperiences();
+      }
     } catch (err) {
-      console.error('Error recording swipe:', err);
-      setError('Failed to process your action. Please try again.');
+      console.error('Error handling swipe:', err);
     }
   };
 

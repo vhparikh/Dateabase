@@ -323,57 +323,118 @@ const EmptyState = () => (
 
 const Matches = () => {
   const [matches, setMatches] = useState([]);
+  const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const { user } = useContext(AuthContext);
   
+  const fetchExperiences = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/experiences`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch experiences: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setExperiences(data);
+    } catch (err) {
+      console.error('Error fetching experiences:', err);
+    }
+  };
+
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      setError('');
+      setError(null);
       
-      // Fetch from API
-      const response = await axios.get(`${API_URL}/api/matches/${user?.id || '1'}`);
+      // Fetch experiences first
+      await fetchExperiences();
       
-      if (response.data) {
-        // Handle both array responses and nested objects with matches property
-        const matchesData = Array.isArray(response.data) 
-          ? response.data 
-          : (response.data.matches || []);
-            
-        setMatches(matchesData.map(match => ({
-          id: match.id,
-          other_user: {
-            id: match.matched_user?.id,
-            name: match.matched_user?.username || 'Anonymous',
-            profile_image: null,
-            bio: match.matched_user?.bio || null,
-            class_year: '2023'
-          },
-          experience: {
-            id: match.experience?.id,
-            experience_type: match.experience?.experience_type || 'Experience',
-            location: match.experience?.location || 'Princeton',
-            description: match.experience?.description || null,
-            location_image: match.experience?.location_image
-          }
-        })));
-      } else {
-        setMatches([]);
+      const response = await fetch(`${API_URL}/api/matches/${user.id}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch matches: ${response.status}`);
       }
       
-      setLoading(false);
+      const data = await response.json();
+      
+      // Filter matches to only show pending matches for experiences the user created
+      const filteredMatches = data.filter(match => {
+        const experience = experiences.find(exp => exp.id === match.experience_id);
+        return experience && experience.user_id === user.id && match.status === 'pending';
+      });
+      
+      setMatches(filteredMatches);
     } catch (err) {
       console.error('Error fetching matches:', err);
       setError('Failed to load matches. Please try again.');
-      setMatches([]); // Ensure matches is set to an empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptMatch = async (matchId) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`${API_URL}/api/matches/${matchId}/accept`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to accept match');
+      }
+      
+      // Refresh matches
+      fetchMatches();
+    } catch (err) {
+      console.error('Error accepting match:', err);
+      setError('Failed to accept match. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectMatch = async (matchId) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`${API_URL}/api/matches/${matchId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to reject match');
+      }
+      
+      // Refresh matches
+      fetchMatches();
+    } catch (err) {
+      console.error('Error rejecting match:', err);
+      setError('Failed to reject match. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
   
   useEffect(() => {
     fetchMatches();
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user.id]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
@@ -406,7 +467,23 @@ const Matches = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
             {matches.map(match => (
-              <MatchCard key={match.id} match={match} />
+              <div key={match.id}>
+                <MatchCard match={match} />
+                <div className="flex justify-between mt-4">
+                  <button 
+                    onClick={() => handleAcceptMatch(match.id)}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
+                  >
+                    Accept
+                  </button>
+                  <button 
+                    onClick={() => handleRejectMatch(match.id)}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}

@@ -473,94 +473,71 @@ def update_experience(experience_id, current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/swipes', methods=['POST'])
-def create_swipe():
+@login_required()
+def record_swipe(current_user_id=None):
     try:
         data = request.json
-        print(f"Received swipe data: {data}")
-        
-        # Extract required fields
-        user_id = data.get('user_id')
-        experience_id = data.get('experience_id')
-        direction = data.get('direction')
         
         # Validate required fields
-        if not all([user_id, experience_id, direction is not None]):
-            return jsonify({'error': 'Missing required fields'}), 400
+        if not all(key in data for key in ['experience_id', 'is_like']):
+            return jsonify({'detail': 'Missing required fields'}), 400
             
-        # Convert direction to boolean
-        if isinstance(direction, str):
-            # Handle string representations of direction
-            direction_lower = direction.lower()
-            if direction_lower in ['true', 'right', 'like', '1', 'yes']:
-                direction = True
-            elif direction_lower in ['false', 'left', 'pass', '0', 'no']:
-                direction = False
-            else:
-                return jsonify({'error': f'Invalid direction value: {direction}'}), 400
-        else:
-            # Ensure it's a boolean
-            direction = bool(direction)
-            
-        print(f"Processed swipe: User {user_id}, Experience {experience_id}, Direction {direction}")
-        
-        # Proceed with normal flow for experiences
-        # Find the experience to ensure it exists
-        experience = Experience.query.get(experience_id)
+        # Get the experience
+        experience = db.session.get(Experience, data['experience_id'])
         if not experience:
-            return jsonify({'error': 'Experience not found'}), 404
+            return jsonify({'detail': 'Experience not found'}), 404
             
-        # Create the swipe record
-        new_swipe = UserSwipe(
-            user_id=user_id,
-            experience_id=experience_id,
-            direction=direction
-        )
-        db.session.add(new_swipe)
+        # Check if the user owns this experience
+        if experience.user_id == current_user_id:
+            return jsonify({'detail': 'Cannot swipe on your own experience'}), 400
+            
+        # Create or update the swipe
+        swipe = UserSwipe.query.filter_by(
+            user_id=current_user_id,
+            experience_id=data['experience_id']
+        ).first()
+        
+        if not swipe:
+            swipe = UserSwipe(
+                user_id=current_user_id,
+                experience_id=data['experience_id'],
+                direction=data['is_like']
+            )
+            db.session.add(swipe)
+        else:
+            swipe.direction = data['is_like']
+            
         db.session.commit()
         
-        # Check if this creates a match
-        if direction:  # If right swipe
-            # Find if the experience creator also swiped right on this user
-            print(f"Checking for match with creator {experience.user_id}")
+        # Check for match
+        match = False
+        if data['is_like']:  # Only create match if user swiped yes
+            # Check if the experience creator has also liked this experience
+            matching_swipe = UserSwipe.query.filter_by(
+                user_id=experience.user_id,
+                experience_id=data['experience_id'],
+                direction=True
+            ).first()
             
-            # Check if the current user has an experience that the creator liked
-            user_experiences = Experience.query.filter_by(user_id=user_id).all()
-            user_exp_ids = [exp.id for exp in user_experiences]
-            
-            creator_swipes = UserSwipe.query.filter(
-                UserSwipe.user_id == experience.user_id,
-                UserSwipe.experience_id.in_(user_exp_ids),
-                UserSwipe.direction == True
-            ).all()
-            
-            if creator_swipes:
-                print(f"Match found between {user_id} and {experience.user_id}")
-                # Check if match already exists
-                existing_match = Match.query.filter(
-                    ((Match.user1_id == user_id) & (Match.user2_id == experience.user_id)) |
-                    ((Match.user1_id == experience.user_id) & (Match.user2_id == user_id))
-                ).first()
-                
-                if existing_match:
-                    print(f"Match already exists with ID {existing_match.id}")
-                    return jsonify({'match': True, 'match_id': existing_match.id}), 200
-                
-                # Create a match
-                new_match = Match(
-                    user1_id=user_id,
-                    user2_id=experience.user_id,
-                    experience_id=experience_id,
-                    status='confirmed'
+            if matching_swipe:
+                match = True
+                # Create a match record for the experience creator
+                match_record = Match(
+                    user_id=experience.user_id,
+                    experience_id=data['experience_id'],
+                    status='pending'  # Pending until the creator accepts
                 )
-                db.session.add(new_match)
+                db.session.add(match_record)
                 db.session.commit()
-                return jsonify({'match': True, 'match_id': new_match.id}), 201
         
-        return jsonify({'success': True}), 200
+        return jsonify({
+            'message': 'Swipe recorded successfully',
+            'match': match
+        }), 200
     except Exception as e:
-        print(f"Error processing swipe: {e}")
+        print(f"Error recording swipe: {e}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/matches/<int:user_id>', methods=['GET'])
 def get_matches(user_id):
@@ -671,42 +648,42 @@ def get_recommendations(user_id):
         print(f"Error fetching recommendations: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Function to check if profile_image column exists in the user table
-def check_profile_image_column():
+@app.route('/api/swipe-experiences', methods=['GET'])
+@login_required()
+def get_swipe_experiences(current_user_id=None):
     try:
-        conn = sqlite3.connect('dateabase.db')
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(user)")
-        columns = cursor.fetchall()
-        column_names = [column[1] for column in columns]
+        # Get experiences that are not created by the current user
+        experiences = Experience.query.filter(Experience.user_id != current_user_id).order_by(Experience.created_at.desc()).all()
         
-        if 'profile_image' not in column_names:
-            print("Adding profile_image column to user table...")
-            cursor.execute("ALTER TABLE user ADD COLUMN profile_image TEXT;")
-            conn.commit()
-            print("profile_image column added successfully")
-        else:
-            print("profile_image column already exists")
+        result = []
+        for exp in experiences:
+            # Get the creator of the experience
+            creator = User.query.get(exp.user_id)
             
-        conn.close()
+            # Clean strings to prevent any duplication
+            experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            location = exp.location.strip() if exp.location else ''
+            description = exp.description.strip() if exp.description else ''
+            
+            result.append({
+                'id': exp.id,
+                'user_id': exp.user_id,
+                'creator_name': creator.name if creator else 'Unknown',
+                'creator_netid': creator.netid if creator else '',
+                'experience_type': experience_type,
+                'location': location,
+                'description': description,
+                'latitude': exp.latitude,
+                'longitude': exp.longitude,
+                'place_id': exp.place_id,
+                'location_image': exp.location_image,
+                'created_at': exp.created_at.isoformat() if exp.created_at else None
+            })
+        
+        return jsonify(result)
     except Exception as e:
-        print(f"Error checking profile_image column: {e}")
-
-# Create database tables (moved from before_first_request decorator)
-def create_tables():
-    with app.app_context():
-        # First create all tables
-        db.create_all()
-        print("All database tables created successfully")
-
-# Initialize database
-with app.app_context():
-    try:
-        print("Creating database tables...")
-        db.create_all()
-        print("Tables created successfully")
-    except Exception as e:
-        print(f"Error initializing database: {e}")
+        print(f"Error fetching swipe experiences: {e}")
+        return jsonify({'detail': str(e)}), 500
 
 # CAS Authentication routes
 @app.route('/api/cas/login', methods=['GET'])
@@ -921,11 +898,12 @@ def complete_onboarding():
         user_info = session.get('user_info', {})
         netid = user_info.get('user', '')
         
-        # Find the user by netid first, then by username as fallback
+        # First try to find the user by netid
         user = User.query.filter_by(netid=netid).first()
         if not user:
+            # Then try by username as fallback
             user = User.query.filter_by(username=netid).first()
-        
+            
         if not user:
             return jsonify({'detail': 'User not found'}), 404
         
@@ -965,6 +943,92 @@ def complete_onboarding():
     except Exception as e:
         db.session.rollback()
         return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+# Added endpoints for accepting and rejecting matches
+@app.route('/api/matches/<int:match_id>/accept', methods=['PUT'])
+@login_required()
+def accept_match(match_id, current_user_id=None):
+    try:
+        # Get the match
+        match = Match.query.get(match_id)
+        if not match:
+            return jsonify({'detail': 'Match not found'}), 404
+            
+        # Verify that the current user is the experience creator
+        experience = Experience.query.get(match.experience_id)
+        if not experience or experience.user_id != current_user_id:
+            return jsonify({'detail': 'You are not authorized to accept this match'}), 403
+            
+        # Update match status
+        match.status = 'accepted'
+        db.session.commit()
+        
+        return jsonify({'message': 'Match accepted successfully'}), 200
+    except Exception as e:
+        print(f"Error accepting match: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/matches/<int:match_id>/reject', methods=['PUT'])
+@login_required()
+def reject_match(match_id, current_user_id=None):
+    try:
+        # Get the match
+        match = Match.query.get(match_id)
+        if not match:
+            return jsonify({'detail': 'Match not found'}), 404
+            
+        # Verify that the current user is the experience creator
+        experience = Experience.query.get(match.experience_id)
+        if not experience or experience.user_id != current_user_id:
+            return jsonify({'detail': 'You are not authorized to reject this match'}), 403
+            
+        # Delete the match
+        db.session.delete(match)
+        db.session.commit()
+        
+        return jsonify({'message': 'Match rejected successfully'}), 200
+    except Exception as e:
+        print(f"Error rejecting match: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
+# Function to check if profile_image column exists in the user table
+def check_profile_image_column():
+    try:
+        conn = sqlite3.connect('dateabase.db')
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(user)")
+        columns = cursor.fetchall()
+        column_names = [column[1] for column in columns]
+        
+        if 'profile_image' not in column_names:
+            print("Adding profile_image column to user table...")
+            cursor.execute("ALTER TABLE user ADD COLUMN profile_image TEXT;")
+            conn.commit()
+            print("profile_image column added successfully")
+        else:
+            print("profile_image column already exists")
+            
+        conn.close()
+    except Exception as e:
+        print(f"Error checking profile_image column: {e}")
+
+# Create database tables (moved from before_first_request decorator)
+def create_tables():
+    with app.app_context():
+        # First create all tables
+        db.create_all()
+        print("All database tables created successfully")
+
+# Initialize database
+with app.app_context():
+    try:
+        print("Creating database tables...")
+        db.create_all()
+        print("Tables created successfully")
+    except Exception as e:
+        print(f"Error initializing database: {e}")
 
 if __name__ == '__main__':
     with app.app_context():
