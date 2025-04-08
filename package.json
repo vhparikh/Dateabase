@@ -2,12 +2,15 @@
   "name": "dateabase",
   "version": "1.0.0",
   "description": "Princeton's Experience-Based Dating App",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "start:frontend": "cd frontend && npm start",
-    "start:backend": "cd backend && source venv/bin/activate && python app.py",
+    "start:backend": "cd backend && python app.py",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "install:frontend": "cd frontend && npm install",
-    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:backend": "cd backend && python -m pip install -r requirements.txt",
     "install": "npm run install:frontend && npm run install:backend",
     "heroku-postbuild": "cd frontend && npm install && npm run build",
     "build": "cd frontend && npm run build"
