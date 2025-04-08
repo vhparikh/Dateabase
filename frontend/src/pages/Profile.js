@@ -1,23 +1,45 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { getExperiences } from '../services/api';
+import { getExperiences, getCurrentUser } from '../services/api';
 
 const Profile = () => {
-  const { user, logoutUser } = useContext(AuthContext);
+  const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
   const navigate = useNavigate();
   const [userExperiences, setUserExperiences] = useState([]);
+  const [userProfile, setUserProfile] = useState(user); // Initialize with current context user
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   
+  // Fetch user profile directly from the API to ensure latest data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setProfileLoading(true);
+        const response = await getCurrentUser();
+        setUserProfile(response.data);
+        setProfileLoading(false);
+      } catch (err) {
+        console.error('Failed to load user profile', err);
+        setProfileLoading(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, []);
+  
+  // Fetch user experiences
   useEffect(() => {
     const fetchUserExperiences = async () => {
+      if (!userProfile || !userProfile.id) return;
+      
       try {
         setLoading(true);
         const response = await getExperiences();
         // Filter experiences created by this user
-        const filteredExperiences = response.data.filter(exp => exp.user_id === user.id);
+        const filteredExperiences = response.data.filter(exp => exp.user_id === userProfile.id);
         setUserExperiences(filteredExperiences);
         setLoading(false);
       } catch (err) {
@@ -27,7 +49,7 @@ const Profile = () => {
     };
     
     fetchUserExperiences();
-  }, [user.id]);
+  }, [userProfile]);
   
   const handleLogout = async () => {
     try {
@@ -48,17 +70,17 @@ const Profile = () => {
   
   // Function to parse and render interest badges
   const renderInterests = () => {
-    if (!user?.interests) return null;
+    if (!userProfile?.interests) return null;
     
     let interestsObj = {};
     try {
       // Try to parse if it's a JSON string
-      interestsObj = JSON.parse(user.interests);
+      interestsObj = JSON.parse(userProfile.interests);
     } catch (e) {
       // If it's not valid JSON, try a different approach
       try {
         // Try to parse as comma-separated values
-        const interests = user.interests.split(',').map(item => item.trim());
+        const interests = userProfile.interests.split(',').map(item => item.trim());
         interests.forEach(interest => {
           interestsObj[interest] = true;
         });
@@ -181,7 +203,17 @@ const Profile = () => {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium text-gray-700 mb-2">Name</h3>
-                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{user?.name || 'Not set'}</p>
+                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.name || 'Not set'}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">NetID</h3>
+                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.netid || 'Not set'}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">Class Year</h3>
+                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.class_year || 'Not set'}</p>
                 </div>
                 
                 <div>

@@ -104,30 +104,26 @@ export const AuthProvider = ({ children }) => {
   const loadUserProfile = useCallback(async () => {
     try {
       console.log('Loading user profile...');
-      const response = await fetch(`${API_URL}/api/users/me`, {
-        credentials: 'include',
-        headers: authTokens ? {
-          'Authorization': `Bearer ${authTokens?.access}`
-        } : {}
-      });
+      // Use our API service with the new endpoint
+      const { getCurrentUser } = await import('../services/api');
+      const response = await getCurrentUser();
       
-      if (response.ok) {
-        const data = await response.json();
+      if (response && response.data) {
         console.log('Profile loaded successfully');
-        setUser(data);
-        return data;
+        setUser(response.data);
+        return response.data;
       } else {
-        console.log('Error loading profile:', await response.text());
+        console.log('Error loading profile: No data returned');
         // Don't return a fallback profile, signal error instead
         setUser(null);
         return null;
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('Error loading user profile:', error.response?.data?.detail || error.message);
       setUser(null);
       return null;
     }
-  }, [authTokens]);
+  }, []);
 
   // Initiate CAS login
   const loginWithCAS = async (callback_url = '/') => {

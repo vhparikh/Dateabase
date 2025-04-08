@@ -22,6 +22,19 @@ export const updateUser = (userId, userData) => {
   return api.put(`/users/${userId}`, userData);
 };
 
+// Current user profile endpoints
+export const getCurrentUser = () => {
+  return api.get('/me', { withCredentials: true });
+};
+
+export const updateCurrentUser = (userData) => {
+  return api.put('/me', userData, { withCredentials: true });
+};
+
+export const completeOnboarding = (userData) => {
+  return api.post('/users/complete-onboarding', userData, { withCredentials: true });
+};
+
 // Experience endpoints
 export const createExperience = (experienceData) => {
   return api.post('/experiences', experienceData);

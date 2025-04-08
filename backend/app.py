@@ -29,11 +29,13 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=True)  # Made nullable for CAS users
+    cas_id = db.Column(db.String(50), unique=True, nullable=True)  # CAS unique identifier
+    netid = db.Column(db.String(50), unique=True, nullable=True)  # Princeton NetID
     name = db.Column(db.String(100), nullable=False)
-    gender = db.Column(db.String(20), nullable=False)
-    class_year = db.Column(db.Integer, nullable=False)
-    interests = db.Column(db.Text, nullable=False)  # Store as JSON string
+    gender = db.Column(db.String(20), nullable=True)  # Made nullable for initial CAS login
+    class_year = db.Column(db.Integer, nullable=True)  # Made nullable for initial CAS login
+    interests = db.Column(db.Text, nullable=True)  # Made nullable for initial CAS login
     profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
@@ -1132,15 +1134,28 @@ def cas_callback():
         session['user_info'] = user_info
         netid = user_info.get('user', '')
         
-        # Check if user exists in our database
-        user = User.query.filter_by(username=netid).first()
+        # Extract attributes for more user information if available
+        attributes = user_info.get('attributes', {})
+        # Use principalId as the cas_id if available, otherwise use netid
+        cas_id = attributes.get('principalId', netid)
         
-        # If user doesn't exist, we'll create one with dummy data
+        # Check if user exists in our database - first by netid, then by cas_id
+        user = User.query.filter_by(netid=netid).first()
         if not user:
-            # Create a new user with the netid and dummy data
+            user = User.query.filter_by(cas_id=cas_id).first()
+        
+        # If user doesn't exist, we'll create one with information from CAS
+        if not user:
+            # Get display name or default to netID
+            display_name = attributes.get('displayName', f"{netid.capitalize()} User")
+            
+            # Create a new user with the netid and cas_id
             new_user = User(
                 username=netid,
-                name=f"{netid.capitalize()} User",
+                netid=netid,
+                cas_id=cas_id,
+                name=display_name,
+                # Set optional fields to default values that can be updated later
                 gender='Other',
                 class_year=2025,
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
@@ -1151,7 +1166,14 @@ def cas_callback():
             db.session.commit()
             
             # Retrieve the user after commit
-            user = User.query.filter_by(username=netid).first()
+            user = User.query.filter_by(netid=netid).first()
+        elif not user.netid or not user.cas_id:
+            # If we have a user but they're missing netid or cas_id, update them
+            if not user.netid:
+                user.netid = netid
+            if not user.cas_id:
+                user.cas_id = cas_id
+            db.session.commit()
         
         # Generate token for the frontend
         access_token = jwt.encode({
@@ -1195,98 +1217,142 @@ def cas_status():
     is_auth = is_authenticated()
     return jsonify({'authenticated': is_auth})
 
-# Get current user profile - checks for CAS authentication only
-@app.route('/api/users/me', methods=['GET'])
-def get_current_user():
-    """Get current user profile - requires CAS authentication"""
+# API endpoint to get or update the current user's profile
+@app.route('/api/me', methods=['GET', 'PUT'])
+def get_or_update_current_user():
+    """Get or update the current authenticated user's profile"""
     try:
         # Check if user is authenticated via CAS
-        if 'user_info' in session:
-            user_info = session['user_info']
-            netid = user_info.get('user', '')
+        if not is_authenticated():
+            return jsonify({'detail': 'Authentication required'}), 401
             
-            # Check if user exists in our system
+        user_info = session.get('user_info', {})
+        netid = user_info.get('user', '')
+        
+        # First try to find the user by netid
+        user = User.query.filter_by(netid=netid).first()
+        if not user:
+            # Then try by username as fallback
             user = User.query.filter_by(username=netid).first()
             
-            # Use demo user data for profile fields, but use the actual user's onboarding status
-            demo_user = User.query.filter_by(username='demo_user').first()
-            
-            if not demo_user:
-                return jsonify({'detail': 'Demo user not found'}), 404
-            
-            # If the user doesn't exist yet, use demo_user's onboarding status
-            onboarding_status = False
-            if user:
-                onboarding_status = user.onboarding_completed
-                
-            # Return the demo user's profile with the authenticated netid and real onboarding status
+        if not user:
+            return jsonify({'detail': 'User not found'}), 404
+        
+        # If user doesn't have netid set yet, update it
+        if not user.netid:
+            user.netid = netid
+            db.session.commit()
+        
+        if request.method == 'GET':
+            # Return user profile data
             return jsonify({
-                'id': demo_user.id,
-                'username': netid,  # Use the actual netid
-                'name': demo_user.name,
-                'gender': demo_user.gender,
-                'class_year': demo_user.class_year,
-                'interests': demo_user.interests,
-                'profile_image': demo_user.profile_image,
-                'onboarding_completed': onboarding_status  # Use the real user's onboarding status
+                'id': user.id,
+                'username': user.username,
+                'netid': user.netid,
+                'name': user.name,
+                'gender': user.gender,
+                'class_year': user.class_year,
+                'interests': user.interests,
+                'profile_image': user.profile_image,
+                'onboarding_completed': user.onboarding_completed,
+                'created_at': user.created_at.isoformat() if user.created_at else None
             })
         
-        # Not authenticated with CAS
-        return jsonify({'detail': 'Authentication required'}), 401
+        elif request.method == 'PUT':
+            # Update user profile data
+            data = request.json
+            
+            # Only update allowed fields
+            if 'name' in data:
+                user.name = data['name']
+            if 'gender' in data:
+                user.gender = data['gender']
+            if 'class_year' in data:
+                user.class_year = data['class_year']
+            if 'interests' in data:
+                user.interests = data['interests']
+            if 'profile_image' in data:
+                user.profile_image = data['profile_image']
+            
+            db.session.commit()
+            
+            # Return updated user profile
+            return jsonify({
+                'id': user.id,
+                'username': user.username,
+                'netid': user.netid,
+                'name': user.name,
+                'gender': user.gender,
+                'class_year': user.class_year,
+                'interests': user.interests,
+                'profile_image': user.profile_image,
+                'onboarding_completed': user.onboarding_completed,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            })
+            
     except Exception as e:
+        db.session.rollback()
         return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+# Legacy endpoint - redirects to the new /api/me endpoint
+@app.route('/api/users/me', methods=['GET'])
+def get_current_user():
+    """Legacy endpoint that redirects to the new /api/me endpoint"""
+    return get_or_update_current_user()
 
 # Endpoint to complete onboarding
 @app.route('/api/users/complete-onboarding', methods=['POST'])
 def complete_onboarding():
-    """Mark user's onboarding as completed"""
+    """Mark user's onboarding as completed and update profile information"""
     try:
         # Check if user is authenticated via CAS
-        if 'user_info' in session:
-            user_info = session['user_info']
-            netid = user_info.get('user', '')
-            
-            # Find the user by netid
-            user = User.query.filter_by(username=netid).first()
-            
-            if not user:
-                return jsonify({'detail': 'User not found'}), 404
-            
-            # Update user data from request if provided
-            if request.json:
-                data = request.json
-                if 'name' in data:
-                    user.name = data['name']
-                if 'gender' in data:
-                    user.gender = data['gender']
-                if 'class_year' in data:
-                    user.class_year = data['class_year']
-                if 'interests' in data:
-                    user.interests = data['interests']
-                if 'profile_image' in data:
-                    user.profile_image = data['profile_image']
-            
-            # Mark onboarding as completed
-            user.onboarding_completed = True
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Onboarding completed successfully',
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'name': user.name,
-                    'gender': user.gender,
-                    'class_year': user.class_year,
-                    'interests': user.interests,
-                    'profile_image': user.profile_image,
-                    'onboarding_completed': user.onboarding_completed
-                }
-            })
+        if not is_authenticated():
+            return jsonify({'detail': 'Authentication required'}), 401
         
-        # Not authenticated with CAS
-        return jsonify({'detail': 'Authentication required'}), 401
+        user_info = session.get('user_info', {})
+        netid = user_info.get('user', '')
+        
+        # Find the user by netid first, then by username as fallback
+        user = User.query.filter_by(netid=netid).first()
+        if not user:
+            user = User.query.filter_by(username=netid).first()
+        
+        if not user:
+            return jsonify({'detail': 'User not found'}), 404
+        
+        # Update user data from request if provided
+        if request.json:
+            data = request.json
+            if 'name' in data:
+                user.name = data['name']
+            if 'gender' in data:
+                user.gender = data['gender']
+            if 'class_year' in data:
+                user.class_year = data['class_year']
+            if 'interests' in data:
+                user.interests = data['interests']
+            if 'profile_image' in data:
+                user.profile_image = data['profile_image']
+        
+        # Mark onboarding as completed
+        user.onboarding_completed = True
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Onboarding completed successfully',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'netid': user.netid,
+                'name': user.name,
+                'gender': user.gender,
+                'class_year': user.class_year,
+                'interests': user.interests,
+                'profile_image': user.profile_image,
+                'onboarding_completed': user.onboarding_completed
+            }
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'detail': f'Error: {str(e)}'}), 500
