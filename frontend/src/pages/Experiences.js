@@ -535,6 +535,14 @@ const Experiences = () => {
           const errorData = await response.json();
           throw new Error(errorData.detail || 'Failed to update experience');
         }
+        
+        const data = await response.json();
+        console.log('Experience updated successfully:', data);
+        if (data) {
+          setExperiences(prev => prev.map(exp => 
+            exp.id === experienceData.id ? data.experience : exp
+          ));
+        }
       } else {
         // POST request for creating a new experience
         console.log('Creating new experience');

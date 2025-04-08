@@ -418,6 +418,60 @@ def delete_experience(experience_id, current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
+@app.route('/api/experiences/<int:experience_id>', methods=['PUT'])
+@login_required()
+def update_experience(experience_id, current_user_id=None):
+    try:
+        # Get the experience
+        experience = db.session.get(Experience, experience_id)
+        if not experience:
+            return jsonify({'detail': 'Experience not found'}), 404
+            
+        # Check if the user owns this experience
+        if experience.user_id != current_user_id:
+            return jsonify({'detail': 'You can only update your own experiences'}), 403
+            
+        # Update the experience
+        data = request.json
+        
+        # Update fields if they exist in the request
+        if 'experience_type' in data:
+            experience.experience_type = data['experience_type'].strip()
+        if 'location' in data:
+            experience.location = data['location'].strip()
+        if 'description' in data:
+            experience.description = data['description'].strip()
+        if 'latitude' in data:
+            experience.latitude = data['latitude']
+        if 'longitude' in data:
+            experience.longitude = data['longitude']
+        if 'place_id' in data:
+            experience.place_id = data['place_id']
+        if 'location_image' in data:
+            experience.location_image = data['location_image']
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Experience updated successfully',
+            'experience': {
+                'id': experience.id,
+                'user_id': experience.user_id,
+                'experience_type': experience.experience_type,
+                'location': experience.location,
+                'description': experience.description,
+                'latitude': experience.latitude,
+                'longitude': experience.longitude,
+                'place_id': experience.place_id,
+                'location_image': experience.location_image,
+                'created_at': experience.created_at.isoformat() if experience.created_at else None
+            }
+        }), 200
+    except Exception as e:
+        print(f"Error updating experience: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
 @app.route('/api/swipes', methods=['POST'])
 def create_swipe():
     try:
