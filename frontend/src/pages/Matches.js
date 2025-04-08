@@ -4,7 +4,6 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
-import { SAMPLE_MATCHES } from '../components/DemoData';
 
 // Updated Match Card with orange gradient theme
 const MatchCard = ({ match }) => {
@@ -326,7 +325,6 @@ const Matches = () => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [demoMode, setDemoMode] = useState(true);
   const { user } = useContext(AuthContext);
   
   const fetchMatches = async () => {
@@ -334,14 +332,7 @@ const Matches = () => {
       setLoading(true);
       setError('');
       
-      // If in demo mode, use sample matches data
-      if (demoMode) {
-        setMatches(SAMPLE_MATCHES.matches || []);
-        setLoading(false);
-        return;
-      }
-      
-      // Otherwise fetch from API
+      // Fetch from API
       const response = await axios.get(`${API_URL}/api/matches/${user?.id || '1'}`);
       
       if (response.data) {
@@ -382,11 +373,7 @@ const Matches = () => {
   
   useEffect(() => {
     fetchMatches();
-  }, [user?.id, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
-  
-  const toggleDemoMode = () => {
-    setDemoMode(!demoMode);
-  };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
@@ -394,15 +381,7 @@ const Matches = () => {
         
         {/* Header */}
         <div className="mb-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Your Matches</h1>
-            <button 
-              onClick={toggleDemoMode}
-              className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium"
-            >
-              {demoMode ? 'Using Demo Data' : 'Using API Data'}
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Your Matches</h1>
           <p className="text-gray-600 mt-2">Connect with people who share your interests</p>
         </div>
         
@@ -436,4 +415,4 @@ const Matches = () => {
   );
 };
 
-export default Matches; 
+export default Matches;
