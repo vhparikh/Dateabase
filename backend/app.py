@@ -710,8 +710,16 @@ def cas_callback():
         ticket = request.args.get('ticket')
         callback_url = request.args.get('callback_url', '/')
         
-        # Get the frontend URL from the Origin header or use localhost:3000 as fallback
-        frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        # Determine the frontend URL based on environment
+        # In production, the app is served from the same domain
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+            # In production, use the same host
+            scheme = request.headers.get('X-Forwarded-Proto', 'https')
+            frontend_url = f"{scheme}://{request.host}"
+        else:
+            # In development, get from Origin header or use localhost:3000 as fallback
+            frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        
         frontend_callback = f"{frontend_url}/cas/callback"
         
         if not ticket:
