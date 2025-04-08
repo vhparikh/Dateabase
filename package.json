@@ -8,11 +8,14 @@
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "install:frontend": "cd frontend && npm install",
     "install:backend": "cd backend && pip install -r requirements.txt",
-    "install": "npm run install:frontend && npm run install:backend",
+    "install": "npm run install:frontend",
     "heroku-postbuild": "cd frontend && npm install && npm run build",
     "build": "cd frontend && npm run build"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
