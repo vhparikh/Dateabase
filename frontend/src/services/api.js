@@ -41,7 +41,7 @@ export const createExperience = (experienceData) => {
 };
 
 export const getExperiences = () => {
-  return api.get('/experiences', { withCredentials: true });
+  return api.get('/my-experiences', { withCredentials: true });
 };
 
 export const getUserExperiences = () => {

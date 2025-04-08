@@ -476,50 +476,42 @@ const Experiences = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentExperience, setCurrentExperience] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, experienceId: null });
-  
-  // We'll let the server's session authentication handle redirects
-  
-  const fetchExperiences = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      // Use the session-based API service
-      const response = await getExperiences();
-      
-      if (response.data) {
-        setExperiences(response.data);
+
+  // Fetch user's experiences when component mounts
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_URL}/api/my-experiences`, {
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch experiences');
+        }
+        const data = await response.json();
+        setExperiences(data);
+        setError('');
+      } catch (err) {
+        console.error('Error fetching experiences:', err);
+        setError('Failed to fetch experiences. Please try again later.');
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching experiences:', err);
-      setError('Failed to load experiences. Please try again.');
-      setLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    if (location.state?.shouldCallAddExperience) {
-      handleAddExperience();
-    }
-  }, [location.state]);
-  
-  useEffect(() => {
+    };
+
     fetchExperiences();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Call once on component mount
-  
+  }, [API_URL]);
+
   const handleAddExperience = () => {
     setCurrentExperience(null);
     setIsModalOpen(true);
   };
-  
+
   const handleEditExperience = (experience) => {
     setCurrentExperience(experience);
     setIsModalOpen(true);
   };
-  
+
   const handleSaveExperience = async (experienceData) => {
     try {
       setLoading(true);
@@ -568,6 +560,25 @@ const Experiences = () => {
       }
       
       // Refresh experiences after save
+      const fetchExperiences = async () => {
+        try {
+          setLoading(true);
+          const response = await fetch(`${API_URL}/api/my-experiences`, {
+            credentials: 'include'
+          });
+          if (!response.ok) {
+            throw new Error('Failed to fetch experiences');
+          }
+          const data = await response.json();
+          setExperiences(data);
+          setError('');
+        } catch (err) {
+          console.error('Error fetching experiences:', err);
+          setError('Failed to fetch experiences. Please try again later.');
+        } finally {
+          setLoading(false);
+        }
+      };
       fetchExperiences();
       
       setIsModalOpen(false);
@@ -578,11 +589,11 @@ const Experiences = () => {
       setLoading(false);
     }
   };
-  
+
   const openDeleteConfirmation = (experienceId) => {
     setDeleteModal({ isOpen: true, experienceId });
   };
-  
+
   const handleDeleteExperience = async (experienceId) => {
     try {
       setLoading(true);
@@ -595,6 +606,25 @@ const Experiences = () => {
         credentials: 'include'
       });
       
+      const fetchExperiences = async () => {
+        try {
+          setLoading(true);
+          const response = await fetch(`${API_URL}/api/my-experiences`, {
+            credentials: 'include'
+          });
+          if (!response.ok) {
+            throw new Error('Failed to fetch experiences');
+          }
+          const data = await response.json();
+          setExperiences(data);
+          setError('');
+        } catch (err) {
+          console.error('Error fetching experiences:', err);
+          setError('Failed to fetch experiences. Please try again later.');
+        } finally {
+          setLoading(false);
+        }
+      };
       fetchExperiences();
       setDeleteModal({ isOpen: false, experienceId: null });
       setLoading(false);
@@ -604,7 +634,7 @@ const Experiences = () => {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
@@ -640,7 +670,28 @@ const Experiences = () => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center max-w-md mx-auto">
             <p className="text-red-600 mb-2">{error}</p>
             <button 
-              onClick={fetchExperiences}
+              onClick={() => {
+                const fetchExperiences = async () => {
+                  try {
+                    setLoading(true);
+                    const response = await fetch(`${API_URL}/api/my-experiences`, {
+                      credentials: 'include'
+                    });
+                    if (!response.ok) {
+                      throw new Error('Failed to fetch experiences');
+                    }
+                    const data = await response.json();
+                    setExperiences(data);
+                    setError('');
+                  } catch (err) {
+                    console.error('Error fetching experiences:', err);
+                    setError('Failed to fetch experiences. Please try again later.');
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+                fetchExperiences();
+              }}
               className="px-4 py-2 bg-white border border-red-300 rounded-md text-red-600 text-sm hover:bg-red-50"
             >
               Try Again
