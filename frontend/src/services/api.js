@@ -37,11 +37,15 @@ export const completeOnboarding = (userData) => {
 
 // Experience endpoints
 export const createExperience = (experienceData) => {
-  return api.post('/experiences', experienceData);
+  return api.post('/experiences', experienceData, { withCredentials: true });
 };
 
 export const getExperiences = () => {
-  return api.get('/experiences');
+  return api.get('/experiences', { withCredentials: true });
+};
+
+export const getUserExperiences = () => {
+  return api.get('/my-experiences', { withCredentials: true });
 };
 
 // Swipe endpoints

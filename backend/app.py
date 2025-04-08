@@ -6,6 +6,7 @@ import jwt
 import secrets
 from urllib.parse import quote_plus, urlencode, quote
 from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+from functools import wraps
 
 # Import database and models from database.py
 from database import db, init_db, User, Experience, Match, UserSwipe
@@ -43,6 +44,51 @@ def decode_token(token):
         return 'Signature expired. Please log in again.'
     except jwt.InvalidTokenError:
         return 'Invalid token. Please log in again.'
+
+# Authentication decorator for protected routes
+def login_required():
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            print(f"Authenticating request to {f.__name__}")
+            
+            # Check if user is authenticated via session
+            if not session.get('user_info'):
+                print(f"No user_info found in session for {f.__name__}")
+                return jsonify({'detail': 'Authentication required'}), 401
+            
+            # Get user info from session
+            user_info = session.get('user_info')
+            netid = user_info.get('user', '')
+            print(f"Found session for user {netid}")
+            
+            # Get the user from database
+            user = User.query.filter_by(netid=netid).first()
+            if not user:
+                print(f"User with netid {netid} not found in database")
+                return jsonify({'detail': 'User not found'}), 401
+            
+            print(f"Authenticated user: {user.username}, ID: {user.id}")
+            
+            # Add user_id to kwargs so it's available in the view function
+            kwargs['current_user_id'] = user.id
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# Get current user ID from session
+def get_current_user_id():
+    if not session.get('user_info'):
+        return None
+    
+    user_info = session.get('user_info')
+    netid = user_info.get('user', '')
+    
+    user = User.query.filter_by(netid=netid).first()
+    if not user:
+        return None
+    
+    return user.id
 
 # Auth Routes
 @app.route('/api/register', methods=['POST'])
@@ -202,22 +248,35 @@ def update_user(user_id):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/experiences', methods=['POST'])
-def create_experience():
+@login_required()
+def create_experience(current_user_id=None):
     try:
+        print(f"Creating experience for user ID: {current_user_id}")
+        
+        # Check if we received JSON data
+        if not request.is_json:
+            print("Error: Request does not contain JSON data")
+            return jsonify({'detail': 'Request must be JSON'}), 400
+            
         data = request.json
+        print(f"Received data: {data}")
         
         if not data:
             return jsonify({'detail': 'No data provided'}), 400
         
-        required_fields = ['user_id', 'experience_type', 'location']
+        required_fields = ['experience_type', 'location']
         for field in required_fields:
             if field not in data:
+                print(f"Missing required field: {field}")
                 return jsonify({'detail': f'Missing required field: {field}'}), 400
                 
-        # Validate user exists
-        user = User.query.get(data['user_id'])
+        # Use authenticated user's ID instead of passing it in the request
+        user = User.query.get(current_user_id)
         if not user:
+            print(f"User not found with ID: {current_user_id}")
             return jsonify({'detail': 'User not found'}), 404
+        
+        print(f"Creating experience for user: {user.username}")
         
         # Clean up input data to prevent duplication
         experience_type = data['experience_type'].strip() if data['experience_type'] else ''
@@ -230,8 +289,12 @@ def create_experience():
         place_id = data.get('place_id', '').strip() if data.get('place_id') else None
         location_image = data.get('location_image', '').strip() if data.get('location_image') else None
         
+        tags = data.get('tags', [])
+        
+        print(f"Creating experience with type: {experience_type}, location: {location}")
+        
         new_experience = Experience(
-            user_id=data['user_id'],
+            user_id=current_user_id,
             experience_type=experience_type,
             location=location,
             description=description,
@@ -242,6 +305,8 @@ def create_experience():
         )
         db.session.add(new_experience)
         db.session.commit()
+        
+        print(f"Experience created successfully with ID: {new_experience.id}")
         
         return jsonify({
             'id': new_experience.id, 
@@ -261,13 +326,16 @@ def create_experience():
         }), 201
     except Exception as e:
         print(f"Error creating experience: {e}")
+        import traceback
+        traceback.print_exc()
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/experiences', methods=['GET'])
-def get_experiences():
+@login_required()
+def get_experiences(current_user_id=None):
     try:
-        experiences = Experience.query.all()
+        experiences = Experience.query.order_by(Experience.created_at.desc()).all()
         result = []
         
         for exp in experiences:
@@ -294,6 +362,37 @@ def get_experiences():
         return jsonify(result)
     except Exception as e:
         print(f"Error fetching experiences: {e}")
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/my-experiences', methods=['GET'])
+@login_required()
+def get_my_experiences(current_user_id=None):
+    try:
+        experiences = Experience.query.filter_by(user_id=current_user_id).order_by(Experience.created_at.desc()).all()
+        result = []
+        
+        for exp in experiences:
+            # Clean strings to prevent any duplication
+            experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            location = exp.location.strip() if exp.location else ''
+            description = exp.description.strip() if exp.description else ''
+            
+            result.append({
+                'id': exp.id,
+                'user_id': exp.user_id,
+                'experience_type': experience_type,
+                'location': location,
+                'description': description,
+                'latitude': exp.latitude,
+                'longitude': exp.longitude,
+                'place_id': exp.place_id,
+                'location_image': exp.location_image,
+                'created_at': exp.created_at.isoformat() if exp.created_at else None
+            })
+            
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error fetching user experiences: {e}")
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/swipes', methods=['POST'])

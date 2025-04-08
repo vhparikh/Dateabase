@@ -1,7 +1,6 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import axios from 'axios';
 import { API_URL } from '../config';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { Autocomplete } from '@react-google-maps/api';
@@ -38,8 +37,12 @@ const suggestedLocations = [
 ];
 
 const CreateExperience = () => {
-  const { user, authTokens } = useContext(AuthContext);
+  // Check if user is authenticated
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  // We'll let the server's session authentication redirect if needed
+  
   const autocompleteRef = useRef(null);
   
   const [formData, setFormData] = useState({
@@ -82,10 +85,12 @@ const CreateExperience = () => {
       if (user?.id || user?.sub) {
         try {
           const userId = user?.id || user?.sub;
-          const response = await axios.get(`${API_URL}/users/${userId}`);
+          // Use fetch instead of axios directly
+          const response = await fetch(`${API_URL}/users/${userId}`);
+          const data = await response.json();
           
-          if (response.data && response.data.profile_image) {
-            setUserProfileImage(response.data.profile_image);
+          if (data && data.profile_image) {
+            setUserProfileImage(data.profile_image);
           } else {
             // Use placeholder or generated avatar if no profile image
             setUserProfileImage(`https://ui-avatars.com/api/?name=${user.username || 'User'}&background=orange&color=fff`);
@@ -106,8 +111,6 @@ const CreateExperience = () => {
       // Try to get a place photo using the Google Places API
       const fetchPlacePhoto = async () => {
         try {
-          const placeDetailsUrl = `https://cors-anywhere.herokuapp.com/https://maps.googleapis.com/maps/api/place/details/json?place_id=${formData.place_id}&fields=photos&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
-          
           // Since we can't directly call the Google API from the frontend due to CORS,
           // we'll use Unsplash as a fallback for images
           setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
@@ -195,13 +198,22 @@ const CreateExperience = () => {
   
   const createExperience = async (experienceData) => {
     try {
-      const response = await axios.post(`${API_URL}/experiences`, experienceData, {
+      // Use fetch directly with credentials: 'include' to ensure cookies are sent
+      const response = await fetch(`${API_URL}/experiences`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authTokens?.access}`
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(experienceData)
       });
-      return response.data;
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create experience');
+      }
+      
+      return await response.json();
     } catch (error) {
       console.error('API error creating experience:', error);
       throw error;
@@ -214,15 +226,9 @@ const CreateExperience = () => {
     setError('');
     
     try {
-      const userId = user?.id || user?.sub;
-      
-      if (!userId) {
-        throw new Error('User ID not found. Please log in again.');
-      }
-      
+      // Let the session authentication handle authorization
       const finalFormData = {
         ...formData,
-        user_id: userId,
         experience_type: formData.experience_type === 'Other' ? customType : formData.experience_type
       };
       
@@ -236,13 +242,19 @@ const CreateExperience = () => {
       
       console.log('Submitting experience:', finalFormData);
       
-      await createExperience(finalFormData);
-      setSuccess(true);
-      
-      // Redirect after a short delay to show success message
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
+      try {
+        const result = await createExperience(finalFormData);
+        console.log('Experience created successfully:', result);
+        setSuccess(true);
+        
+        // Redirect after a short delay to show success message
+        setTimeout(() => {
+          navigate('/experiences');
+        }, 1500);
+      } catch (submitError) {
+        console.error('Experience creation failed:', submitError);
+        setError(submitError.message || 'Failed to create experience');
+      }
     } catch (err) {
       console.error('Create experience error:', err);
       setError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to create experience');

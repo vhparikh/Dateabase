@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { getExperiences } from '../services/api';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -224,9 +223,23 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Form submitted', formData);
     
     if (validateForm()) {
+      console.log('Form validated, calling onSave');
       onSave(formData);
+    } else {
+      console.log('Form validation failed', errors);
+    }
+  };
+  
+  const handleButtonClick = () => {
+    // Explicitly validate the form and call onSave if valid
+    if (validateForm()) {
+      console.log('Submit button clicked, form validated');
+      onSave(formData);
+    } else {
+      console.log('Submit button clicked, validation failed', errors);
     }
   };
   
@@ -392,7 +405,8 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               Cancel
             </button>
             <button
-              type="submit"
+              type="button" /* Changed from 'submit' to 'button' to prevent default form submission */
+              onClick={handleButtonClick}
               className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg shadow-sm hover:shadow-md transition-all"
             >
               {experience ? 'Save Changes' : 'Add Experience'}
@@ -454,30 +468,27 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, experienceId }) =
 
 const Experiences = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentExperience, setCurrentExperience] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, experienceId: null });
-  const { user } = useContext(AuthContext);
+  
+  // We'll let the server's session authentication handle redirects
   
   const fetchExperiences = async () => {
     try {
       setLoading(true);
       setError('');
       
-      // Only fetch data from the API if user is logged in
-      if (user?.id) {
-        const response = await axios.get(`${API_URL}/experiences/${user.id}`, {
-          withCredentials: true
-        });
-        
-        if (response.data) {
-          setExperiences(response.data);
-        }
-      } else {
-        setExperiences([]);
+      // Use the session-based API service
+      const response = await getExperiences();
+      
+      if (response.data) {
+        setExperiences(response.data);
       }
       
       setLoading(false);
@@ -493,9 +504,11 @@ const Experiences = () => {
       handleAddExperience();
     }
   }, [location.state]);
+  
   useEffect(() => {
     fetchExperiences();
-  }, [user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Call once on component mount
   
   const handleAddExperience = () => {
     setCurrentExperience(null);
@@ -510,22 +523,47 @@ const Experiences = () => {
   const handleSaveExperience = async (experienceData) => {
     try {
       setLoading(true);
+      setError('');
       
-      // Real API call for saving
+      console.log('Attempting to save experience:', experienceData);
+      
+      // Real API call for saving with session authentication
       if (experienceData.id) {
-        await axios.put(`${API_URL}/experiences/${experienceData.id}`, experienceData, {
-          withCredentials: true
-        });
-      } else {
-        const response = await axios.post(`${API_URL}/experiences`, {
-          ...experienceData,
-          user_id: user.id
-        }, {
-          withCredentials: true
+        // PUT request for updating an experience
+        const response = await fetch(`${API_URL}/experiences/${experienceData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(experienceData)
         });
         
-        if (response.data) {
-          setExperiences(prev => [response.data, ...prev]);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to update experience');
+        }
+      } else {
+        // POST request for creating a new experience
+        console.log('Creating new experience');
+        const response = await fetch(`${API_URL}/experiences`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(experienceData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to create experience');
+        }
+        
+        const data = await response.json();
+        console.log('Experience created successfully:', data);
+        if (data) {
+          setExperiences(prev => [data.experience, ...prev]);
         }
       }
       
@@ -549,12 +587,15 @@ const Experiences = () => {
     try {
       setLoading(true);
       
-      // Real API call
-      await axios.delete(`${API_URL}/experiences/${experienceId}`, {
-        withCredentials: true
-      });
-      fetchExperiences();
+      // Session will handle authentication
       
+      // Real API call with session authentication
+      await fetch(`${API_URL}/experiences/${experienceId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      fetchExperiences();
       setDeleteModal({ isOpen: false, experienceId: null });
       setLoading(false);
     } catch (err) {
