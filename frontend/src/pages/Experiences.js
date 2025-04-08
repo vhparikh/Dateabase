@@ -598,14 +598,18 @@ const Experiences = () => {
     try {
       setLoading(true);
       
-      // Session will handle authentication
-      
-      // Real API call with session authentication
-      await fetch(`${API_URL}/api/experiences/${experienceId}`, {
+      // Make DELETE request to delete the experience
+      const response = await fetch(`${API_URL}/api/experiences/${experienceId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete experience');
+      }
+      
+      // Refresh experiences after successful deletion
       const fetchExperiences = async () => {
         try {
           setLoading(true);
@@ -625,6 +629,7 @@ const Experiences = () => {
           setLoading(false);
         }
       };
+      
       fetchExperiences();
       setDeleteModal({ isOpen: false, experienceId: null });
       setLoading(false);

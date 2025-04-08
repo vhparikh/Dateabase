@@ -395,6 +395,29 @@ def get_my_experiences(current_user_id=None):
         print(f"Error fetching user experiences: {e}")
         return jsonify({'detail': str(e)}), 500
 
+@app.route('/api/experiences/<int:experience_id>', methods=['DELETE'])
+@login_required()
+def delete_experience(experience_id, current_user_id=None):
+    try:
+        # Get the experience
+        experience = db.session.get(Experience, experience_id)
+        if not experience:
+            return jsonify({'detail': 'Experience not found'}), 404
+            
+        # Check if the user owns this experience
+        if experience.user_id != current_user_id:
+            return jsonify({'detail': 'You can only delete your own experiences'}), 403
+            
+        # Delete the experience
+        db.session.delete(experience)
+        db.session.commit()
+        
+        return jsonify({'message': 'Experience deleted successfully'}), 200
+    except Exception as e:
+        print(f"Error deleting experience: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
 @app.route('/api/swipes', methods=['POST'])
 def create_swipe():
     try:
