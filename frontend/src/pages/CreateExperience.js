@@ -199,7 +199,7 @@ const CreateExperience = () => {
   const createExperience = async (experienceData) => {
     try {
       // Use fetch directly with credentials: 'include' to ensure cookies are sent
-      const response = await fetch(`${API_URL}/experiences`, {
+      const response = await fetch(`${API_URL}/api/experiences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

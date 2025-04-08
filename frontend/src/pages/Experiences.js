@@ -530,7 +530,7 @@ const Experiences = () => {
       // Real API call for saving with session authentication
       if (experienceData.id) {
         // PUT request for updating an experience
-        const response = await fetch(`${API_URL}/experiences/${experienceData.id}`, {
+        const response = await fetch(`${API_URL}/api/experiences/${experienceData.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -546,7 +546,7 @@ const Experiences = () => {
       } else {
         // POST request for creating a new experience
         console.log('Creating new experience');
-        const response = await fetch(`${API_URL}/experiences`, {
+        const response = await fetch(`${API_URL}/api/experiences`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -590,7 +590,7 @@ const Experiences = () => {
       // Session will handle authentication
       
       // Real API call with session authentication
-      await fetch(`${API_URL}/experiences/${experienceId}`, {
+      await fetch(`${API_URL}/api/experiences/${experienceId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
