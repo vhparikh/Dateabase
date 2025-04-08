@@ -692,7 +692,7 @@ def cas_callback():
                 class_year=2025,
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
-                password_hash=generate_password_hash(f"cas_{netid}_{secrets.token_hex(16)}") # Generate a random secure password
+                password_hash=secrets.token_hex(16)
             )
             db.session.add(new_user)
             db.session.commit()
