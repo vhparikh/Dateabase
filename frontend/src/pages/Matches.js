@@ -321,39 +321,166 @@ const EmptyState = () => (
   </div>
 );
 
+// Potential Match Card component
+const PotentialMatchCard = ({ match, onAccept, onReject }) => {
+  const [locationImage, setLocationImage] = useState(null);
+  
+  // Load location image on component mount
+  useEffect(() => {
+    if (match.experience.location_image) {
+      setLocationImage(match.experience.location_image);
+    } else if (match.experience.location) {
+      // Fallback to Unsplash if no location image is provided
+      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
+    }
+  }, [match.experience.location, match.experience.location_image]);
+  
+  return (
+    <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
+      {/* Header */}
+      <div className="relative">
+        <div className="h-32 bg-orange-50">
+          <img 
+            src={locationImage || `https://source.unsplash.com/random/800x600/?experience`} 
+            alt={match.experience.location} 
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
+        <div className="absolute -bottom-12 left-4">
+          <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden bg-gradient-to-r from-orange-start to-orange-end">
+            <img 
+              src={match.other_user.profile_image || `https://ui-avatars.com/api/?name=${match.other_user.name}&background=orange&color=fff`} 
+              alt={match.other_user.name} 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Content */}
+      <div className="pt-14 px-4 pb-4">
+        <h3 className="text-lg font-bold text-gray-800">{match.other_user.name}</h3>
+        <p className="text-sm text-gray-500 mb-2">Class of {match.other_user.class_year || 'N/A'}</p>
+        
+        <div className="p-3 bg-orange-50 rounded-lg mb-3">
+          <div className="text-sm font-medium text-orange-800">Interested in your experience:</div>
+          <div className="flex items-center mt-1">
+            <svg className="w-4 h-4 text-orange-700 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="text-gray-700 font-medium">{match.experience.location}</span>
+          </div>
+          <div className="mt-2 text-gray-600 text-sm">
+            {match.experience.description ? (
+              <div className="line-clamp-2">{match.experience.description}</div>
+            ) : (
+              <div>{match.experience.experience_type}</div>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => onReject(match.match_id)}
+            className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          >
+            Decline
+          </button>
+          <button 
+            onClick={() => onAccept(match.match_id)}
+            className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium hover:shadow-md transition-all"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Pending Match Card (matches you've sent that are waiting for response)
+const PendingSentMatchCard = ({ match }) => {
+  const [locationImage, setLocationImage] = useState(null);
+  
+  // Load location image on component mount
+  useEffect(() => {
+    if (match.experience.location_image) {
+      setLocationImage(match.experience.location_image);
+    } else if (match.experience.location) {
+      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
+    }
+  }, [match.experience.location, match.experience.location_image]);
+  
+  return (
+    <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
+      <div className="border-l-4 border-amber-400 px-4 py-3">
+        <div className="flex items-center">
+          <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center mr-2">
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <span className="text-sm font-medium text-gray-700">Waiting for response</span>
+        </div>
+      </div>
+      
+      <div className="p-4 flex items-center">
+        <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
+          <img 
+            src={match.other_user.profile_image || `https://ui-avatars.com/api/?name=${match.other_user.name}&background=orange&color=fff`}
+            alt={match.other_user.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
+        <div>
+          <h3 className="font-medium text-gray-800">{match.other_user.name}</h3>
+          <p className="text-sm text-gray-500">Class of {match.other_user.class_year || 'N/A'}</p>
+        </div>
+      </div>
+      
+      <div className="px-4 pb-4">
+        <div className="flex items-center mb-2">
+          <svg className="w-4 h-4 text-gray-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="text-sm text-gray-700">{match.experience.location}</span>
+        </div>
+        
+        <div className="text-xs text-gray-500">
+          Sent on {new Date(match.created_at).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Matches = () => {
-  const [matches, setMatches] = useState([]);
-  const [experiences, setExperiences] = useState([]);
+  const [confirmedMatches, setConfirmedMatches] = useState([]);
+  const [pendingReceivedMatches, setPendingReceivedMatches] = useState([]);
+  const [pendingSentMatches, setPendingSentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('confirmed');
+  
   const { user } = useContext(AuthContext);
   
-  const fetchExperiences = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/experiences`, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch experiences: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setExperiences(data);
-    } catch (err) {
-      console.error('Error fetching experiences:', err);
-    }
-  };
-
   const fetchMatches = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Fetch experiences first
-      await fetchExperiences();
+      if (!user || !user.id) {
+        throw new Error('User not authenticated');
+      }
       
       const response = await fetch(`${API_URL}/api/matches/${user.id}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include'
       });
       
@@ -362,14 +489,13 @@ const Matches = () => {
       }
       
       const data = await response.json();
+      console.log('Matches data:', data);
       
-      // Filter matches to only show pending matches for experiences the user created
-      const filteredMatches = data.filter(match => {
-        const experience = experiences.find(exp => exp.id === match.experience_id);
-        return experience && experience.user_id === user.id && match.status === 'pending';
-      });
+      // Set the matches by category
+      setConfirmedMatches(data.confirmed || []);
+      setPendingReceivedMatches(data.pending_received || []);
+      setPendingSentMatches(data.pending_sent || []);
       
-      setMatches(filteredMatches);
     } catch (err) {
       console.error('Error fetching matches:', err);
       setError('Failed to load matches. Please try again.');
@@ -377,10 +503,10 @@ const Matches = () => {
       setLoading(false);
     }
   };
-
+  
   const handleAcceptMatch = async (matchId) => {
     try {
-      setLoading(true);
+      setError(null);
       
       const response = await fetch(`${API_URL}/api/matches/${matchId}/accept`, {
         method: 'PUT',
@@ -391,23 +517,21 @@ const Matches = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to accept match');
+        throw new Error(`Failed to accept match: ${response.status}`);
       }
       
       // Refresh matches
       fetchMatches();
+      
     } catch (err) {
       console.error('Error accepting match:', err);
       setError('Failed to accept match. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
-
+  
   const handleRejectMatch = async (matchId) => {
     try {
-      setLoading(true);
+      setError(null);
       
       const response = await fetch(`${API_URL}/api/matches/${matchId}/reject`, {
         method: 'PUT',
@@ -418,73 +542,141 @@ const Matches = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to reject match');
+        throw new Error(`Failed to reject match: ${response.status}`);
       }
       
       // Refresh matches
       fetchMatches();
+      
     } catch (err) {
       console.error('Error rejecting match:', err);
       setError('Failed to reject match. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
   
   useEffect(() => {
-    fetchMatches();
-  }, [user.id]);
+    if (user) {
+      fetchMatches();
+    }
+  }, [user]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        
-        {/* Header */}
-        <div className="mb-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Your Matches</h1>
-          <p className="text-gray-600 mt-2">Connect with people who share your interests</p>
+          <button 
+            className="p-2 text-orange-600 hover:bg-orange-100 rounded-full transition-colors"
+            onClick={fetchMatches}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Tabs */}
+        <div className="bg-white rounded-xl mb-6 border border-orange-100 p-1 shadow-sm">
+          <div className="flex">
+            <button 
+              onClick={() => setActiveTab('confirmed')} 
+              className={`flex-1 py-3 px-4 rounded-lg text-center transition-colors ${
+                activeTab === 'confirmed' 
+                  ? 'bg-gradient-to-r from-orange-start to-orange-end text-white font-medium' 
+                  : 'text-gray-700 hover:bg-orange-50'
+              }`}
+            >
+              Confirmed Matches
+            </button>
+            <button 
+              onClick={() => setActiveTab('potential')} 
+              className={`flex-1 py-3 px-4 rounded-lg text-center transition-colors ${
+                activeTab === 'potential' 
+                  ? 'bg-gradient-to-r from-orange-start to-orange-end text-white font-medium' 
+                  : 'text-gray-700 hover:bg-orange-50'
+              }`}
+            >
+              Potential Matches
+              {pendingReceivedMatches.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+                  {pendingReceivedMatches.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         
         {/* Matches content */}
         {loading ? (
-          <div className="text-center py-16">
+          <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your matches...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center max-w-md mx-auto">
-            <p className="text-red-600 mb-2">{error}</p>
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+            <p>{error}</p>
             <button 
+              className="mt-2 px-4 py-2 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
               onClick={fetchMatches}
-              className="px-4 py-2 bg-white border border-red-300 rounded-md text-red-600 text-sm hover:bg-red-50"
             >
               Try Again
             </button>
           </div>
-        ) : matches.length === 0 ? (
-          <EmptyState />
+        ) : activeTab === 'confirmed' ? (
+          confirmedMatches.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="grid gap-4">
+              {confirmedMatches.map(match => (
+                <MatchCard key={match.match_id} match={match} />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-            {matches.map(match => (
-              <div key={match.id}>
-                <MatchCard match={match} />
-                <div className="flex justify-between mt-4">
-                  <button 
-                    onClick={() => handleAcceptMatch(match.id)}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
-                  >
-                    Accept
-                  </button>
-                  <button 
-                    onClick={() => handleRejectMatch(match.id)}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
-                  >
-                    Reject
-                  </button>
+          <div>
+            {pendingReceivedMatches.length === 0 && pendingSentMatches.length === 0 ? (
+              <div className="text-center py-10 bg-white rounded-xl shadow-sm">
+                <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">No potential matches yet</h3>
+                <p className="text-gray-600 mb-6">When someone shows interest in your experiences, you'll see them here</p>
+                <Link to="/experiences" className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all">
+                  Browse Experiences
+                </Link>
               </div>
-            ))}
+            ) : (
+              <div>
+                {pendingReceivedMatches.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold text-gray-800 mb-3">People interested in your experiences</h2>
+                    <div className="grid gap-4">
+                      {pendingReceivedMatches.map(match => (
+                        <PotentialMatchCard 
+                          key={match.match_id} 
+                          match={match} 
+                          onAccept={handleAcceptMatch} 
+                          onReject={handleRejectMatch} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {pendingSentMatches.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-800 mb-3">Your pending requests</h2>
+                    <div className="grid gap-4">
+                      {pendingSentMatches.map(match => (
+                        <PendingSentMatchCard key={match.match_id} match={match} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

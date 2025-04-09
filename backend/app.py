@@ -519,22 +519,55 @@ def record_swipe(current_user_id=None):
         # Check for match
         match = False
         if data['is_like']:  # Only create match if user swiped yes
-            # Check if the experience creator has also liked this experience
-            matching_swipe = UserSwipe.query.filter_by(
-                user_id=experience.user_id,
-                experience_id=data['experience_id'],
-                direction=True
+            # Check if the experience creator has also liked this user's experiences
+            # Get experiences created by the current user
+            user_experiences = Experience.query.filter_by(user_id=current_user_id).all()
+            experience_creator = experience.user_id
+            
+            # Check for mutual interest
+            for user_exp in user_experiences:
+                matching_swipe = UserSwipe.query.filter_by(
+                    user_id=experience_creator,
+                    experience_id=user_exp.id,
+                    direction=True
+                ).first()
+                
+                if matching_swipe:
+                    match = True
+                    
+                    # Check if match already exists
+                    existing_match = Match.query.filter(
+                        ((Match.user1_id == current_user_id) & (Match.user2_id == experience_creator)) |
+                        ((Match.user1_id == experience_creator) & (Match.user2_id == current_user_id))
+                    ).first()
+                    
+                    if not existing_match:
+                        # Create a match record between the two users
+                        match_record = Match(
+                            user1_id=current_user_id,
+                            user2_id=experience_creator,
+                            experience_id=data['experience_id'],
+                            status='pending'  # Pending until both users confirm
+                        )
+                        db.session.add(match_record)
+                        db.session.commit()
+                    break  # Only create one match between users
+            
+            # Also create a potential match for the experience owner to review
+            potential_match = Match.query.filter(
+                (Match.user1_id == current_user_id) & 
+                (Match.user2_id == experience_creator) &
+                (Match.experience_id == data['experience_id'])
             ).first()
             
-            if matching_swipe:
-                match = True
-                # Create a match record for the experience creator
-                match_record = Match(
-                    user_id=experience.user_id,
+            if not potential_match and not match:
+                potential_match = Match(
+                    user1_id=current_user_id,
+                    user2_id=experience_creator,
                     experience_id=data['experience_id'],
-                    status='pending'  # Pending until the creator accepts
+                    status='pending'
                 )
-                db.session.add(match_record)
+                db.session.add(potential_match)
                 db.session.commit()
         
         return jsonify({
@@ -549,21 +582,25 @@ def record_swipe(current_user_id=None):
 @app.route('/api/matches/<int:user_id>', methods=['GET'])
 def get_matches(user_id):
     try:
-        matches = Match.query.filter(
-            ((Match.user1_id == user_id) | (Match.user2_id == user_id)) & 
-            (Match.status == 'confirmed')
+        # Get both confirmed and pending matches for this user
+        all_matches = Match.query.filter(
+            (Match.user1_id == user_id) | (Match.user2_id == user_id)
         ).all()
         
-        result = []
-        for match in matches:
+        confirmed_matches = []
+        pending_received = []  # Matches where user is the experience owner and needs to accept
+        pending_sent = []      # Matches where user liked someone else's experience
+        
+        for match in all_matches:
+            # Determine the other user in the match
             other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
             other_user = User.query.get(other_user_id)
             experience = Experience.query.get(match.experience_id)
             
             if not other_user or not experience:
                 continue
-                
-            result.append({
+            
+            match_data = {
                 'match_id': match.id,
                 'other_user': {
                     'id': other_user.id,
@@ -580,13 +617,30 @@ def get_matches(user_id):
                     'latitude': experience.latitude,
                     'longitude': experience.longitude,
                     'place_id': experience.place_id,
-                    'location_image': experience.location_image
+                    'location_image': experience.location_image,
+                    'owner_id': experience.user_id
                 },
                 'created_at': match.created_at.isoformat() if match.created_at else None,
                 'status': match.status
-            })
+            }
+            
+            # Categorize the match
+            if match.status == 'confirmed':
+                confirmed_matches.append(match_data)
+            elif match.status == 'pending':
+                # If user is the experience owner, they need to accept/reject
+                if experience.user_id == user_id:
+                    pending_received.append(match_data)
+                else:
+                    # User sent the like
+                    pending_sent.append(match_data)
         
-        return jsonify(result)
+        # Return categorized matches
+        return jsonify({
+            'confirmed': confirmed_matches,
+            'pending_received': pending_received,
+            'pending_sent': pending_sent
+        })
     except Exception as e:
         print(f"Error fetching matches: {e}")
         return jsonify({'error': str(e)}), 500
@@ -980,16 +1034,31 @@ def accept_match(match_id, current_user_id=None):
         if not match:
             return jsonify({'detail': 'Match not found'}), 404
             
-        # Verify that the current user is the experience creator
+        # Get the experience to verify ownership
         experience = Experience.query.get(match.experience_id)
-        if not experience or experience.user_id != current_user_id:
-            return jsonify({'detail': 'You are not authorized to accept this match'}), 403
+        if not experience:
+            return jsonify({'detail': 'Experience not found'}), 404
             
-        # Update match status
-        match.status = 'accepted'
-        db.session.commit()
+        # Verify that the current user is either involved in the match as user1 or user2
+        if current_user_id != match.user1_id and current_user_id != match.user2_id:
+            return jsonify({'detail': 'You are not authorized to interact with this match'}), 403
         
-        return jsonify({'message': 'Match accepted successfully'}), 200
+        # If the user is the experience owner, they can confirm the match
+        if experience.user_id == current_user_id:
+            # Update match status to confirmed
+            match.status = 'confirmed'
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Match accepted successfully', 
+                'match': {
+                    'id': match.id,
+                    'status': match.status,
+                    'experience_id': match.experience_id
+                }
+            }), 200
+        else:
+            return jsonify({'detail': 'Only the experience owner can accept a match'}), 403
     except Exception as e:
         print(f"Error accepting match: {e}")
         db.session.rollback()
@@ -1004,11 +1073,16 @@ def reject_match(match_id, current_user_id=None):
         if not match:
             return jsonify({'detail': 'Match not found'}), 404
             
-        # Verify that the current user is the experience creator
+        # Get the experience to verify ownership
         experience = Experience.query.get(match.experience_id)
-        if not experience or experience.user_id != current_user_id:
-            return jsonify({'detail': 'You are not authorized to reject this match'}), 403
+        if not experience:
+            return jsonify({'detail': 'Experience not found'}), 404
             
+        # Verify that the current user is either involved in the match as user1 or user2
+        if current_user_id != match.user1_id and current_user_id != match.user2_id:
+            return jsonify({'detail': 'You are not authorized to interact with this match'}), 403
+        
+        # Any user involved in the match can reject it
         # Delete the match
         db.session.delete(match)
         db.session.commit()
