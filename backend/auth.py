@@ -39,16 +39,14 @@ def validate(ticket):
         callback_url = flask.request.args.get('callback_url', '/')
         
         # Reconstruct the exact service URL used for CAS login
+        # Ensure consistent parameter order
         service_url = f"{scheme}://{host}/api/cas/callback"
+        if callback_url:
+            service_url += f"?callback_url={urllib.parse.quote(callback_url)}"
         
-        # Always include the callback_url parameter in the same format
-        # This must match exactly what we sent during login
-        service_url += f"?callback_url={urllib.parse.quote(callback_url)}"
-        
-        # Princeton CAS is extremely strict - adding or removing any parameter will cause validation to fail
         print(f"CAS validation using service URL: {service_url}")
         
-        # Build the validation URL
+        # Build the validation URL with consistent parameter order
         val_url = (_CAS_URL + "validate"
             + '?service=' + urllib.parse.quote(service_url)
             + '&ticket=' + urllib.parse.quote(ticket)
@@ -56,8 +54,8 @@ def validate(ticket):
         
         print(f"CAS validation URL: {val_url}")
         
-        # Make the validation request
-        response = requests.get(val_url, verify=False)
+        # Make the validation request with proper SSL verification
+        response = requests.get(val_url, verify=True)
         if response.status_code != 200:
             print('CAS validation failed with status code:', response.status_code)
             return None
