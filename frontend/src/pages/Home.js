@@ -536,7 +536,7 @@ const Home = () => {
   const [matchDetails, setMatchDetails] = useState(null);
   
   // States for matches section
-  const [matches, setMatches] = useState({ confirmed: [], pending: [] });
+  const [matches, setMatches] = useState([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState(null);
   
@@ -554,7 +554,7 @@ const Home = () => {
       
       // Only fetch matches if user is logged in
       if (!user?.id && !user?.sub) {
-        setMatches({ confirmed: [], pending: [] });
+        setMatches([]);
         setMatchesLoading(false);
         return;
       }
@@ -563,35 +563,17 @@ const Home = () => {
         withCredentials: true
       });
       
-      if (response.data) {
-        // The backend already categorizes matches for us
-        const confirmedMatches = response.data.confirmed || [];
-        
-        // Combine pending_received and pending_sent into a single 'pending' category
-        const pendingReceived = response.data.pending_received || [];
-        const pendingSent = response.data.pending_sent || [];
-        const allPendingMatches = [...pendingReceived, ...pendingSent];
-        
-        // Sort by most recent first (using created_at)
-        const sortByDate = (a, b) => {
-          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        };
-        
-        const sortedConfirmed = confirmedMatches.sort(sortByDate);
-        const sortedPending = allPendingMatches.sort(sortByDate);
-        
-        // Set state with categorized and sorted matches
-        setMatches({
-          confirmed: sortedConfirmed,
-          pending: sortedPending
-        });
+      if (response.data && Array.isArray(response.data)) {
+        setMatches(response.data.slice(0, 3)); // Only show up to 3 matches
+      } else if (response.data && response.data.matches) {
+        // Handle case where matches are nested in an object
+        setMatches(response.data.matches.slice(0, 3));
       } else {
-        setMatches({ confirmed: [], pending: [] });
+        setMatches([]);
       }
     } catch (err) {
       console.error('Error fetching matches:', err);
       setMatchesError('Failed to load matches');
-      setMatches({ confirmed: [], pending: [] });
     } finally {
       setMatchesLoading(false);
     }
@@ -839,7 +821,7 @@ const Home = () => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
             <p className="text-red-600">{matchesError}</p>
           </div>
-        ) : matches.confirmed.length === 0 && matches.pending.length === 0 ? (
+        ) : matches.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-6 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full mb-3">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -852,124 +834,41 @@ const Home = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Confirmed Matches Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-4">
-              <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Confirmed Matches ({matches.confirmed.length})
-              </h3>
-              
-              {matches.confirmed.length === 0 ? (
-                <p className="text-gray-500 text-sm py-2">No confirmed matches yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {matches.confirmed.slice(0, 2).map(match => {
-                    const otherUser = match.other_user || {};
-                    const experience = match.experience || {};
-                    
-                    return (
-                      <div key={match.match_id} className="bg-white rounded-xl shadow-sm border border-green-100 p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-center">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-lg">
-                            {otherUser.name?.charAt(0).toUpperCase() || 'U'}
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="font-medium text-gray-800">{otherUser.name || 'User'}</h3>
-                            <p className="text-sm text-gray-500">{experience.experience_type || 'Experience'}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            {experience.location || 'Princeton University'}
-                          </div>
-                          <a 
-                            href={`/matches/${match.match_id}`} 
-                            className="mt-2 text-green-600 hover:text-green-700 text-sm font-medium inline-flex items-center"
-                          >
-                            View Details
-                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {matches.slice(0, 3).map(match => (
+              <div key={match.id} className="bg-white rounded-xl shadow-sm border border-orange-100 p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center text-white font-bold text-lg">
+                    {match.matched_user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="font-medium text-gray-800">{match.matched_user?.username || 'User'}</h3>
+                    <p className="text-sm text-gray-500">{match.experience?.experience_type || 'Experience'}</p>
+                  </div>
                 </div>
-              )}
-            </div>
-            
-            {/* Potential Matches Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-4">
-              <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Potential Matches ({matches.pending.length})
-              </h3>
-              
-              {matches.pending.length === 0 ? (
-                <p className="text-gray-500 text-sm py-2">No potential matches yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {matches.pending.slice(0, 2).map(match => {
-                    const otherUser = match.other_user || {};
-                    const experience = match.experience || {};
-                    const isPendingReceived = experience.owner_id === (user?.id || user?.sub);
-                    
-                    return (
-                      <div key={match.match_id} className="bg-white rounded-xl shadow-sm border border-orange-100 p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center text-white font-bold text-lg">
-                              {otherUser.name?.charAt(0).toUpperCase() || 'U'}
-                            </div>
-                            <div className="ml-3">
-                              <h3 className="font-medium text-gray-800">{otherUser.name || 'User'}</h3>
-                              <p className="text-sm text-gray-500">{experience.experience_type || 'Experience'}</p>
-                            </div>
-                          </div>
-                          {isPendingReceived && (
-                            <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
-                              Awaiting your approval
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <svg className="w-4 h-4 mr-1 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            {experience.location || 'Princeton University'}
-                          </div>
-                          <a 
-                            href={`/matches/${match.match_id}`} 
-                            className="mt-2 text-orange-600 hover:text-orange-700 text-sm font-medium inline-flex items-center"
-                          >
-                            View Details
-                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <svg className="w-4 h-4 mr-1 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    {match.experience?.location || 'Princeton University'}
+                  </div>
+                  <a 
+                    href={`/matches/${match.id}`} 
+                    className="mt-2 text-orange-600 hover:text-orange-700 text-sm font-medium inline-flex items-center"
+                  >
+                    View Details
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </a>
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
-        )
-      </div>
-    </section>
+        )}
+      </section>
       
       {/* Match Modal */}
       <AnimatePresence>
