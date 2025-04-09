@@ -45,6 +45,12 @@ const AppWrapper = ({ children }) => {
     return <Navigate to="/login" />;
   }
   
+  // Check if user needs to complete onboarding
+  if (user.onboarding_completed === false) {
+    console.log("User needs to complete onboarding, redirecting...");
+    return <Navigate to="/onboarding" />;
+  }
+  
   // Otherwise, render the children
   return children;
 };
