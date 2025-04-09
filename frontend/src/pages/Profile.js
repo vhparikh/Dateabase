@@ -206,14 +206,54 @@ const Profile = () => {
                   <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.name || 'Not set'}</p>
                 </div>
                 
-                <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">NetID</h3>
-                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.netid || 'Not set'}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Gender</h3>
+                    <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.gender || 'Not set'}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Sexuality</h3>
+                    <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.sexuality || 'Not set'}</p>
+                  </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">Class Year</h3>
-                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.class_year || 'Not set'}</p>
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">Height</h3>
+                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">
+                    {userProfile?.height ? 
+                      `${userProfile.height} cm (${Math.floor(userProfile.height / 30.48)} ft ${Math.round(userProfile.height % 30.48 / 2.54)} in)` 
+                      : 'Not set'}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">NetID</h3>
+                    <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.netid || 'Not set'}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Class Year</h3>
+                    <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.class_year || 'Not set'}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Current Location</h3>
+                    <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.location || 'Not set'}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Hometown</h3>
+                    <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.hometown || 'Not set'}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">Major</h3>
+                  <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.major || 'Not set'}</p>
                 </div>
                 
                 <div>
@@ -223,6 +263,38 @@ const Profile = () => {
                       {renderInterests() || <p className="text-gray-500">No interests added yet</p>}
                     </div>
                   </div>
+                </div>
+                
+                {/* Prompt Responses */}
+                <div className="mt-8">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">About Me</h3>
+                  
+                  {userProfile?.prompt1 && userProfile?.answer1 && (
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 mb-4 border border-orange-100">
+                      <h4 className="font-medium text-orange-700 mb-2">{userProfile.prompt1}</h4>
+                      <p className="text-gray-800">{userProfile.answer1}</p>
+                    </div>
+                  )}
+                  
+                  {userProfile?.prompt2 && userProfile?.answer2 && (
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 mb-4 border border-orange-100">
+                      <h4 className="font-medium text-orange-700 mb-2">{userProfile.prompt2}</h4>
+                      <p className="text-gray-800">{userProfile.answer2}</p>
+                    </div>
+                  )}
+                  
+                  {userProfile?.prompt3 && userProfile?.answer3 && (
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-100">
+                      <h4 className="font-medium text-orange-700 mb-2">{userProfile.prompt3}</h4>
+                      <p className="text-gray-800">{userProfile.answer3}</p>
+                    </div>
+                  )}
+                  
+                  {(!userProfile?.prompt1 || !userProfile?.answer1) && 
+                   (!userProfile?.prompt2 || !userProfile?.answer2) && 
+                   (!userProfile?.prompt3 || !userProfile?.answer3) && (
+                    <p className="text-gray-500 italic">No prompt responses added yet. Complete your onboarding to add more about yourself!</p>
+                  )}
                 </div>
               </div>
             </div>

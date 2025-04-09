@@ -16,11 +16,23 @@ class User(db.Model):
     netid = db.Column(db.String(50), unique=True, nullable=True)  # Princeton NetID
     name = db.Column(db.String(100), nullable=False)
     gender = db.Column(db.String(20), nullable=True)  # Made nullable for initial CAS login
+    sexuality = db.Column(db.String(30), nullable=True)  # Added for Hinge-like onboarding
+    height = db.Column(db.Integer, nullable=True)  # Height in cm
+    location = db.Column(db.String(100), nullable=True)  # Location/area
+    hometown = db.Column(db.String(100), nullable=True)  # Hometown
+    major = db.Column(db.String(100), nullable=True)  # Major
     class_year = db.Column(db.Integer, nullable=True)  # Made nullable for initial CAS login
     interests = db.Column(db.Text, nullable=True)  # Made nullable for initial CAS login
     profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
+    # Hinge-like prompt responses
+    prompt1 = db.Column(db.String(200), nullable=True)  # The prompt question
+    answer1 = db.Column(db.Text, nullable=True)  # The answer to prompt 1
+    prompt2 = db.Column(db.String(200), nullable=True)  # The prompt question
+    answer2 = db.Column(db.Text, nullable=True)  # The answer to prompt 2
+    prompt3 = db.Column(db.String(200), nullable=True)  # The prompt question
+    answer3 = db.Column(db.Text, nullable=True)  # The answer to prompt 3
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
