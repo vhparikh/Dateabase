@@ -1109,7 +1109,7 @@ def reject_match(match_id, current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
-# Catch-all route to handle React Router paths
+# Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
 def catch_all(path):
     # First try to serve as a static file (CSS, JS, etc.)
@@ -1118,6 +1118,27 @@ def catch_all(path):
     except:
         # If not a static file, serve the index.html for client-side routing
         return app.send_static_file('index.html')
+
+# Add specific routes for top-level client-side routes
+@app.route('/swipe')
+def serve_swipe():
+    return app.send_static_file('index.html')
+
+@app.route('/login')
+def serve_login():
+    return app.send_static_file('index.html')
+
+@app.route('/profile')
+def serve_profile():
+    return app.send_static_file('index.html')
+
+@app.route('/experiences')
+def serve_experiences():
+    return app.send_static_file('index.html')
+
+@app.route('/matches')
+def serve_matches():
+    return app.send_static_file('index.html')
 
 # Function to check if profile_image column exists in the user table
 def check_profile_image_column():
