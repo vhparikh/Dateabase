@@ -414,9 +414,24 @@ def delete_experience(experience_id, current_user_id=None):
         # Check if the user owns this experience
         if experience.user_id != current_user_id:
             return jsonify({'detail': 'You can only delete your own experiences'}), 403
-            
-        # Delete the experience
+        
+        # First, delete any matches related to this experience
+        matches = Match.query.filter_by(experience_id=experience_id).all()
+        for match in matches:
+            print(f"Deleting match {match.id} for experience {experience_id}")
+            db.session.delete(match)
+        
+        # Next, delete any user swipes related to this experience
+        swipes = UserSwipe.query.filter_by(experience_id=experience_id).all()
+        for swipe in swipes:
+            print(f"Deleting user swipe {swipe.id} for experience {experience_id}")
+            db.session.delete(swipe)
+        
+        # Now we can safely delete the experience
+        print(f"Deleting experience {experience_id}")
         db.session.delete(experience)
+        
+        # Commit all changes
         db.session.commit()
         
         return jsonify({'message': 'Experience deleted successfully'}), 200
