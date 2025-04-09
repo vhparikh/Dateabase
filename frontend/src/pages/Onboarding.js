@@ -76,12 +76,29 @@ const Onboarding = () => {
 
       if (response.ok) {
         // Successfully completed onboarding
+        const data = await response.json();
         
-        // Reload user profile with updated info
-        await loadUserProfile();
-        
-        // Redirect to main page
-        navigate('/');
+        // Ensure we have valid authentication tokens
+        const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+            
+        if (tokenResponse.ok) {
+          console.log('Successfully refreshed authentication tokens after onboarding');
+          // Force reload user profile with updated info to ensure authentication state is current
+          await loadUserProfile();
+          
+          // Small delay to ensure state is updated before navigation
+          setTimeout(() => {
+            navigate('/');
+          }, 300);
+        } else {
+          console.error('Failed to refresh tokens after onboarding');
+          setError('Authentication error. Please try logging in again.');
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to complete onboarding');
@@ -108,11 +125,30 @@ const Onboarding = () => {
       });
 
       if (response.ok) {
-        // Reload user profile
-        await loadUserProfile();
+        // Successfully completed onboarding
+        const data = await response.json();
         
-        // Redirect to main page
-        navigate('/');
+        // Ensure we have valid authentication tokens
+        const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+            
+        if (tokenResponse.ok) {
+          console.log('Successfully refreshed authentication tokens after skipping onboarding');
+          // Force reload user profile with updated info to ensure authentication state is current
+          await loadUserProfile();
+          
+          // Small delay to ensure state is updated before navigation
+          setTimeout(() => {
+            navigate('/');
+          }, 300);
+        } else {
+          console.error('Failed to refresh tokens after skipping onboarding');
+          setError('Authentication error. Please try logging in again.');
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to complete onboarding');
