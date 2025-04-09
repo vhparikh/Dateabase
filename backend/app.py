@@ -826,6 +826,28 @@ def cas_status():
     is_auth = is_authenticated()
     return jsonify({'authenticated': is_auth})
 
+# Improved CAS callback handler - supports both API redirection and serving React app
+@app.route('/cas/callback', methods=['GET'])
+def improved_cas_callback():
+    """
+    Intelligent CAS callback handler that either:
+    1. Redirects to /api/cas/callback when there's a ticket parameter (from CAS server)
+    2. Serves the React app's index.html when no ticket (for React routing)
+    """
+    # Check if this is a CAS callback with a ticket
+    ticket = request.args.get('ticket')
+    
+    if ticket:
+        # This is a direct callback from CAS with a ticket - redirect to the API endpoint
+        query_params = request.query_string.decode('utf-8')
+        api_endpoint = f"/api/cas/callback?{query_params}"
+        print(f"Redirecting CAS callback to API endpoint: {api_endpoint}")
+        return redirect(api_endpoint)
+    else:
+        # This is a frontend route request - serve the React app
+        print("Serving React app for CAS callback route")
+        return app.send_static_file('index.html')
+
 # API endpoint to get or update the current user's profile
 @app.route('/api/me', methods=['GET', 'PUT'])
 def get_or_update_current_user():
@@ -1015,15 +1037,6 @@ def reject_match(match_id, current_user_id=None):
         print(f"Error rejecting match: {e}")
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
-
-# Explicitly handle CAS callback route to serve React app
-@app.route('/cas/callback')
-def serve_cas_callback():
-    """
-    Explicitly serve the React app's index.html for the /cas/callback route
-    This ensures the React router can handle the CAS callback on Heroku
-    """
-    return app.send_static_file('index.html')
 
 # Catch-all route to handle React Router paths
 @app.route('/<path:path>')
