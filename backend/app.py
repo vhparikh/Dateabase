@@ -883,7 +883,8 @@ def cas_logout():
         # In development, get from Origin header or use localhost:3000 as fallback
         frontend_url = request.headers.get('Origin', 'http://localhost:3000')
     
-    redirect_url = f"{frontend_url}/login"
+    # Redirect to the root URL after logout, let frontend handle the routing
+    redirect_url = f"{frontend_url}/"
     logout_url = f"{_CAS_URL}logout?service={quote(redirect_url)}"
     
     # Return the logout URL to the frontend so it can redirect
