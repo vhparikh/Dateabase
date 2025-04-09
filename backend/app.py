@@ -793,6 +793,14 @@ def cas_callback():
         
         # Redirect to the frontend callback with the ticket and onboarding status
         redirect_url = f"{frontend_callback}?ticket={ticket}&needs_onboarding={str(needs_onboarding).lower()}"
+        
+        # For Heroku environment, use a relative URL to avoid cross-domain issues
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true' or os.environ.get('HEROKU') == 'true':
+            # Use relative URL for redirect in production
+            relative_path = f"/cas/callback?ticket={ticket}&needs_onboarding={str(needs_onboarding).lower()}"
+            return redirect(relative_path)
+        
+        # For local development, use the full URL with domain
         return redirect(redirect_url)
     except Exception as e:
         return jsonify({'detail': f'Error: {str(e)}'}), 500
@@ -1045,31 +1053,20 @@ with app.app_context():
     except Exception as e:
         print(f"Error initializing database: {e}")
 
-# Serve React frontend at root URL and handle client-side routing
-# All API routes should be defined above this point
-
-# Catch-all route to serve the React app for all frontend routes
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_frontend(path):
-    # If this is an API route that wasn't matched by a specific handler,
-    # return 404 as it's an invalid API endpoint
-    if path.startswith('api/') or path.startswith('/api/'):
-        return jsonify({'error': 'API endpoint not found'}), 404
-    
-    # For all static files, try to serve them directly
-    if path and '.' in path.split('/')[-1]:
-        try:
-            return app.send_static_file(path)
-        except Exception as e:
-            print(f"Error serving static file {path}: {e}")
-            # Fall through to serving index.html
-    
-    # For all other routes, serve the React app's index.html
-    # This ensures that React Router can handle all client-side routes
-    # including /cas/callback which is crucial for the CAS authentication flow
-    print(f"Serving React app for path: {path}")
+# Serve React frontend at root URL in production
+@app.route('/')
+def serve_frontend():
     return app.send_static_file('index.html')
+
+# Catch-all route to handle React Router paths
+@app.route('/<path:path>')
+def catch_all(path):
+    # First try to serve as a static file (CSS, JS, etc.)
+    try:
+        return app.send_static_file(path)
+    except:
+        # If not a static file, serve the index.html for client-side routing
+        return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():
