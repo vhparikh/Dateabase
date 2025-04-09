@@ -1016,6 +1016,25 @@ def reject_match(match_id, current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
+# Explicitly handle CAS callback route to serve React app
+@app.route('/cas/callback')
+def serve_cas_callback():
+    """
+    Explicitly serve the React app's index.html for the /cas/callback route
+    This ensures the React router can handle the CAS callback on Heroku
+    """
+    return app.send_static_file('index.html')
+
+# Catch-all route to handle React Router paths
+@app.route('/<path:path>')
+def catch_all(path):
+    # First try to serve as a static file (CSS, JS, etc.)
+    try:
+        return app.send_static_file(path)
+    except:
+        # If not a static file, serve the index.html for client-side routing
+        return app.send_static_file('index.html')
+
 # Function to check if profile_image column exists in the user table
 def check_profile_image_column():
     try:
@@ -1057,16 +1076,6 @@ with app.app_context():
 @app.route('/')
 def serve_frontend():
     return app.send_static_file('index.html')
-
-# Catch-all route to handle React Router paths
-@app.route('/<path:path>')
-def catch_all(path):
-    # First try to serve as a static file (CSS, JS, etc.)
-    try:
-        return app.send_static_file(path)
-    except:
-        # If not a static file, serve the index.html for client-side routing
-        return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():
