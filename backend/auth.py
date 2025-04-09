@@ -39,7 +39,7 @@ def validate(ticket):
         callback_url = flask.request.args.get('callback_url', '/')
         
         # Reconstruct the exact service URL used for CAS login
-        service_url = f"{scheme}://{host}/api/cas/callback"
+        service_url = f"{scheme}://{host}/cas/callback"
         
         # Always include the callback_url parameter in the same format
         # This must match exactly what we sent during login
