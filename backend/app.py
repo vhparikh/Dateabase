@@ -710,8 +710,16 @@ def cas_callback():
         ticket = request.args.get('ticket')
         callback_url = request.args.get('callback_url', '/')
         
-        # Get the frontend URL from the Origin header or use localhost:3000 as fallback
-        frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        # Determine the frontend URL based on environment
+        # In production, the app is served from the same domain
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+            # In production, use the same host
+            scheme = request.headers.get('X-Forwarded-Proto', 'https')
+            frontend_url = f"{scheme}://{request.host}"
+        else:
+            # In development, get from Origin header or use localhost:3000 as fallback
+            frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        
         frontend_callback = f"{frontend_url}/cas/callback"
         
         if not ticket:
@@ -785,6 +793,14 @@ def cas_callback():
         
         # Redirect to the frontend callback with the ticket and onboarding status
         redirect_url = f"{frontend_callback}?ticket={ticket}&needs_onboarding={str(needs_onboarding).lower()}"
+        
+        # For Heroku environment, use a relative URL to avoid cross-domain issues
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true' or os.environ.get('HEROKU') == 'true':
+            # Use relative URL for redirect in production
+            relative_path = f"/cas/callback?ticket={ticket}&needs_onboarding={str(needs_onboarding).lower()}"
+            return redirect(relative_path)
+        
+        # For local development, use the full URL with domain
         return redirect(redirect_url)
     except Exception as e:
         return jsonify({'detail': f'Error: {str(e)}'}), 500
@@ -809,6 +825,28 @@ def cas_status():
     """Check if user is authenticated with CAS"""
     is_auth = is_authenticated()
     return jsonify({'authenticated': is_auth})
+
+# Improved CAS callback handler - supports both API redirection and serving React app
+@app.route('/cas/callback', methods=['GET'])
+def improved_cas_callback():
+    """
+    Intelligent CAS callback handler that either:
+    1. Redirects to /api/cas/callback when there's a ticket parameter (from CAS server)
+    2. Serves the React app's index.html when no ticket (for React routing)
+    """
+    # Check if this is a CAS callback with a ticket
+    ticket = request.args.get('ticket')
+    
+    if ticket:
+        # This is a direct callback from CAS with a ticket - redirect to the API endpoint
+        query_params = request.query_string.decode('utf-8')
+        api_endpoint = f"/api/cas/callback?{query_params}"
+        print(f"Redirecting CAS callback to API endpoint: {api_endpoint}")
+        return redirect(api_endpoint)
+    else:
+        # This is a frontend route request - serve the React app
+        print("Serving React app for CAS callback route")
+        return app.send_static_file('index.html')
 
 # API endpoint to get or update the current user's profile
 @app.route('/api/me', methods=['GET', 'PUT'])
@@ -1000,6 +1038,16 @@ def reject_match(match_id, current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
+# Catch-all route to handle React Router paths
+@app.route('/<path:path>')
+def catch_all(path):
+    # First try to serve as a static file (CSS, JS, etc.)
+    try:
+        return app.send_static_file(path)
+    except:
+        # If not a static file, serve the index.html for client-side routing
+        return app.send_static_file('index.html')
+
 # Function to check if profile_image column exists in the user table
 def check_profile_image_column():
     try:
@@ -1041,16 +1089,6 @@ with app.app_context():
 @app.route('/')
 def serve_frontend():
     return app.send_static_file('index.html')
-
-# Catch-all route to handle React Router paths
-@app.route('/<path:path>')
-def catch_all(path):
-    # First try to serve as a static file (CSS, JS, etc.)
-    try:
-        return app.send_static_file(path)
-    except:
-        # If not a static file, serve the index.html for client-side routing
-        return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():

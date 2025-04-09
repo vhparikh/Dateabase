@@ -24,18 +24,42 @@ def strip_ticket(url):
 # Validate a login ticket by contacting the CAS server. If
 # valid, return the user's user_info; otherwise, return None.
 def validate(ticket):
-    val_url = (_CAS_URL + "validate"
-        + '?service='
-        + urllib.parse.quote(strip_ticket(flask.request.url))
-        + '&ticket='
-        + urllib.parse.quote(ticket)
-        + '&format=json')
-    
+    """Validate a login ticket by contacting the CAS server"""
     try:
-        # Use requests instead of urllib and verify=False for development
+        # Princeton CAS requires that the service URL in validation EXACTLY matches 
+        # the one used during login, including all query parameters in the same order
+        
+        # Extract current host and protocol
+        if 'herokuapp.com' in flask.request.host:
+            scheme = 'https'  # Force HTTPS for Heroku
+        else:
+            scheme = 'http'   # Use HTTP for local development
+        
+        host = flask.request.host
+        callback_url = flask.request.args.get('callback_url', '/')
+        
+        # Reconstruct the exact service URL used for CAS login
+        service_url = f"{scheme}://{host}/api/cas/callback"
+        
+        # Always include the callback_url parameter in the same format
+        # This must match exactly what we sent during login
+        service_url += f"?callback_url={urllib.parse.quote(callback_url)}"
+        
+        # Princeton CAS is extremely strict - adding or removing any parameter will cause validation to fail
+        print(f"CAS validation using service URL: {service_url}")
+        
+        # Build the validation URL
+        val_url = (_CAS_URL + "validate"
+            + '?service=' + urllib.parse.quote(service_url)
+            + '&ticket=' + urllib.parse.quote(ticket)
+            + '&format=json')
+        
+        print(f"CAS validation URL: {val_url}")
+        
+        # Make the validation request
         response = requests.get(val_url, verify=False)
         if response.status_code != 200:
-            print('CAS validation failed:', response.status_code)
+            print('CAS validation failed with status code:', response.status_code)
             return None
             
         result = response.json()
@@ -103,5 +127,25 @@ def get_cas_login_url(callback_url=None):
     if callback_url is None:
         callback_url = request.args.get('callback_url', request.referrer or '/')
     
-    service_url = f"{request.url_root.rstrip('/')}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
-    return f"{_CAS_URL}login?service={urllib.parse.quote(service_url)}"
+    # Determine service URL based on environment
+    if 'herokuapp.com' in request.host:
+        # In Heroku, we'll use the app's domain
+        scheme = request.headers.get('X-Forwarded-Proto', 'https')
+        host = request.host
+        
+        # Our callback endpoint is /api/cas/callback on the backend
+        # But the frontend at /cas/callback will redirect to this
+        api_callback = f"{scheme}://{host}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
+        
+        print(f"Heroku CAS login service URL: {api_callback}")
+    else:
+        # In local development
+        base_url = request.url_root.rstrip('/')
+        api_callback = f"{base_url}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
+        print(f"Local CAS login service URL: {api_callback}")
+    
+    # Generate the CAS login URL
+    login_url = f"{_CAS_URL}login?service={urllib.parse.quote(api_callback)}"
+    print(f"Final CAS login URL: {login_url}")
+    
+    return login_url
