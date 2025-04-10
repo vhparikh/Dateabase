@@ -1289,33 +1289,6 @@ with app.app_context():
 def serve_frontend():
     return app.send_static_file('index.html')
 
-# Admin route to reset all users' onboarding status
-@app.route('/api/admin/reset-onboarding', methods=['POST'])
-def reset_all_onboarding():
-    try:
-        # Check if user is authenticated via CAS
-        if not is_authenticated():
-            return jsonify({'detail': 'Authentication required'}), 401
-            
-        # Get all users and set onboarding_completed to False
-        users = User.query.all()
-        count = 0
-        
-        for user in users:
-            user.onboarding_completed = False
-            count += 1
-            
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Reset onboarding status for {count} users',
-            'count': count
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'detail': f'Error: {str(e)}'}), 500
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
