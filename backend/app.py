@@ -161,30 +161,59 @@ def login():
 def refresh_token():
     refresh = request.json.get('refresh')
     
-    if not refresh:
-        return jsonify({'detail': 'Refresh token is required'}), 400
-    
     try:
-        # Decode the refresh token to get the user ID
-        user_id = decode_token(refresh)
-        if isinstance(user_id, str) and user_id.startswith('Invalid'):
-            return jsonify({'detail': user_id}), 401
+        # If no refresh token provided, check if user is authenticated via CAS session
+        if not refresh:
+            # Check if user is authenticated via CAS
+            if not is_authenticated():
+                return jsonify({'detail': 'Authentication required'}), 401
             
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'detail': 'User not found'}), 404
-        
-        access_token = jwt.encode({
-            'sub': user.id,
-            'username': user.username,
-            'exp': datetime.now(timezone.utc) + timedelta(days=30)
-        }, app.config['SECRET_KEY'], algorithm='HS256')
-        
-        return jsonify({
-            'access': access_token,
-            'refresh': refresh  # Return the same refresh token
-        })
+            user_info = session.get('user_info', {})
+            netid = user_info.get('user', '')
+            
+            # Find the user by netid
+            user = User.query.filter_by(netid=netid).first()
+            if not user:
+                return jsonify({'detail': 'User not found'}), 404
+            
+            # Generate new tokens
+            access_token = jwt.encode({
+                'sub': user.id,
+                'username': user.username,
+                'exp': datetime.now(timezone.utc) + timedelta(days=30)
+            }, app.config['SECRET_KEY'], algorithm='HS256')
+            
+            refresh_token = jwt.encode({
+                'sub': user.id,
+                'exp': datetime.now(timezone.utc) + timedelta(days=90)
+            }, app.config['SECRET_KEY'], algorithm='HS256')
+            
+            return jsonify({
+                'access': access_token,
+                'refresh': refresh_token
+            })
+        else:
+            # Handle provided refresh token
+            user_id = decode_token(refresh)
+            if isinstance(user_id, str) and user_id.startswith('Invalid'):
+                return jsonify({'detail': user_id}), 401
+                
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'detail': 'User not found'}), 404
+            
+            access_token = jwt.encode({
+                'sub': user.id,
+                'username': user.username,
+                'exp': datetime.now(timezone.utc) + timedelta(days=30)
+            }, app.config['SECRET_KEY'], algorithm='HS256')
+            
+            return jsonify({
+                'access': access_token,
+                'refresh': refresh  # Return the same refresh token
+            })
     except Exception as e:
+        print(f"Error in refresh_token: {e}")
         return jsonify({'detail': str(e)}), 500
 
 # User Routes
@@ -1259,6 +1288,33 @@ with app.app_context():
 @app.route('/')
 def serve_frontend():
     return app.send_static_file('index.html')
+
+# Admin route to reset all users' onboarding status
+@app.route('/api/admin/reset-onboarding', methods=['POST'])
+def reset_all_onboarding():
+    try:
+        # Check if user is authenticated via CAS
+        if not is_authenticated():
+            return jsonify({'detail': 'Authentication required'}), 401
+            
+        # Get all users and set onboarding_completed to False
+        users = User.query.all()
+        count = 0
+        
+        for user in users:
+            user.onboarding_completed = False
+            count += 1
+            
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Reset onboarding status for {count} users',
+            'count': count
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     with app.app_context():
