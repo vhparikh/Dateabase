@@ -253,29 +253,68 @@ def update_user(user_id):
         user = User.query.get_or_404(user_id)
         data = request.json
         
+        # Update basic profile information
         if 'name' in data:
             user.name = data['name']
         if 'gender' in data:
             user.gender = data['gender']
+        if 'sexuality' in data:
+            user.sexuality = data['sexuality']
+        if 'height' in data:
+            user.height = data['height']
+        if 'location' in data:
+            user.location = data['location']
+        if 'hometown' in data:
+            user.hometown = data['hometown']
+        if 'major' in data:
+            user.major = data['major']
         if 'class_year' in data:
             user.class_year = data['class_year']
         if 'interests' in data:
             user.interests = data['interests']
         if 'profile_image' in data:
             user.profile_image = data['profile_image']
+            
+        # Handle prompts and answers
+        if 'prompt1' in data:
+            user.prompt1 = data['prompt1']
+        if 'answer1' in data:
+            user.answer1 = data['answer1']
+        if 'prompt2' in data:
+            user.prompt2 = data['prompt2']
+        if 'answer2' in data:
+            user.answer2 = data['answer2']
+        if 'prompt3' in data:
+            user.prompt3 = data['prompt3']
+        if 'answer3' in data:
+            user.answer3 = data['answer3']
+            
+        # Handle password updates
         if 'password' in data:
             user.set_password(data['password'])
             
         db.session.commit()
         
+        # Return updated user data
         return jsonify({
             'id': user.id,
             'username': user.username,
             'name': user.name,
             'gender': user.gender,
+            'sexuality': user.sexuality,
+            'height': user.height,
+            'location': user.location,
+            'hometown': user.hometown,
+            'major': user.major,
             'class_year': user.class_year,
             'interests': user.interests,
             'profile_image': user.profile_image,
+            'prompt1': user.prompt1,
+            'answer1': user.answer1,
+            'prompt2': user.prompt2,
+            'answer2': user.answer2,
+            'prompt3': user.prompt3,
+            'answer3': user.answer3,
             'message': 'User updated successfully'
         })
     except Exception as e:

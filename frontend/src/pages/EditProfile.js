@@ -10,7 +10,20 @@ const EditProfile = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    interests: {}
+    gender: '',
+    sexuality: '',
+    height: '',
+    location: '',
+    hometown: '',
+    major: '',
+    class_year: '',
+    interests: {},
+    prompt1: '',
+    answer1: '',
+    prompt2: '',
+    answer2: '',
+    prompt3: '',
+    answer3: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -21,6 +34,28 @@ const EditProfile = () => {
   const interestOptions = [
     'Coffee', 'Dining', 'Study', 'Movies', 'Hiking', 'Music',
     'Art', 'Sports', 'Gaming', 'Reading', 'Travel', 'Photography'
+  ];
+  
+  // Gender options
+  const genderOptions = [
+    'Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'
+  ];
+  
+  // Sexuality options
+  const sexualityOptions = [
+    'Straight', 'Gay', 'Lesbian', 'Bisexual', 'Pansexual', 'Asexual', 'Other', 'Prefer not to say'
+  ];
+  
+  // Prompt options
+  const promptOptions = [
+    'My favorite spot on campus is...',
+    'Two truths and a lie...',
+    'You should match with me if...',
+    'My typical Friday night...',
+    'I get way too excited about...',
+    'Best travel story...',
+    'My most controversial opinion...',
+    'My favorite class at Princeton...'
   ];
   
   useEffect(() => {
@@ -55,7 +90,20 @@ const EditProfile = () => {
       setFormData({
         firstName,
         lastName,
-        interests: interestsObj
+        gender: user.gender || '',
+        sexuality: user.sexuality || '',
+        height: user.height || '',
+        location: user.location || '',
+        hometown: user.hometown || '',
+        major: user.major || '',
+        class_year: user.class_year || '',
+        interests: interestsObj,
+        prompt1: user.prompt1 || '',
+        answer1: user.answer1 || '',
+        prompt2: user.prompt2 || '',
+        answer2: user.answer2 || '',
+        prompt3: user.prompt3 || '',
+        answer3: user.answer3 || ''
       });
     }
   }, [user]);
@@ -96,9 +144,26 @@ const EditProfile = () => {
       
       const interests = JSON.stringify(cleanInterests);
       
+      // Convert height to number if it's provided
+      const height = formData.height ? parseInt(formData.height, 10) : null;
+      const class_year = formData.class_year ? parseInt(formData.class_year, 10) : null;
+      
       const userData = {
         name,
-        interests
+        gender: formData.gender,
+        sexuality: formData.sexuality,
+        height,
+        location: formData.location,
+        hometown: formData.hometown,
+        major: formData.major,
+        class_year,
+        interests,
+        prompt1: formData.prompt1,
+        answer1: formData.answer1,
+        prompt2: formData.prompt2,
+        answer2: formData.answer2,
+        prompt3: formData.prompt3,
+        answer3: formData.answer3
       };
       
       // Make API call to update user
@@ -177,8 +242,129 @@ const EditProfile = () => {
                 </div>
               </div>
               
+              {/* Gender and Sexuality */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div>
+                  <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
+                    Gender
+                  </label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="">Select gender</option>
+                    {genderOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="sexuality" className="block text-sm font-medium text-gray-700 mb-1">
+                    Sexuality
+                  </label>
+                  <select
+                    id="sexuality"
+                    name="sexuality"
+                    value={formData.sexuality}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="">Select sexuality</option>
+                    {sexualityOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Height and Class Year */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div>
+                  <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-1">
+                    Height (cm)
+                  </label>
+                  <input
+                    type="number"
+                    id="height"
+                    name="height"
+                    value={formData.height}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter your height in cm"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="class_year" className="block text-sm font-medium text-gray-700 mb-1">
+                    Class Year
+                  </label>
+                  <input
+                    type="number"
+                    id="class_year"
+                    name="class_year"
+                    value={formData.class_year}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter your graduation year"
+                  />
+                </div>
+              </div>
+              
+              {/* Location and Hometown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                    Current Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Where you currently live"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="hometown" className="block text-sm font-medium text-gray-700 mb-1">
+                    Hometown
+                  </label>
+                  <input
+                    type="text"
+                    id="hometown"
+                    name="hometown"
+                    value={formData.hometown}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Where you're from"
+                  />
+                </div>
+              </div>
+              
+              {/* Major */}
+              <div className="mt-6">
+                <label htmlFor="major" className="block text-sm font-medium text-gray-700 mb-1">
+                  Major
+                </label>
+                <input
+                  type="text"
+                  id="major"
+                  name="major"
+                  value={formData.major}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="Your field of study"
+                />
+              </div>
+              
               {/* Interests */}
-              <div>
+              <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Interests
                 </label>
@@ -204,6 +390,111 @@ const EditProfile = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+              
+              {/* Prompt 1 */}
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Profile Prompts</h3>
+                <div className="mb-4">
+                  <label htmlFor="prompt1" className="block text-sm font-medium text-gray-700 mb-1">
+                    Prompt 1
+                  </label>
+                  <select
+                    id="prompt1"
+                    name="prompt1"
+                    value={formData.prompt1}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="">Select a prompt</option>
+                    {promptOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                  
+                  <div className="mt-2">
+                    <label htmlFor="answer1" className="block text-sm font-medium text-gray-700 mb-1">
+                      Your Answer
+                    </label>
+                    <textarea
+                      id="answer1"
+                      name="answer1"
+                      value={formData.answer1}
+                      onChange={handleInputChange}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Your response to the prompt"
+                    />
+                  </div>
+                </div>
+                
+                {/* Prompt 2 */}
+                <div className="mb-4">
+                  <label htmlFor="prompt2" className="block text-sm font-medium text-gray-700 mb-1">
+                    Prompt 2
+                  </label>
+                  <select
+                    id="prompt2"
+                    name="prompt2"
+                    value={formData.prompt2}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="">Select a prompt</option>
+                    {promptOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                  
+                  <div className="mt-2">
+                    <label htmlFor="answer2" className="block text-sm font-medium text-gray-700 mb-1">
+                      Your Answer
+                    </label>
+                    <textarea
+                      id="answer2"
+                      name="answer2"
+                      value={formData.answer2}
+                      onChange={handleInputChange}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Your response to the prompt"
+                    />
+                  </div>
+                </div>
+                
+                {/* Prompt 3 */}
+                <div className="mb-4">
+                  <label htmlFor="prompt3" className="block text-sm font-medium text-gray-700 mb-1">
+                    Prompt 3
+                  </label>
+                  <select
+                    id="prompt3"
+                    name="prompt3"
+                    value={formData.prompt3}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="">Select a prompt</option>
+                    {promptOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                  
+                  <div className="mt-2">
+                    <label htmlFor="answer3" className="block text-sm font-medium text-gray-700 mb-1">
+                      Your Answer
+                    </label>
+                    <textarea
+                      id="answer3"
+                      name="answer3"
+                      value={formData.answer3}
+                      onChange={handleInputChange}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Your response to the prompt"
+                    />
+                  </div>
                 </div>
               </div>
               
