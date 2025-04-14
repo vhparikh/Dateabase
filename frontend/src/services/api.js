@@ -19,7 +19,7 @@ export const getUser = (userId) => {
 };
 
 export const updateUser = (userId, userData) => {
-  return api.put(`/users/${userId}`, userData);
+  return api.put(`/users/${userId}`, userData, { withCredentials: true });
 };
 
 // Current user profile endpoints
