@@ -371,15 +371,15 @@ const Swipe = () => {
                 <div className="flex items-center">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
                     <span className="text-white font-bold">
-                      {currentExperience.creator?.username?.charAt(0).toUpperCase() || 'U'}
+                      {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
                     </span>
                   </div>
                   <div>
                     <p className="text-white font-bold text-lg">
-                      {currentExperience.creator?.username || 'Anonymous'}
+                      {currentExperience.creator_name || 'Anonymous'}
                     </p>
                     <p className="text-white/80 text-sm">
-                      {currentExperience.creator?.bio || 'Experience Creator'}
+                      {currentExperience.creator_netid || 'Experience Creator'}
                     </p>
                   </div>
                 </div>
