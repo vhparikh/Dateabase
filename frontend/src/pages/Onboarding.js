@@ -395,7 +395,7 @@ const Onboarding = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form>
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
@@ -431,7 +431,8 @@ const Onboarding = () => {
               </button>
             ) : (
               <button 
-                type="submit" 
+                type="button" 
+                onClick={handleSubmit}
                 disabled={loading}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
               >
