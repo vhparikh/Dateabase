@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import text
+from sqlalchemy import text, ARRAY
 import os
 
 # Initialize SQLAlchemy without an app (we'll configure it later)
@@ -23,7 +23,8 @@ class User(db.Model):
     major = db.Column(db.String(100), nullable=True)  # Major
     class_year = db.Column(db.Integer, nullable=True)  # Made nullable for initial CAS login
     interests = db.Column(db.Text, nullable=True)  # Made nullable for initial CAS login
-    profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
+    profile_image = db.Column(db.Text, nullable=True)  # URL to primary profile image (legacy support)
+    profile_images = db.Column(db.ARRAY(db.Text), nullable=True)  # Array of up to 4 profile image URLs
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
     # Hinge-like prompt responses

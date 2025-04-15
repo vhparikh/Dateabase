@@ -22,6 +22,23 @@ export const updateUser = (userId, userData) => {
   return api.put(`/users/${userId}`, userData, { withCredentials: true });
 };
 
+// Profile Image endpoints
+export const uploadProfileImage = (formData) => {
+  // Don't set Content-Type header for multipart/form-data
+  // axios will set it automatically with the correct boundary
+  return api.post('/users/profile-images', formData, { 
+    withCredentials: true
+  });
+};
+
+export const deleteProfileImage = (imageId) => {
+  return api.delete(`/users/profile-images/${imageId}`, { withCredentials: true });
+};
+
+export const getProfileImages = () => {
+  return api.get('/users/profile-images', { withCredentials: true });
+};
+
 // Current user profile endpoints
 export const getCurrentUser = () => {
   return api.get('/me', { withCredentials: true });
