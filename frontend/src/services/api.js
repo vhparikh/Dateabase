@@ -15,7 +15,7 @@ export const registerUser = (userData) => {
 };
 
 export const getUser = (userId) => {
-  return api.get(`/users/${userId}`);
+  return api.get(`/users/${userId}`, { withCredentials: true });
 };
 
 export const updateUser = (userId, userData) => {
@@ -50,17 +50,17 @@ export const getUserExperiences = () => {
 
 // Swipe endpoints
 export const createSwipe = (swipeData) => {
-  return api.post('/swipes', swipeData);
+  return api.post('/swipes', swipeData, { withCredentials: true });
 };
 
 // Match endpoints
 export const getMatches = (userId) => {
-  return api.get(`/matches/${userId}`);
+  return api.get(`/matches/${userId}`, { withCredentials: true });
 };
 
 // Recommendation endpoints
 export const getRecommendations = (userId) => {
-  return api.get(`/recommendations/${userId}`);
+  return api.get(`/recommendations/${userId}`, { withCredentials: true });
 };
 
 export default api; 
