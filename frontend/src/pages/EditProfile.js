@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { updateCurrentUser } from '../services/api';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const EditProfile = () => {
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -207,37 +207,57 @@ const EditProfile = () => {
       
       console.log('Submitting profile update with data:', userData);
       
-      // Make direct API call to update user using axios instead of the service
-      const response = await axios.put(`${API_URL}/me`, userData, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      // Construct full API URL - ensure it ends with /api/me
+      const fullUrl = `${API_URL}/api/me`;
+      console.log('Request URL:', fullUrl);
       
-      console.log('Profile update response:', response);
-      
-      if (response.data) {
-        console.log('Profile updated successfully:', response.data);
-        // Update AuthContext with new data
-        setUser({
-          ...user,
-          ...response.data
+      try {
+        // Make direct API call to update user using axios instead of the service
+        const response = await axios({
+          method: 'PUT', 
+          url: fullUrl,
+          data: userData,
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
         
-        setSuccess(true);
-        setTimeout(() => {
-          navigate('/profile');
-        }, 2000);
+        console.log('Profile update response:', response);
+        
+        if (response.data) {
+          console.log('Profile updated successfully:', response.data);
+          // Update AuthContext with new data
+          setUser({
+            ...user,
+            ...response.data
+          });
+          
+          setSuccess(true);
+          setTimeout(() => {
+            navigate('/profile');
+          }, 2000);
+        }
+      } catch (axiosError) {
+        console.error('Axios error details:', {
+          message: axiosError.message,
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          data: axiosError.response?.data
+        });
+        
+        if (axiosError.response) {
+          setError(axiosError.response.data?.detail || `Server error: ${axiosError.response.status}`);
+        } else if (axiosError.request) {
+          console.error('No response received:', axiosError.request);
+          setError('No response from server. Please check your internet connection.');
+        } else {
+          setError(`Error setting up request: ${axiosError.message}`);
+        }
       }
     } catch (err) {
-      console.error('Error updating profile:', err);
-      if (err.response) {
-        console.error('Error response:', err.response.data);
-        setError(err.response.data.detail || 'An error occurred while updating your profile');
-      } else {
-        setError('Network error. Please try again.');
-      }
+      console.error('Error in form submission:', err);
+      setError('Form processing error. Please verify your inputs and try again.');
     } finally {
       setLoading(false);
     }
