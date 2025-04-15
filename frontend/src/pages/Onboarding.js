@@ -304,13 +304,15 @@ const Onboarding = () => {
           type="number"
           id="height"
           name="height"
-          min="140"
-          max="220"
+          min="0"
+          max="300"
           value={formData.height}
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
-        <p className="text-xs text-gray-500 mt-1">{Math.floor(formData.height / 30.48)} ft {Math.round(formData.height % 30.48 / 2.54)} in</p>
+        <p className="text-xs text-gray-500 mt-1">
+          {Math.floor(formData.height / 30.48)} ft {Math.round(formData.height % 30.48 / 2.54)} in
+        </p>
       </div>
     </div>
   );
@@ -364,11 +366,13 @@ const Onboarding = () => {
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
           >
-            <option value={2023}>2023</option>
-            <option value={2024}>2024</option>
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
-            <option value={2027}>2027</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2029">2029</option>
+            <option value="2030">2030</option>
           </select>
         </div>
       </div>
