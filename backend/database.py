@@ -50,7 +50,6 @@ class Experience(db.Model):
     longitude = db.Column(db.Float, nullable=True)
     place_id = db.Column(db.String(255), nullable=True)
     location_image = db.Column(db.Text, nullable=True)
-    tags = db.Column(db.Text, nullable=True)  # Store tags as JSON string
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     user = db.relationship('User', backref=db.backref('experiences', lazy=True))
