@@ -77,27 +77,53 @@ const Onboarding = () => {
       if (response.ok) {
         // Successfully completed onboarding
         const data = await response.json();
+        console.log('Onboarding complete response:', data);
         
-        // Ensure we have valid authentication tokens
-        const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({})
-        });
-            
-        if (tokenResponse.ok) {
-          console.log('Successfully refreshed authentication tokens after onboarding');
-          // Force reload user profile with updated info to ensure authentication state is current
-          await loadUserProfile();
+        try {
+          // Ensure we have valid authentication tokens
+          const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({})
+          });
           
-          // Small delay to ensure state is updated before navigation
-          setTimeout(() => {
-            navigate('/');
-          }, 300);
-        } else {
-          console.error('Failed to refresh tokens after onboarding');
-          setError('Authentication error. Please try logging in again.');
+          if (tokenResponse.ok) {
+            // Parse and store the tokens
+            const tokenData = await tokenResponse.json();
+            console.log('Token refresh successful');
+            
+            // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
+            if (tokenData && tokenData.access) {
+              localStorage.setItem('authTokens', JSON.stringify(tokenData));
+            }
+            
+            // Force reload user profile and wait for it to complete
+            const userProfile = await loadUserProfile();
+            console.log('User profile loaded after onboarding:', userProfile);
+            
+            // Make one more auth check before navigating
+            const authCheckResponse = await fetch(`${API_URL}/api/cas/status`, {
+              credentials: 'include'
+            });
+            
+            if (authCheckResponse.ok) {
+              const authStatus = await authCheckResponse.json();
+              console.log('Auth status before navigation:', authStatus);
+            }
+            
+            // Increase the delay to ensure all state updates are processed
+            console.log('Preparing to navigate to home page...');
+            setTimeout(() => {
+              navigate('/');
+            }, 1000); // Longer delay for Heroku environment
+          } else {
+            console.error('Failed to refresh tokens after onboarding');
+            setError('Authentication error. Please try logging in again.');
+          }
+        } catch (tokenErr) {
+          console.error('Error during post-onboarding authentication:', tokenErr);
+          setError('Authentication error after onboarding. Please try logging in again.');
         }
       } else {
         const errorData = await response.json();
