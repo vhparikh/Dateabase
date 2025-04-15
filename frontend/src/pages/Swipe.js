@@ -329,7 +329,7 @@ const Swipe = () => {
           onMouseUp={handleTouchEnd}
           onMouseLeave={handleTouchEnd}
           whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          transition={{ type: "spring", stiffness: 150, damping: 30, duration: 0.8 }}
         >
           {/* Card Background Image */}
           <div className="hinge-card-image">

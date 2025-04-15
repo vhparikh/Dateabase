@@ -5,6 +5,7 @@ import os
 import jwt
 import secrets
 from urllib.parse import quote_plus, urlencode, quote
+import json
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
@@ -371,7 +372,9 @@ def create_experience(current_user_id=None):
         place_id = data.get('place_id', '').strip() if data.get('place_id') else None
         location_image = data.get('location_image', '').strip() if data.get('location_image') else None
         
+        # Handle tags - convert list to JSON string
         tags = data.get('tags', [])
+        tags_json = json.dumps(tags) if tags else None
         
         print(f"Creating experience with type: {experience_type}, location: {location}")
         
@@ -383,12 +386,16 @@ def create_experience(current_user_id=None):
             latitude=latitude,
             longitude=longitude,
             place_id=place_id,
-            location_image=location_image
+            location_image=location_image,
+            tags=tags_json
         )
         db.session.add(new_experience)
         db.session.commit()
         
         print(f"Experience created successfully with ID: {new_experience.id}")
+        
+        # Parse tags back to list for the response
+        tags_list = json.loads(new_experience.tags) if new_experience.tags else []
         
         return jsonify({
             'id': new_experience.id, 
@@ -403,6 +410,7 @@ def create_experience(current_user_id=None):
                 'longitude': new_experience.longitude,
                 'place_id': new_experience.place_id,
                 'location_image': new_experience.location_image,
+                'tags': tags_list,
                 'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
             }
         }), 201
@@ -427,6 +435,9 @@ def get_experiences(current_user_id=None):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
+            # Parse tags from JSON string to list
+            tags = json.loads(exp.tags) if exp.tags else []
+            
             result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
@@ -438,6 +449,7 @@ def get_experiences(current_user_id=None):
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
                 'location_image': exp.location_image,
+                'tags': tags,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None
             })
             
@@ -459,6 +471,9 @@ def get_my_experiences(current_user_id=None):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
+            # Parse tags from JSON string to list
+            tags = json.loads(exp.tags) if exp.tags else []
+            
             result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
@@ -469,6 +484,7 @@ def get_my_experiences(current_user_id=None):
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
                 'location_image': exp.location_image,
+                'tags': tags,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None
             })
             
@@ -546,8 +562,14 @@ def update_experience(experience_id, current_user_id=None):
             experience.place_id = data['place_id']
         if 'location_image' in data:
             experience.location_image = data['location_image']
+        if 'tags' in data:
+            # Convert tags list to JSON string
+            experience.tags = json.dumps(data['tags']) if data['tags'] else None
             
         db.session.commit()
+        
+        # Parse tags back to list for the response
+        tags_list = json.loads(experience.tags) if experience.tags else []
         
         return jsonify({
             'message': 'Experience updated successfully',
@@ -561,6 +583,7 @@ def update_experience(experience_id, current_user_id=None):
                 'longitude': experience.longitude,
                 'place_id': experience.place_id,
                 'location_image': experience.location_image,
+                'tags': tags_list,
                 'created_at': experience.created_at.isoformat() if experience.created_at else None
             }
         }), 200
@@ -767,6 +790,9 @@ def get_recommendations(user_id):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
+            # Parse tags from JSON string to list
+            tags = json.loads(exp.tags) if exp.tags else []
+            
             creator_data = {
                 'id': creator.id,
                 'username': creator.username,
@@ -788,6 +814,7 @@ def get_recommendations(user_id):
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
                 'location_image': exp.location_image,
+                'tags': tags,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None
             })
         
@@ -816,6 +843,9 @@ def get_swipe_experiences(current_user_id=None):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
+            # Parse tags from JSON string to list
+            tags = json.loads(exp.tags) if exp.tags else []
+            
             result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
@@ -828,6 +858,7 @@ def get_swipe_experiences(current_user_id=None):
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
                 'location_image': exp.location_image,
+                'tags': tags,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None
             })
         

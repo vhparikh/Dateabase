@@ -111,13 +111,13 @@
 .swipe-right-exit {
   transform: translateX(100%) rotate(10deg) !important;
   opacity: 0 !important;
-  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease !important;
+  transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
 }
 
 .swipe-left-exit {
   transform: translateX(-100%) rotate(-10deg) !important;
   opacity: 0 !important;
-  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease !important;
+  transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
 }
 
 /* Enhanced animation classes */
