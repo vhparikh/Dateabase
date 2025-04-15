@@ -93,15 +93,37 @@ const Swipe = () => {
     const swipedLeft = currentPosition.x < -30;
     
     if (swipedRight || swipedLeft) {
-      await handleSwipe(swipedRight);
+      // Set direction for animation before triggering the handleSwipe
+      setSwipeDirection(swipedRight ? 'right' : 'left');
+      
+      // Wait a tiny bit for the animation to start before processing the swipe
+      setTimeout(() => {
+        handleSwipe(swipedRight);
+      }, 50);
     } else {
-      // If not a swipe, spring card back to center
-      setCurrentPosition({ x: 0, y: 0 });
+      // For small movements, animate back to center smoothly instead of snapping
+      // We'll keep the swipe direction null but use motion transition
+      
+      // Apply a gentle spring return animation
+      const element = document.querySelector('.hinge-card');
+      if (element) {
+        element.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        element.style.transform = 'translateX(0px) translateY(0px) rotate(0deg)';
+        
+        // Reset the position after the animation completes
+        setTimeout(() => {
+          setCurrentPosition({ x: 0, y: 0 });
+          element.style.transition = '';
+          element.style.transform = '';
+        }, 300);
+      } else {
+        // Fallback if element not found
+        setCurrentPosition({ x: 0, y: 0 });
+      }
     }
     
-    // Reset states
+    // Reset the swiping state
     setIsSwiping(false);
-    setSwipeDirection(null);
   };
 
   const handleSwipe = async (isLike) => {
@@ -336,10 +358,15 @@ const Swipe = () => {
           onMouseUp={handleTouchEnd}
           onMouseLeave={handleTouchEnd}
           whileHover={{ scale: 1.02 }}
+          drag={false}
+          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+          dragElastic={0.2}
           transition={{ 
-            type: "tween", 
-            duration: 0,  // Instant response to movement
-            ease: "linear"
+            type: "spring",
+            stiffness: 1000,
+            damping: 100,
+            mass: 3,
+            velocity: 0
           }}
         >
           {/* Card Background Image */}
