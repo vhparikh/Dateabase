@@ -544,14 +544,7 @@ const Onboarding = () => {
 
           <div className="mt-8 flex justify-between">
             {currentStep === 1 ? (
-              <button 
-                type="button" 
-                onClick={skipOnboarding}
-                disabled={loading}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
-              >
-                Skip for Now
-              </button>
+              <div></div>
             ) : (
               <button 
                 type="button" 
