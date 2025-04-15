@@ -188,7 +188,7 @@ export const AuthProvider = ({ children }) => {
             
             return {
               success: true,
-              callback_url: redirectToOnboarding ? '/onboarding' : '/',
+              callback_url: redirectToOnboarding ? '/onboarding' : '/swipe',
               needs_onboarding: redirectToOnboarding
             };
           }
