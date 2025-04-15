@@ -5,7 +5,7 @@ import { API_URL } from '../config';
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { user, loadUserProfile } = useContext(AuthContext);
+  const { user, loadUserProfile, setUser } = useContext(AuthContext);
   
   // List of prompts for users to choose from
   const promptOptions = [
@@ -106,7 +106,6 @@ const Onboarding = () => {
             // manually update it to ensure AppWrapper doesn't redirect back to onboarding
             if (userProfile && userProfile.onboarding_completed === false) {
               console.log('Forcing update of onboarding status in user context');
-              const { setUser } = useContext(AuthContext);
               setUser({
                 ...userProfile,
                 onboarding_completed: true
@@ -185,7 +184,6 @@ const Onboarding = () => {
           // manually update it to ensure AppWrapper doesn't redirect back to onboarding
           if (userProfile && userProfile.onboarding_completed === false) {
             console.log('Forcing update of onboarding status in user context');
-            const { setUser } = useContext(AuthContext);
             setUser({
               ...userProfile,
               onboarding_completed: true
