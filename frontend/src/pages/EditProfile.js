@@ -360,8 +360,8 @@ const EditProfile = () => {
                     value={formData.gender}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    required
                   >
-                    <option value="">Select Gender</option>
                     {genderOptions.map(option => (
                       <option key={option} value={option}>{option}</option>
                     ))}
@@ -378,8 +378,8 @@ const EditProfile = () => {
                     value={formData.sexuality}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    required
                   >
-                    <option value="">Select Sexuality</option>
                     {sexualityOptions.map(option => (
                       <option key={option} value={option}>{option}</option>
                     ))}
@@ -421,8 +421,8 @@ const EditProfile = () => {
                     value={formData.class_year}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    required
                   >
-                    <option value="">Select Class Year</option>
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
                     <option value="2026">2026</option>
@@ -531,8 +531,8 @@ const EditProfile = () => {
                     value={formData.prompt1}
                     onChange={handlePromptChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                    required
                   >
-                    <option value="">Select a prompt</option>
                     {getAvailablePrompts('prompt1').map(prompt => (
                       <option key={prompt} value={prompt}>{prompt}</option>
                     ))}
@@ -560,8 +560,8 @@ const EditProfile = () => {
                     value={formData.prompt2}
                     onChange={handlePromptChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                    required
                   >
-                    <option value="">Select a prompt</option>
                     {getAvailablePrompts('prompt2').map(prompt => (
                       <option key={prompt} value={prompt}>{prompt}</option>
                     ))}
@@ -589,8 +589,8 @@ const EditProfile = () => {
                     value={formData.prompt3}
                     onChange={handlePromptChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                    required
                   >
-                    <option value="">Select a prompt</option>
                     {getAvailablePrompts('prompt3').map(prompt => (
                       <option key={prompt} value={prompt}>{prompt}</option>
                     ))}

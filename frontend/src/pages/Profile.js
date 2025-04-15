@@ -152,16 +152,6 @@ const Profile = () => {
                   </svg>
                   Edit Profile
                 </Link>
-                
-                <Link 
-                  to="/experiences/add" 
-                  className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
-                  Create Experience
-                </Link>
               </div>
             </div>
           </div>
