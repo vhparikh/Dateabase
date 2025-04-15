@@ -66,15 +66,19 @@ const Swipe = () => {
     const pageX = e.touches ? e.touches[0].pageX : e.pageX;
     const pageY = e.touches ? e.touches[0].pageY : e.pageY;
     
+    // Make the card directly follow the touch/mouse position for more fluid movement
+    const deltaX = pageX - startPosition.x;
+    const deltaY = Math.min(Math.max(pageY - startPosition.y, -30), 30); // Limit vertical movement
+    
     setCurrentPosition({
-      x: pageX - startPosition.x,
-      y: pageY - startPosition.y
+      x: deltaX,
+      y: deltaY * 0.2 // Reduce vertical movement
     });
     
-    // Determine swipe direction for visual feedback
-    if (currentPosition.x > 50) {
+    // Determine swipe direction with more sensitivity
+    if (deltaX > 20) {
       setSwipeDirection('right');
-    } else if (currentPosition.x < -50) {
+    } else if (deltaX < -20) {
       setSwipeDirection('left');
     } else {
       setSwipeDirection(null);
@@ -84,16 +88,19 @@ const Swipe = () => {
   const handleTouchEnd = async () => {
     if (!isSwiping) return;
     
-    const swipedRight = currentPosition.x > 100;
-    const swipedLeft = currentPosition.x < -100;
+    // Lower threshold for triggering swipe
+    const swipedRight = currentPosition.x > 50;
+    const swipedLeft = currentPosition.x < -50;
     
     if (swipedRight || swipedLeft) {
       await handleSwipe(swipedRight);
+    } else {
+      // If not a swipe, spring card back to center
+      setCurrentPosition({ x: 0, y: 0 });
     }
     
     // Reset states
     setIsSwiping(false);
-    setCurrentPosition({ x: 0, y: 0 });
     setSwipeDirection(null);
   };
 
@@ -329,7 +336,11 @@ const Swipe = () => {
           onMouseUp={handleTouchEnd}
           onMouseLeave={handleTouchEnd}
           whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 150, damping: 30, duration: 0.8 }}
+          transition={{ 
+            type: "tween", 
+            duration: 0.1,
+            ease: "linear"
+          }}
         >
           {/* Card Background Image */}
           <div className="hinge-card-image">

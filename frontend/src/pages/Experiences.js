@@ -61,40 +61,27 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
       
       {/* Content section */}
       <div className="p-4">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <p className="text-sm text-gray-500 mb-1">Added on {new Date(experience.created_at).toLocaleDateString()}</p>
-            {experience.is_active ? (
-              <span className="inline-flex items-center bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1"></span>
-                Active
-              </span>
-            ) : (
-              <span className="inline-flex items-center bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1"></span>
-                Inactive
-              </span>
-            )}
-          </div>
+        <div className="flex justify-between items-start mb-3">
+          <h3 className="text-lg font-bold text-gray-800">{experience.experience_type}</h3>
           
-          {/* Only show these controls if not in read-only mode */}
           {!readOnly && (
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-1">
               <button 
                 onClick={() => onEdit(experience)}
-                className="p-1.5 bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 transition-colors"
-                aria-label="Edit experience"
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                aria-label="Edit"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
+              
               <button 
                 onClick={() => onDelete(experience.id)}
-                className="p-1.5 bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
-                aria-label="Delete experience"
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                aria-label="Delete"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
@@ -102,25 +89,22 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           )}
         </div>
         
-        {/* Description */}
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-1">Description</h4>
-          <p className="text-gray-600">
-            {experience.description || 'No description provided.'}
-          </p>
+        <div className="text-sm text-gray-600 mb-3 flex items-center">
+          <svg className="h-4 w-4 text-orange-500 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>{experience.location}</span>
         </div>
+        
+        <p className="text-gray-700 text-sm mb-3">
+          {experience.description || "No description provided."}
+        </p>
         
         {/* Additional details */}
         <div className="border-t border-orange-100 pt-3 mt-3">
-          <div className="flex flex-wrap gap-2">
-            {experience.tags && experience.tags.map((tag, index) => (
-              <span key={index} className="bg-orange-50 text-orange-800 rounded-full px-2 py-0.5 text-xs">
-                {tag}
-              </span>
-            ))}
-            {(!experience.tags || experience.tags.length === 0) && (
-              <span className="text-sm text-gray-500">No tags</span>
-            )}
+          <div className="text-xs text-gray-500">
+            Added {new Date(experience.created_at).toLocaleDateString()}
           </div>
         </div>
       </div>
@@ -134,9 +118,11 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     experience_type: '',
     location: '',
     description: '',
-    is_active: true,
-    tags: [],
-    location_image: ''
+    latitude: null,
+    longitude: null,
+    place_id: '',
+    location_image: '',
+    is_active: true
   });
   
   const [errors, setErrors] = useState({});
@@ -156,9 +142,11 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         experience_type: experience.experience_type || '',
         location: experience.location || '',
         description: experience.description || '',
-        is_active: experience.is_active !== undefined ? experience.is_active : true,
-        tags: experience.tags || [],
-        location_image: experience.location_image || ''
+        latitude: experience.latitude || null,
+        longitude: experience.longitude || null,
+        place_id: experience.place_id || '',
+        location_image: experience.location_image || '',
+        is_active: experience.is_active !== undefined ? experience.is_active : true
       });
     } else {
       // Reset form for new experience
@@ -166,9 +154,11 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         experience_type: '',
         location: '',
         description: '',
-        is_active: true,
-        tags: [],
-        location_image: ''
+        latitude: null,
+        longitude: null,
+        place_id: '',
+        location_image: '',
+        is_active: true
       });
     }
     
@@ -187,23 +177,6 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
-  };
-  
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()]
-      }));
-      setTagInput('');
-    }
-  };
-  
-  const removeTag = (tagToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
   };
   
   const validateForm = () => {
@@ -331,54 +304,6 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
             <p className="text-xs text-gray-500 mt-1">Leave empty for a color gradient</p>
-          </div>
-          
-          {/* Tags */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tags
-            </label>
-            <div className="flex">
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                placeholder="Add a tag"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <button
-                type="button"
-                onClick={addTag}
-                className="px-3 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-r-lg"
-              >
-                Add
-              </button>
-            </div>
-            
-            {/* Tag list */}
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.tags.map((tag, index) => (
-                <span 
-                  key={index} 
-                  className="inline-flex items-center bg-orange-100 text-orange-800 rounded-full px-2 py-1 text-sm"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(tag)}
-                    className="ml-1 text-orange-600 hover:text-orange-800"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </span>
-              ))}
-              {formData.tags.length === 0 && (
-                <span className="text-sm text-gray-500">No tags added yet</span>
-              )}
-            </div>
           </div>
           
           {/* Active Status */}
