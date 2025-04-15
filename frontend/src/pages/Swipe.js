@@ -93,18 +93,11 @@ const Swipe = () => {
     const swipedLeft = currentPosition.x < -30;
     
     if (swipedRight || swipedLeft) {
-      // Set direction for animation before triggering the handleSwipe
-      setSwipeDirection(swipedRight ? 'right' : 'left');
-      
-      // Wait a tiny bit for the animation to start before processing the swipe
-      setTimeout(() => {
-        handleSwipe(swipedRight);
-      }, 50);
+      // Let the handleSwipe function take care of setting the swipe direction
+      // and handling the animation timing
+      handleSwipe(swipedRight);
     } else {
       // For small movements, animate back to center smoothly instead of snapping
-      // We'll keep the swipe direction null but use motion transition
-      
-      // Apply a gentle spring return animation
       const element = document.querySelector('.hinge-card');
       if (element) {
         element.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
@@ -113,12 +106,14 @@ const Swipe = () => {
         // Reset the position after the animation completes
         setTimeout(() => {
           setCurrentPosition({ x: 0, y: 0 });
+          setSwipeDirection(null);
           element.style.transition = '';
           element.style.transform = '';
         }, 300);
       } else {
         // Fallback if element not found
         setCurrentPosition({ x: 0, y: 0 });
+        setSwipeDirection(null);
       }
     }
     
@@ -131,47 +126,76 @@ const Swipe = () => {
       const currentExperience = experiences[currentIndex];
       if (!currentExperience) return;
 
-      // Send swipe to backend
-      const response = await fetch(`${API_URL}/api/swipes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          user_id: user.id,
-          experience_id: currentExperience.id,
-          is_like: isLike
-        })
-      });
+      // Set animation direction for swipe-out
+      setSwipeDirection(isLike ? 'right' : 'left');
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to record swipe');
-      }
+      // Wait for the animation to complete (matches the CSS transition time)
+      // then proceed with the API call and state updates
+      setTimeout(async () => {
+        try {
+          // Send swipe to backend
+          const response = await fetch(`${API_URL}/api/swipes`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              user_id: user.id,
+              experience_id: currentExperience.id,
+              is_like: isLike
+            })
+          });
 
-      // Check for match
-      const matchResponse = await fetch(`${API_URL}/api/matches/${user.id}`, {
-        credentials: 'include'
-      });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to record swipe');
+          }
 
-      if (matchResponse.ok) {
-        const matchData = await matchResponse.json();
-        if (matchData.length > 0) {
-          setMatchFound(true);
-          setTimeout(() => setMatchFound(false), 3000);
+          // Check for match
+          const matchResponse = await fetch(`${API_URL}/api/matches/${user.id}`, {
+            credentials: 'include'
+          });
+
+          if (matchResponse.ok) {
+            const matchData = await matchResponse.json();
+            // Check if there are matches in any of the categories
+            const hasMatches = 
+              (matchData.confirmed && matchData.confirmed.length > 0) || 
+              (matchData.pending_received && matchData.pending_received.length > 0) || 
+              (matchData.pending_sent && matchData.pending_sent.length > 0);
+              
+            if (hasMatches) {
+              setMatchFound(true);
+              setTimeout(() => setMatchFound(false), 3000);
+            }
+          }
+
+          // Move to next experience
+          setCurrentIndex(prev => prev + 1);
+          
+          // Reset the position and swipe direction 
+          setCurrentPosition({ x: 0, y: 0 });
+          setSwipeDirection(null);
+          
+          // If we're about to run out of experiences, fetch new ones
+          if (currentIndex >= experiences.length - 2) {
+            fetchExperiences();
+          }
+        } catch (err) {
+          console.error('Error in swipe handling:', err);
+          // Even if there's an error, we should still move to the next card
+          setCurrentIndex(prev => prev + 1);
+          setCurrentPosition({ x: 0, y: 0 });
+          setSwipeDirection(null);
         }
-      }
-
-      // Move to next experience
-      setCurrentIndex(prev => prev + 1);
+      }, 650); // This matches our CSS transition duration for swipe-exit (600ms) plus a small buffer
       
-      // If no more experiences, fetch new ones
-      if (currentIndex >= experiences.length - 1) {
-        fetchExperiences();
-      }
     } catch (err) {
       console.error('Error handling swipe:', err);
+      // Ensure we still reset state on error
+      setCurrentPosition({ x: 0, y: 0 });
+      setSwipeDirection(null);
     }
   };
 
@@ -437,7 +461,11 @@ const Swipe = () => {
         {/* Controls */}
         <div className="flex justify-center items-center space-x-6 mt-8">
           <button 
-            onClick={() => handleSwipe(false)}
+            onClick={() => {
+              // Show visual indicator before triggering swipe
+              setCurrentPosition({ x: -30, y: 0 });
+              handleSwipe(false);
+            }}
             className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-red-400 transition-colors action-button"
             aria-label="Pass"
           >
@@ -457,7 +485,11 @@ const Swipe = () => {
           </button>
           
           <button 
-            onClick={() => handleSwipe(true)}
+            onClick={() => {
+              // Show visual indicator before triggering swipe
+              setCurrentPosition({ x: 30, y: 0 });
+              handleSwipe(true);
+            }}
             className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-green-400 transition-colors action-button"
             aria-label="Like"
           >
