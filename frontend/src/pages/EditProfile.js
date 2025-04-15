@@ -2,10 +2,12 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { updateCurrentUser } from '../services/api';
+import axios from 'axios';
 
 const EditProfile = () => {
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -203,10 +205,20 @@ const EditProfile = () => {
         answer3: formData.answer3
       };
       
-      // Make API call to update user using updateCurrentUser
-      const response = await updateCurrentUser(userData);
+      console.log('Submitting profile update with data:', userData);
+      
+      // Make direct API call to update user using axios instead of the service
+      const response = await axios.put(`${API_URL}/me`, userData, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Profile update response:', response);
       
       if (response.data) {
+        console.log('Profile updated successfully:', response.data);
         // Update AuthContext with new data
         setUser({
           ...user,
@@ -220,7 +232,12 @@ const EditProfile = () => {
       }
     } catch (err) {
       console.error('Error updating profile:', err);
-      setError(err.response?.data?.detail || 'An error occurred while updating your profile');
+      if (err.response) {
+        console.error('Error response:', err.response.data);
+        setError(err.response.data.detail || 'An error occurred while updating your profile');
+      } else {
+        setError('Network error. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

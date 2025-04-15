@@ -233,6 +233,38 @@ const Profile = () => {
                 <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">No interests added yet</p>
               )}
             </div>
+            
+            {/* Prompt Responses */}
+            <div className="mt-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">About Me</h3>
+              
+              {userProfile?.prompt1 && userProfile?.answer1 && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 mb-4 border border-orange-100">
+                  <h4 className="font-medium text-orange-700 mb-2">{userProfile.prompt1}</h4>
+                  <p className="text-gray-800">{userProfile.answer1}</p>
+                </div>
+              )}
+              
+              {userProfile?.prompt2 && userProfile?.answer2 && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 mb-4 border border-orange-100">
+                  <h4 className="font-medium text-orange-700 mb-2">{userProfile.prompt2}</h4>
+                  <p className="text-gray-800">{userProfile.answer2}</p>
+                </div>
+              )}
+              
+              {userProfile?.prompt3 && userProfile?.answer3 && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-100">
+                  <h4 className="font-medium text-orange-700 mb-2">{userProfile.prompt3}</h4>
+                  <p className="text-gray-800">{userProfile.answer3}</p>
+                </div>
+              )}
+              
+              {(!userProfile?.prompt1 || !userProfile?.answer1) && 
+               (!userProfile?.prompt2 || !userProfile?.answer2) && 
+               (!userProfile?.prompt3 || !userProfile?.answer3) && (
+                <p className="text-gray-500 italic bg-orange-50 rounded-lg p-3 border border-orange-100">No prompt responses added yet. Edit your profile to add more about yourself!</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
