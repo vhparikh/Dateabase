@@ -66,19 +66,19 @@ const Swipe = () => {
     const pageX = e.touches ? e.touches[0].pageX : e.pageX;
     const pageY = e.touches ? e.touches[0].pageY : e.pageY;
     
-    // Make the card directly follow the touch/mouse position for more fluid movement
+    // Make the card precisely follow the mouse with no resistance
     const deltaX = pageX - startPosition.x;
     const deltaY = Math.min(Math.max(pageY - startPosition.y, -30), 30); // Limit vertical movement
     
     setCurrentPosition({
       x: deltaX,
-      y: deltaY * 0.2 // Reduce vertical movement
+      y: deltaY * 0.2 // Slight vertical movement for natural feel
     });
     
-    // Determine swipe direction with more sensitivity
-    if (deltaX > 20) {
+    // Show direction indicators with minimal threshold
+    if (deltaX > 10) {
       setSwipeDirection('right');
-    } else if (deltaX < -20) {
+    } else if (deltaX < -10) {
       setSwipeDirection('left');
     } else {
       setSwipeDirection(null);
@@ -88,9 +88,9 @@ const Swipe = () => {
   const handleTouchEnd = async () => {
     if (!isSwiping) return;
     
-    // Lower threshold for triggering swipe
-    const swipedRight = currentPosition.x > 50;
-    const swipedLeft = currentPosition.x < -50;
+    // Very low threshold for triggering swipe - makes it feel responsive
+    const swipedRight = currentPosition.x > 30;
+    const swipedLeft = currentPosition.x < -30;
     
     if (swipedRight || swipedLeft) {
       await handleSwipe(swipedRight);
@@ -338,7 +338,7 @@ const Swipe = () => {
           whileHover={{ scale: 1.02 }}
           transition={{ 
             type: "tween", 
-            duration: 0.1,
+            duration: 0,  // Instant response to movement
             ease: "linear"
           }}
         >
