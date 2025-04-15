@@ -74,7 +74,8 @@ function App() {
               <MainLayout />
             </AppWrapper>
           }>
-            <Route index element={<Home />} />
+            {/* Redirect root path to swipe for authenticated users */}
+            <Route index element={<Navigate to="/swipe" replace />} />
             <Route path="profile" element={<Profile />} />
             <Route path="profile/edit" element={<EditProfile />} />
             <Route path="experiences" element={<Experiences />} />
