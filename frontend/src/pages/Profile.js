@@ -18,8 +18,14 @@ const Profile = () => {
     const fetchUserProfile = async () => {
       try {
         setProfileLoading(true);
+        console.log('Fetching user profile from API service...');
         const response = await getCurrentUser();
-        setUserProfile(response.data);
+        if (response && response.data) {
+          console.log('Profile data loaded successfully');
+          setUserProfile(response.data);
+        } else {
+          console.error('Profile data response invalid:', response);
+        }
         setProfileLoading(false);
       } catch (err) {
         console.error('Failed to load user profile', err);
