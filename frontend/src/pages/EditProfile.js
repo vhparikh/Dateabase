@@ -378,24 +378,38 @@ const EditProfile = () => {
                     name="height"
                     value={formData.height}
                     onChange={handleInputChange}
+                    min="0"
+                    max="300"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your height in cm"
                   />
+                  {formData.height && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {Math.floor(formData.height / 30.48)} ft {Math.round(formData.height % 30.48 / 2.54)} in
+                    </p>
+                  )}
                 </div>
                 
                 <div>
                   <label htmlFor="class_year" className="block text-sm font-medium text-gray-700 mb-1">
                     Class Year
                   </label>
-                  <input
-                    type="number"
+                  <select
                     id="class_year"
                     name="class_year"
                     value={formData.class_year}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    placeholder="Enter your graduation year"
-                  />
+                  >
+                    <option value="">Select Class Year</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                    <option value="2029">2029</option>
+                    <option value="2030">2030</option>
+                  </select>
                 </div>
               </div>
               

@@ -51,6 +51,29 @@ const Onboarding = () => {
     }));
   };
   
+  // Handle prompt selection with duplicate prevention
+  const handlePromptChange = (e) => {
+    const { name, value } = e.target;
+    const otherPrompts = [];
+    
+    // Collect the other prompt values
+    if (name !== 'prompt1' && formData.prompt1) otherPrompts.push(formData.prompt1);
+    if (name !== 'prompt2' && formData.prompt2) otherPrompts.push(formData.prompt2);
+    if (name !== 'prompt3' && formData.prompt3) otherPrompts.push(formData.prompt3);
+    
+    // Check if the selected prompt is already used
+    if (otherPrompts.includes(value)) {
+      setError(`You've already selected "${value}" for another prompt. Please choose a different prompt.`);
+      return;
+    }
+    
+    setError(''); // Clear error if selection is valid
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
   const nextStep = () => {
     setCurrentStep(prev => prev + 1);
   };
@@ -63,6 +86,16 @@ const Onboarding = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Validate that prompts are not duplicated
+    const selectedPrompts = [formData.prompt1, formData.prompt2, formData.prompt3].filter(Boolean);
+    const uniquePrompts = [...new Set(selectedPrompts)];
+    
+    if (selectedPrompts.length !== uniquePrompts.length) {
+      setError('You have selected the same prompt multiple times. Please choose different prompts.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/users/complete-onboarding`, {
@@ -342,6 +375,17 @@ const Onboarding = () => {
     </div>
   );
   
+  // Get available prompts (excluding already selected ones except the current field)
+  const getAvailablePrompts = (currentField) => {
+    const selectedPrompts = [];
+    
+    if (currentField !== 'prompt1' && formData.prompt1) selectedPrompts.push(formData.prompt1);
+    if (currentField !== 'prompt2' && formData.prompt2) selectedPrompts.push(formData.prompt2);
+    if (currentField !== 'prompt3' && formData.prompt3) selectedPrompts.push(formData.prompt3);
+    
+    return promptOptions.filter(prompt => !selectedPrompts.includes(prompt));
+  };
+
   // Render step 3: Prompts and answers
   const renderStep3 = () => (
     <div className="space-y-6">
@@ -351,10 +395,10 @@ const Onboarding = () => {
           id="prompt1"
           name="prompt1"
           value={formData.prompt1}
-          onChange={handleChange}
+          onChange={handlePromptChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         >
-          {promptOptions.map((prompt, index) => (
+          {getAvailablePrompts('prompt1').map((prompt, index) => (
             <option key={`prompt1-${index}`} value={prompt}>{prompt}</option>
           ))}
         </select>
@@ -375,10 +419,10 @@ const Onboarding = () => {
           id="prompt2"
           name="prompt2"
           value={formData.prompt2}
-          onChange={handleChange}
+          onChange={handlePromptChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         >
-          {promptOptions.map((prompt, index) => (
+          {getAvailablePrompts('prompt2').map((prompt, index) => (
             <option key={`prompt2-${index}`} value={prompt}>{prompt}</option>
           ))}
         </select>
@@ -399,10 +443,10 @@ const Onboarding = () => {
           id="prompt3"
           name="prompt3"
           value={formData.prompt3}
-          onChange={handleChange}
+          onChange={handlePromptChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         >
-          {promptOptions.map((prompt, index) => (
+          {getAvailablePrompts('prompt3').map((prompt, index) => (
             <option key={`prompt3-${index}`} value={prompt}>{prompt}</option>
           ))}
         </select>
