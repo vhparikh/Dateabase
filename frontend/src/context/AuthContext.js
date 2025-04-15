@@ -109,7 +109,12 @@ export const AuthProvider = ({ children }) => {
       const response = await getCurrentUser();
       
       if (response && response.data) {
-        console.log('Profile loaded successfully');
+        console.log('Profile loaded successfully:', response.data);
+        // Make sure we have the onboarding_completed status
+        if (response.data.onboarding_completed === undefined) {
+          console.warn('onboarding_completed status missing in user profile');
+        }
+        // Ensure we update the user state with the complete profile data
         setUser(response.data);
         return response.data;
       } else {

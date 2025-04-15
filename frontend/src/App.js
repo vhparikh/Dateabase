@@ -46,7 +46,9 @@ const AppWrapper = ({ children }) => {
   }
   
   // Check if user needs to complete onboarding
-  if (user.onboarding_completed === false) {
+  // Also check localStorage for onboardingCompleted flag as a fallback
+  const onboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
+  if (user.onboarding_completed === false && !onboardingCompleted) {
     console.log("User needs to complete onboarding, redirecting...");
     return <Navigate to="/onboarding" />;
   }

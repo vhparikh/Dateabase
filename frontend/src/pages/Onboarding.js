@@ -102,6 +102,17 @@ const Onboarding = () => {
             const userProfile = await loadUserProfile();
             console.log('User profile loaded after onboarding:', userProfile);
             
+            // If we got the user profile but onboarding_completed is still false,
+            // manually update it to ensure AppWrapper doesn't redirect back to onboarding
+            if (userProfile && userProfile.onboarding_completed === false) {
+              console.log('Forcing update of onboarding status in user context');
+              const { setUser } = useContext(AuthContext);
+              setUser({
+                ...userProfile,
+                onboarding_completed: true
+              });
+            }
+            
             // Make one more auth check before navigating
             const authCheckResponse = await fetch(`${API_URL}/api/cas/status`, {
               credentials: 'include'
@@ -114,8 +125,11 @@ const Onboarding = () => {
             
             // Increase the delay to ensure all state updates are processed
             console.log('Preparing to navigate to home page...');
+            window.localStorage.setItem('onboardingCompleted', 'true');
+            
+            // Use window.location for a hard redirect to avoid routing issues
             setTimeout(() => {
-              navigate('/');
+              window.location.href = '/';
             }, 1000); // Longer delay for Heroku environment
           } else {
             console.error('Failed to refresh tokens after onboarding');
@@ -165,11 +179,25 @@ const Onboarding = () => {
         if (tokenResponse.ok) {
           console.log('Successfully refreshed authentication tokens after skipping onboarding');
           // Force reload user profile with updated info to ensure authentication state is current
-          await loadUserProfile();
+          const userProfile = await loadUserProfile();
           
-          // Small delay to ensure state is updated before navigation
+          // If we got the user profile but onboarding_completed is still false,
+          // manually update it to ensure AppWrapper doesn't redirect back to onboarding
+          if (userProfile && userProfile.onboarding_completed === false) {
+            console.log('Forcing update of onboarding status in user context');
+            const { setUser } = useContext(AuthContext);
+            setUser({
+              ...userProfile,
+              onboarding_completed: true
+            });
+          }
+          
+          // Store a flag in localStorage for redundancy
+          window.localStorage.setItem('onboardingCompleted', 'true');
+          
+          // Use window.location for a hard redirect to avoid routing issues
           setTimeout(() => {
-            navigate('/');
+            window.location.href = '/';
           }, 300);
         } else {
           console.error('Failed to refresh tokens after skipping onboarding');
