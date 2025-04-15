@@ -119,6 +119,19 @@ const EditProfile = () => {
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Special validation for height field
+    if (name === 'height') {
+      // Check if height is a valid number within the acceptable range
+      const heightVal = parseInt(value, 10);
+      if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
+        setError('Height must be a number between 0 and 300 cm.');
+        // Still update the form value for UX purposes, but it won't pass submission validation
+      } else {
+        setError(''); // Clear error if height is valid
+      }
+    }
+    
     setFormData({ ...formData, [name]: value });
   };
   
@@ -158,6 +171,14 @@ const EditProfile = () => {
     setError('');
     setSuccess(false);
     
+    // Validate height before submission
+    const heightVal = parseInt(formData.height, 10);
+    if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
+      setError('Height must be a number between 0 and 300 cm.');
+      setLoading(false);
+      return;
+    }
+    
     // Validate that prompts are not duplicated
     const selectedPrompts = [formData.prompt1, formData.prompt2, formData.prompt3].filter(Boolean);
     const uniquePrompts = [...new Set(selectedPrompts)];
@@ -183,8 +204,8 @@ const EditProfile = () => {
       
       const interests = JSON.stringify(cleanInterests);
       
-      // Convert height to number if it's provided
-      const height = formData.height ? parseInt(formData.height, 10) : null;
+      // Convert height to number if it's provided, with validation
+      const height = formData.height ? heightVal : null;
       const class_year = formData.class_year ? parseInt(formData.class_year, 10) : null;
       
       const userData = {

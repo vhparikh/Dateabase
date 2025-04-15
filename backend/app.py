@@ -261,7 +261,14 @@ def update_user(user_id):
         if 'sexuality' in data:
             user.sexuality = data['sexuality']
         if 'height' in data:
-            user.height = data['height']
+            # Validate height is within reasonable bounds
+            try:
+                height_val = int(data['height'])
+                if height_val < 0 or height_val > 300:
+                    return jsonify({'detail': 'Height must be between 0 and 300 cm'}), 400
+                user.height = height_val
+            except (ValueError, TypeError):
+                return jsonify({'detail': 'Invalid height value. Height must be a number between 0 and 300 cm'}), 400
         if 'location' in data:
             user.location = data['location']
         if 'hometown' in data:
@@ -1031,7 +1038,14 @@ def get_or_update_current_user():
             if 'sexuality' in data:
                 user.sexuality = data['sexuality']
             if 'height' in data:
-                user.height = data['height']
+                # Validate height is within reasonable bounds
+                try:
+                    height_val = int(data['height'])
+                    if height_val < 0 or height_val > 300:
+                        return jsonify({'detail': 'Height must be between 0 and 300 cm'}), 400
+                    user.height = height_val
+                except (ValueError, TypeError):
+                    return jsonify({'detail': 'Invalid height value. Height must be a number between 0 and 300 cm'}), 400
             if 'location' in data:
                 user.location = data['location']
             if 'hometown' in data:
@@ -1125,7 +1139,14 @@ def complete_onboarding():
             if 'sexuality' in data:
                 user.sexuality = data['sexuality']
             if 'height' in data:
-                user.height = data['height']
+                # Validate height is within reasonable bounds
+                try:
+                    height_val = int(data['height'])
+                    if height_val < 0 or height_val > 300:
+                        return jsonify({'detail': 'Height must be between 0 and 300 cm'}), 400
+                    user.height = height_val
+                except (ValueError, TypeError):
+                    return jsonify({'detail': 'Invalid height value. Height must be a number between 0 and 300 cm'}), 400
             if 'location' in data:
                 user.location = data['location']
             if 'hometown' in data:

@@ -45,6 +45,19 @@ const Onboarding = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Special validation for height field
+    if (name === 'height') {
+      // Check if height is a valid number within the acceptable range
+      const heightVal = parseInt(value, 10);
+      if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
+        setError('Height must be a number between 0 and 300 cm.');
+        // Still update the form value for UX purposes, but it won't pass submission validation
+      } else {
+        setError(''); // Clear error if height is valid
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -75,10 +88,21 @@ const Onboarding = () => {
   };
   
   const nextStep = () => {
+    // Validate height before proceeding to next step if we're on step 1
+    if (currentStep === 1) {
+      const heightVal = parseInt(formData.height, 10);
+      if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
+        setError('Height must be a number between 0 and 300 cm.');
+        return;
+      }
+    }
+    
+    setError(''); // Clear any errors when proceeding
     setCurrentStep(prev => prev + 1);
   };
   
   const prevStep = () => {
+    setError(''); // Clear any errors when going back
     setCurrentStep(prev => prev - 1);
   };
 
@@ -86,6 +110,14 @@ const Onboarding = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Validate height before submission
+    const heightVal = parseInt(formData.height, 10);
+    if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
+      setError('Height must be a number between 0 and 300 cm.');
+      setLoading(false);
+      return;
+    }
 
     // Validate that prompts are not duplicated
     const selectedPrompts = [formData.prompt1, formData.prompt2, formData.prompt3].filter(Boolean);
@@ -98,13 +130,19 @@ const Onboarding = () => {
     }
 
     try {
+      // Create a validated copy of formData with guaranteed valid height
+      const validatedFormData = {
+        ...formData,
+        height: heightVal
+      };
+
       const response = await fetch(`${API_URL}/api/users/complete-onboarding`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(validatedFormData)
       });
 
       if (response.ok) {
@@ -172,8 +210,12 @@ const Onboarding = () => {
           setError('Authentication error after onboarding. Please try logging in again.');
         }
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to complete onboarding');
+        try {
+          const errorData = await response.json();
+          setError(errorData.detail || 'Failed to complete onboarding');
+        } catch (jsonErr) {
+          setError('Failed to complete onboarding. Please check your inputs and try again.');
+        }
       }
     } catch (err) {
       console.error('Error completing onboarding:', err);
