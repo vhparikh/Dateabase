@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import os
 import jwt
 import secrets
+import google.generativeai as genai
 from urllib.parse import quote_plus, urlencode, quote
 try:
     # Try local import first (for local development)
@@ -26,6 +27,11 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 # Set session type for CAS auth
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+
+# Configure Gemini API key
+GEMINI_API_KEY = "AIzaSyAp0MOZGo9rH3C3TFNpep7jWN0e4EhhGT8" # os.environ.get('GEMINI_API_KEY', '')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 # Initialize the database with our app
 init_db(app)
@@ -1382,6 +1388,39 @@ def reject_match(match_id, current_user_id=None):
         print(f"Error rejecting match: {e}")
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
+
+# API endpoint to check for inappropriate content using Gemini
+@app.route('/api/check-inappropriate', methods=['POST'])
+def check_inappropriate():
+    # Get the text content from the request
+    data = request.json
+    text = data.get('text', '')
+    
+    if not text:
+        return jsonify({'is_inappropriate': False, 'error': 'No text provided'}), 400
+    
+    try:
+        # Check if Gemini API is configured
+        if not GEMINI_API_KEY:
+            return jsonify({'is_inappropriate': False, 'error': 'Gemini API not configured'}), 500
+        
+        # Use Gemini to check for inappropriate content
+        model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+        prompt = f"Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with \"true\" or \"false\".\n\nText: \"{text}\""
+        
+        result = model.generate_content(prompt)
+        output = result.text.strip().lower()
+        
+        # Log the result for debugging
+        print(f"Gemini check result for text: '{text[:30]}...' => {output}")
+        
+        # Return the result
+        return jsonify({'is_inappropriate': output == 'true'})
+    
+    except Exception as e:
+        print(f"Error checking inappropriate content: {str(e)}")
+        # Fallback: if error, assume not inappropriate
+        return jsonify({'is_inappropriate': False, 'error': str(e)}), 500
 
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
