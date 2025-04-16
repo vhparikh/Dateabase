@@ -49,21 +49,15 @@ const MatchCard = ({ match }) => {
     borderRadius: '8px',
   };
   
-  // Parse latitude and longitude for more reliable map display
-  const mapCenter = match.experience.latitude && match.experience.longitude ? {
-    lat: parseFloat(match.experience.latitude),
-    lng: parseFloat(match.experience.longitude)
-  } : {
-    lat: 40.3431, // Default to Princeton's latitude
-    lng: -74.6551, // Default to Princeton's longitude
+  const mapCenter = {
+    lat: match.experience.latitude || 40.3431, // Default to Princeton's latitude
+    lng: match.experience.longitude || -74.6551, // Default to Princeton's longitude
   };
   
   const mapOptions = {
     disableDefaultUI: true,
     zoomControl: true,
   };
-  
-  const [showLocationInfo, setShowLocationInfo] = useState(false);
   
   // Load location image on component mount
   useEffect(() => {
@@ -269,23 +263,10 @@ const MatchCard = ({ match }) => {
                     <GoogleMap
                       mapContainerStyle={mapContainerStyle}
                       center={mapCenter}
-                      zoom={15}
+                      zoom={14}
                       options={mapOptions}
                     >
-                      <Marker 
-                        position={mapCenter} 
-                        onClick={() => setShowLocationInfo(!showLocationInfo)}
-                      />
-                      {showLocationInfo && (
-                        <InfoWindow
-                          position={mapCenter}
-                          onCloseClick={() => setShowLocationInfo(false)}
-                        >
-                          <div className="p-2">
-                            <p className="font-medium">{match.experience.location}</p>
-                          </div>
-                        </InfoWindow>
-                      )}
+                      <Marker position={mapCenter} />
                     </GoogleMap>
                   </LoadScript>
                 </div>
