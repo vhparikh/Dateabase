@@ -13,6 +13,7 @@ const ExperienceCard = ({ experience, onSwipe, style, zIndex = 0 }) => {
   const [direction, setDirection] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [locationImage, setLocationImage] = useState(null);
+  const [selectedInfoWindow, setSelectedInfoWindow] = useState(null);
   
   // Google Maps configuration
   const mapContainerStyle = {
@@ -21,9 +22,13 @@ const ExperienceCard = ({ experience, onSwipe, style, zIndex = 0 }) => {
     borderRadius: '8px',
   };
   
-  const mapCenter = {
-    lat: experience.latitude || 40.3431, // Default to Princeton's latitude
-    lng: experience.longitude || -74.6551, // Default to Princeton's longitude
+  // Get exact coordinates from experience if available, otherwise default to Princeton
+  const mapCenter = experience.latitude && experience.longitude ? {
+    lat: parseFloat(experience.latitude),
+    lng: parseFloat(experience.longitude)
+  } : {
+    lat: 40.3431, // Default to Princeton's latitude
+    lng: -74.6551, // Default to Princeton's longitude
   };
   
   const mapOptions = {
@@ -234,10 +239,24 @@ const ExperienceCard = ({ experience, onSwipe, style, zIndex = 0 }) => {
                   <GoogleMap
                     mapContainerStyle={mapContainerStyle}
                     center={mapCenter}
-                    zoom={14}
+                    zoom={15}
                     options={mapOptions}
                   >
-                    <Marker position={mapCenter} />
+                    <Marker 
+                      position={mapCenter} 
+                      onClick={() => setSelectedInfoWindow('map')}
+                    />
+                    {/* Show info window with location name when clicked */}
+                    {selectedInfoWindow === 'map' && (
+                      <InfoWindow 
+                        position={mapCenter}
+                        onCloseClick={() => setSelectedInfoWindow(null)}
+                      >
+                        <div className="p-2">
+                          <p className="font-medium">{experience.location}</p>
+                        </div>
+                      </InfoWindow>
+                    )}
                   </GoogleMap>
                 </LoadScript>
               </div>
