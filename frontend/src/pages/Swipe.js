@@ -126,6 +126,9 @@ const Swipe = () => {
       const currentExperience = experiences[currentIndex];
       if (!currentExperience) return;
 
+      // Keep a reference to the current experience for the match modal
+      const swipedExperience = {...currentExperience};
+
       // Set animation direction for swipe-out
       setSwipeDirection(isLike ? 'right' : 'left');
 
@@ -142,7 +145,7 @@ const Swipe = () => {
             credentials: 'include',
             body: JSON.stringify({
               user_id: user.id,
-              experience_id: currentExperience.id,
+              experience_id: swipedExperience.id,
               is_like: isLike
             })
           });
@@ -152,23 +155,21 @@ const Swipe = () => {
             throw new Error(errorData.detail || 'Failed to record swipe');
           }
 
-          // Check for match
-          const matchResponse = await fetch(`${API_URL}/api/matches/${user.id}`, {
-            credentials: 'include'
-          });
-
-          if (matchResponse.ok) {
-            const matchData = await matchResponse.json();
-            // Check if there are matches in any of the categories
-            const hasMatches = 
-              (matchData.confirmed && matchData.confirmed.length > 0) || 
-              (matchData.pending_received && matchData.pending_received.length > 0) || 
-              (matchData.pending_sent && matchData.pending_sent.length > 0);
-              
-            if (hasMatches) {
-              setMatchFound(true);
-              setTimeout(() => setMatchFound(false), 3000);
-            }
+          // Get the response data which should tell us if this specific swipe created a match
+          const swipeData = await response.json();
+          console.log('Swipe response:', swipeData);
+          
+          // Only show match modal for right swipes that create a match
+          if (isLike && swipeData.match) {
+            // Store the swiped experience details to show in match modal
+            console.log('Match found with experience:', swipedExperience);
+            
+            // Set the current swiped experience for the match modal to use
+            window.lastMatchedExperience = swipedExperience;
+            
+            // Show match modal
+            setMatchFound(true);
+            setTimeout(() => setMatchFound(false), 3000);
           }
 
           // Move to next experience
@@ -315,7 +316,7 @@ const Swipe = () => {
                   </div>
                 </div>
                 
-                <p className="text-gray-700 mb-6">You both want to try {currentExperience.experience_type} at {currentExperience.location}!</p>
+                <p className="text-gray-700 mb-6">You both want to try {window.lastMatchedExperience?.experience_type || 'an experience'} at {window.lastMatchedExperience?.location || 'a location'}!</p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <button 

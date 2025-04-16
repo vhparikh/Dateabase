@@ -571,20 +571,28 @@ def update_experience(experience_id, current_user_id=None):
 @login_required()
 def record_swipe(current_user_id=None):
     try:
+        print(f"Recording swipe from user {current_user_id}")
         data = request.json
+        print(f"Swipe data: {data}")
         
         # Validate required fields
         if not all(key in data for key in ['experience_id', 'is_like']):
+            print("Missing required fields")
             return jsonify({'detail': 'Missing required fields'}), 400
             
         # Get the experience
         experience = db.session.get(Experience, data['experience_id'])
         if not experience:
+            print(f"Experience {data['experience_id']} not found")
             return jsonify({'detail': 'Experience not found'}), 404
             
         # Check if the user owns this experience
         if experience.user_id == current_user_id:
+            print("User tried to swipe on their own experience")
             return jsonify({'detail': 'Cannot swipe on your own experience'}), 400
+        
+        experience_creator = experience.user_id
+        print(f"Experience created by user {experience_creator}")
             
         # Create or update the swipe
         swipe = UserSwipe.query.filter_by(
@@ -599,20 +607,25 @@ def record_swipe(current_user_id=None):
                 direction=data['is_like']
             )
             db.session.add(swipe)
+            print(f"Created new swipe record: direction={data['is_like']}")
         else:
             swipe.direction = data['is_like']
+            print(f"Updated existing swipe record: direction={data['is_like']}")
             
         db.session.commit()
         
-        # Check for match
+        # Initialize match to False
         match = False
-        if data['is_like']:  # Only create match if user swiped yes
-            # Check if the experience creator has also liked this user's experiences
-            # Get experiences created by the current user
-            user_experiences = Experience.query.filter_by(user_id=current_user_id).all()
-            experience_creator = experience.user_id
+        
+        # Only process potential matches for right swipes (likes)
+        if data['is_like']:  
+            print("Processing right swipe (like)")
             
-            # Check for mutual interest
+            # Check if the experience creator has also liked this user's experiences
+            user_experiences = Experience.query.filter_by(user_id=current_user_id).all()
+            print(f"Found {len(user_experiences)} experiences created by swiper")
+            
+            # Check for mutual interest (real match)
             for user_exp in user_experiences:
                 matching_swipe = UserSwipe.query.filter_by(
                     user_id=experience_creator,
@@ -622,6 +635,7 @@ def record_swipe(current_user_id=None):
                 
                 if matching_swipe:
                     match = True
+                    print(f"Found mutual match! Experience creator has liked swiper's experience {user_exp.id}")
                     
                     # Check if match already exists
                     existing_match = Match.query.filter(
@@ -630,25 +644,36 @@ def record_swipe(current_user_id=None):
                     ).first()
                     
                     if not existing_match:
+                        print("Creating new confirmed match")
                         # Create a match record between the two users
                         match_record = Match(
                             user1_id=current_user_id,
                             user2_id=experience_creator,
                             experience_id=data['experience_id'],
-                            status='pending'  # Pending until both users confirm
+                            status='confirmed'  # Mark as confirmed since it's a mutual match
                         )
                         db.session.add(match_record)
                         db.session.commit()
+                    else:
+                        print(f"Match already exists with status: {existing_match.status}")
+                        # Update existing match to confirmed if it was pending
+                        if existing_match.status == 'pending':
+                            existing_match.status = 'confirmed'
+                            db.session.commit()
+                            print("Updated existing match to confirmed status")
+                    
                     break  # Only create one match between users
             
-            # Also create a potential match for the experience owner to review
+            # ALWAYS create a potential match for right swipes, regardless of mutual match status
+            # This ensures the experience owner sees this in their pending matches
             potential_match = Match.query.filter(
                 (Match.user1_id == current_user_id) & 
                 (Match.user2_id == experience_creator) &
                 (Match.experience_id == data['experience_id'])
             ).first()
             
-            if not potential_match and not match:
+            if not potential_match:
+                print("Creating new pending match")
                 potential_match = Match(
                     user1_id=current_user_id,
                     user2_id=experience_creator,
@@ -657,7 +682,11 @@ def record_swipe(current_user_id=None):
                 )
                 db.session.add(potential_match)
                 db.session.commit()
+                print(f"Created pending match: {potential_match.id}")
+        else:
+            print("Left swipe (pass) - not creating any matches")
         
+        print(f"Returning match status: {match}")
         return jsonify({
             'message': 'Swipe recorded successfully',
             'match': match
