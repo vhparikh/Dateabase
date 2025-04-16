@@ -4,52 +4,22 @@ from datetime import datetime, timedelta, timezone
 import os
 import jwt
 import secrets
-import logging
 from urllib.parse import quote_plus, urlencode, quote
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
     from database import db, init_db, User, Experience, Match, UserSwipe
-    from cloudinary_utils import init_cloudinary, upload_image, delete_image, get_user_images
-    from migrations import run_migrations
 except ImportError:
-    try:
-        # Fall back to package import (for Heroku)
-        from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-        from backend.database import db, init_db, User, Experience, Match, UserSwipe
-        from backend.cloudinary_utils import init_cloudinary, upload_image, delete_image, get_user_images
-        from backend.migrations import run_migrations
-    except ImportError as e:
-        print(f"Import error: {e}")
-        # If still failing, try individual imports to identify the problematic module
-        from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-        from backend.database import db, init_db, User, Experience, Match, UserSwipe
-        # Create stub functions if modules are missing
-        if 'cloudinary_utils' in str(e):
-            print("Using stub Cloudinary functions - image uploads will be disabled")
-            def init_cloudinary(): return False
-            def upload_image(*args, **kwargs): return {"success": False, "error": "Cloudinary not available"}
-            def delete_image(*args, **kwargs): return False
-            def get_user_images(*args, **kwargs): return []
-        # If migrations module is missing, create a stub function
-        if 'migrations' in str(e):
-            print("Using stub migrations function")
-            def run_migrations(app): print("Migrations module not available"); return
+    # Fall back to package import (for Heroku)
+    from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+    from backend.database import db, init_db, User, Experience, Match, UserSwipe
 from functools import wraps
 
 # Setup Flask app with proper static folder configuration for production deployment
 app = Flask(__name__, 
            static_folder='../frontend/build',  # Path to the React build directory
            static_url_path='')  # Empty string makes the static assets available at the root URL
-
-# Configure CORS to handle multipart/form-data requests and credentials
-CORS(app, 
-     supports_credentials=True,
-     origins=["*", "http://localhost:3000", "https://date-a-base-with-credits-839b845c06a6.herokuapp.com"],
-     resources={r"/api/*": {"origins": "*"}},
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-     expose_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+CORS(app, supports_credentials=True)
 
 # Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
@@ -59,12 +29,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
 # Initialize the database with our app
 init_db(app)
-
-# Initialize Cloudinary
-if init_cloudinary():
-    print("Cloudinary initialized successfully")
-else:
-    print("Cloudinary initialization skipped or failed - some features may be limited")
 
 # Auth Helper Functions
 def generate_token(user_id):
@@ -253,151 +217,6 @@ def refresh_token():
         return jsonify({'detail': str(e)}), 500
 
 # User Routes
-
-# Profile Image Management Routes
-@app.route('/api/users/profile-images', methods=['POST'])
-@login_required()
-def upload_profile_image(current_user_id=None):
-    try:
-        print(f"Upload profile image request received for user ID: {current_user_id}")
-        
-        # Check if user exists
-        user = User.query.get_or_404(current_user_id)
-        print(f"User found: {user.username}")
-        
-        # Check request content type
-        print(f"Request content type: {request.content_type}")
-        
-        # Debug request info
-        print(f"Files in request: {list(request.files.keys()) if request.files else 'No files'}")
-        print(f"Form data in request: {list(request.form.keys()) if request.form else 'No form data'}") 
-        
-        # Check if files were uploaded
-        if 'image' not in request.files:
-            return jsonify({'detail': 'No image file provided'}), 400
-            
-        file = request.files['image']
-        print(f"Received file: {file.filename}, mimetype: {file.mimetype}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}")
-            
-        if file.filename == '':
-            return jsonify({'detail': 'No image selected'}), 400
-            
-        # Generate a unique public ID for the image (using user ID and timestamp)
-        timestamp = int(datetime.now().timestamp())
-        public_id = f"user_{current_user_id}_{timestamp}"
-        print(f"Generated public_id: {public_id}")
-        
-        # Upload image to Cloudinary
-        print("Starting Cloudinary upload...")
-        result = upload_image(file, public_id=public_id)
-        print(f"Cloudinary upload result: {result}")
-        
-        if not result.get('success', False):
-            error_msg = f"Error uploading image: {result.get('error')}"
-            print(error_msg)
-            return jsonify({'detail': error_msg}), 500
-            
-        # Get the URL from Cloudinary response
-        image_url = result.get('secure_url')
-        image_public_id = result.get('public_id')
-        print(f"Image uploaded successfully to {image_url}")
-        
-        # Initialize profile_images as an empty array if it's None
-        if user.profile_images is None:
-            print("Initializing empty profile_images array")
-            user.profile_images = []
-        
-        print(f"Current profile_images: {user.profile_images}")
-        
-        # Enforce limit of 4 images per user - if already at limit, remove oldest
-        if len(user.profile_images) >= 4:
-            print("User has reached image limit, removing oldest image")
-            user.profile_images.pop(0)  # Remove the oldest image
-        
-        # Add the new image URL to the user's profile_images array
-        user.profile_images.append(image_public_id)
-        print(f"Updated profile_images: {user.profile_images}")
-        
-        # For backward compatibility, also set the main profile_image if not already set
-        if not user.profile_image:
-            print("Setting main profile_image")
-            user.profile_image = image_url
-        
-        # Save changes to database
-        print("Committing changes to database")
-        db.session.commit()
-        print("Database updated successfully")
-        
-        return jsonify({
-            'detail': 'Profile image uploaded successfully',
-            'image_url': image_url,
-            'public_id': image_public_id,
-            'profile_images': user.profile_images
-        }), 200
-    except Exception as e:
-        print(f"Error uploading profile image: {e}")
-        db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
-
-@app.route('/api/users/profile-images/<image_id>', methods=['DELETE'])
-@login_required()
-def delete_profile_image(image_id, current_user_id=None):
-    try:
-        # Check if user exists
-        user = User.query.get_or_404(current_user_id)
-        
-        # Make sure the image exists in the user's profile_images
-        if not user.profile_images or image_id not in user.profile_images:
-            return jsonify({'detail': 'Image not found in user profile'}), 404
-        
-        # Delete the image from Cloudinary
-        delete_result = delete_image(image_id)
-        
-        # Remove the image from the user's profile_images array
-        user.profile_images.remove(image_id)
-        
-        # If this was also the main profile image, clear it or set to the first available image
-        if user.profile_image and image_id in user.profile_image:
-            if user.profile_images and len(user.profile_images) > 0:
-                # Get the URL for the first remaining image
-                first_image = user.profile_images[0]
-                user.profile_image = first_image
-            else:
-                user.profile_image = None
-        
-        # Save changes to database
-        db.session.commit()
-        
-        return jsonify({
-            'detail': 'Profile image deleted successfully',
-            'deleted_image_id': image_id,
-            'profile_images': user.profile_images
-        }), 200
-    except Exception as e:
-        print(f"Error deleting profile image: {e}")
-        db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
-
-@app.route('/api/users/profile-images', methods=['GET'])
-@login_required()
-def get_profile_images(current_user_id=None):
-    try:
-        # Check if user exists
-        user = User.query.get_or_404(current_user_id)
-        
-        # Get the user's profile images
-        image_public_ids = user.profile_images or []
-        
-        # Get details for each image from Cloudinary
-        image_details = get_user_images(image_public_ids)
-        
-        return jsonify({
-            'profile_images': image_details,
-            'main_profile_image': user.profile_image
-        }), 200
-    except Exception as e:
-        print(f"Error retrieving profile images: {e}")
-        return jsonify({'detail': str(e)}), 500
 @app.route('/api/users', methods=['POST'])
 def create_user():
     data = request.json
@@ -425,7 +244,6 @@ def get_user(user_id):
         'class_year': user.class_year,
         'interests': user.interests,
         'profile_image': user.profile_image,
-        'profile_images': user.profile_images,
         'created_at': user.created_at
     })
 
@@ -498,7 +316,6 @@ def update_user(user_id):
             'class_year': user.class_year,
             'interests': user.interests,
             'profile_image': user.profile_image,
-            'profile_images': user.profile_images,
             'prompt1': user.prompt1,
             'answer1': user.answer1,
             'prompt2': user.prompt2,
@@ -1522,9 +1339,6 @@ with app.app_context():
         print("Creating database tables...")
         db.create_all()
         print("Tables created successfully")
-        
-        # Run migrations to add new columns
-        run_migrations(app)
     except Exception as e:
         print(f"Error initializing database: {e}")
 

@@ -2,7 +2,6 @@ import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { getExperiences, getCurrentUser } from '../services/api';
-import ProfileImageGallery from '../components/ProfileImageGallery';
 
 const Profile = () => {
   const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
@@ -14,19 +13,19 @@ const Profile = () => {
   const [error, setError] = useState('');
   
   // Fetch user profile directly from the API to ensure latest data
-  const fetchUserProfile = async () => {
-    try {
-      setProfileLoading(true);
-      const response = await getCurrentUser();
-      setUserProfile(response.data);
-      setProfileLoading(false);
-    } catch (err) {
-      console.error('Failed to load user profile', err);
-      setProfileLoading(false);
-    }
-  };
-  
   useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setProfileLoading(true);
+        const response = await getCurrentUser();
+        setUserProfile(response.data);
+        setProfileLoading(false);
+      } catch (err) {
+        console.error('Failed to load user profile', err);
+        setProfileLoading(false);
+      }
+    };
+    
     fetchUserProfile();
   }, []);
   
@@ -163,14 +162,6 @@ const Profile = () => {
           <h2 className="text-2xl font-bold mb-6 text-gray-800">Profile Information</h2>
           
           <div className="space-y-6">
-            {/* Profile Image Gallery */}
-            <ProfileImageGallery 
-              userProfile={userProfile} 
-              onImagesUpdated={() => {
-                // Refresh user profile data when images are updated
-                fetchUserProfile();
-              }}
-            />
             <div>
               <h3 className="text-lg font-medium text-gray-700 mb-2">Name</h3>
               <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">{userProfile?.name || 'Not set'}</p>
