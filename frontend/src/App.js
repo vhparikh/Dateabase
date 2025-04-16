@@ -33,11 +33,18 @@ const ProtectedRoute = ({ children }) => {
 
 // Wrapper component that enforces authentication
 const AppWrapper = ({ children }) => {
-  const { user, authLoading } = useAuth();
+  const { user, authLoading, loadUserProfile } = useAuth();
   
-  // While checking authentication status, show nothing
+  // While checking authentication status, show loading
   if (authLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-orange-800 font-medium">Loading your profile...</p>
+        </div>
+      </div>
+    );
   }
   
   // If not authenticated, redirect to login
@@ -46,9 +53,8 @@ const AppWrapper = ({ children }) => {
   }
   
   // Check if user needs to complete onboarding
-  // Also check localStorage for onboardingCompleted flag as a fallback
-  const onboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
-  if (user.onboarding_completed === false && !onboardingCompleted) {
+  // Using explicit check for false to avoid issues with undefined/null
+  if (user.onboarding_completed === false) {
     console.log("User needs to complete onboarding, redirecting...");
     return <Navigate to="/onboarding" />;
   }

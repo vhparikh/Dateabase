@@ -901,7 +901,8 @@ def cas_callback():
                 class_year=2025,
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
-                password_hash=secrets.token_hex(16)
+                password_hash=secrets.token_hex(16),
+                onboarding_completed=False  # Explicitly set onboarding as not completed for new users
             )
             db.session.add(new_user)
             db.session.commit()
@@ -930,14 +931,23 @@ def cas_callback():
         
         # Get onboarding status to pass to frontend
         needs_onboarding = not user.onboarding_completed
+        print(f"User {user.username} needs onboarding: {needs_onboarding}")
         
         # For Heroku environment, redirect to the frontend with the onboarding status
         if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-            # Use relative URL for redirect in production
-            return redirect(f"/swipe?needs_onboarding={str(needs_onboarding).lower()}")
+            # If onboarding is needed, redirect to onboarding page
+            if needs_onboarding:
+                return redirect(f"/onboarding")
+            else:
+                # Otherwise, redirect to the requested page or swipe
+                return redirect(f"/{callback_url.lstrip('/')}" if callback_url != '/' else "/swipe")
         
         # For local development, use the full URL with domain
-        return redirect(f"{frontend_url}/swipe?needs_onboarding={str(needs_onboarding).lower()}")
+        if needs_onboarding:
+            return redirect(f"{frontend_url}/onboarding")
+        else:
+            # Use the callback URL if provided, otherwise go to swipe
+            return redirect(f"{frontend_url}/{callback_url.lstrip('/')}" if callback_url != '/' else f"{frontend_url}/swipe")
     except Exception as e:
         print(f"CAS callback error: {str(e)}")
         return jsonify({'detail': f'Error: {str(e)}'}), 500

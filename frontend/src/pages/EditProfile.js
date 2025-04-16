@@ -533,6 +533,7 @@ const EditProfile = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
                     required
                   >
+                    <option value="">Select a prompt...</option>
                     {getAvailablePrompts('prompt1').map(prompt => (
                       <option key={prompt} value={prompt}>{prompt}</option>
                     ))}
@@ -545,7 +546,6 @@ const EditProfile = () => {
                     placeholder="Your answer..."
                     rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    disabled={!formData.prompt1}
                   ></textarea>
                 </div>
                 
@@ -562,6 +562,7 @@ const EditProfile = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
                     required
                   >
+                    <option value="">Select a prompt...</option>
                     {getAvailablePrompts('prompt2').map(prompt => (
                       <option key={prompt} value={prompt}>{prompt}</option>
                     ))}
@@ -574,7 +575,6 @@ const EditProfile = () => {
                     placeholder="Your answer..."
                     rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    disabled={!formData.prompt2}
                   ></textarea>
                 </div>
                 
@@ -591,6 +591,7 @@ const EditProfile = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
                     required
                   >
+                    <option value="">Select a prompt...</option>
                     {getAvailablePrompts('prompt3').map(prompt => (
                       <option key={prompt} value={prompt}>{prompt}</option>
                     ))}
@@ -603,7 +604,6 @@ const EditProfile = () => {
                     placeholder="Your answer..."
                     rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    disabled={!formData.prompt3}
                   ></textarea>
                 </div>
               </div>

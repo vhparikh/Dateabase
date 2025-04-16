@@ -36,7 +36,8 @@ const Onboarding = () => {
     prompt2: user?.prompt2 || promptOptions[1],
     answer2: user?.answer2 || '',
     prompt3: user?.prompt3 || promptOptions[2],
-    answer3: user?.answer3 || ''
+    answer3: user?.answer3 || '',
+    classYear: user?.class_year ? user.class_year.toString() : ''
   });
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -110,117 +111,28 @@ const Onboarding = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
-    // Validate height before submission
-    const heightVal = parseInt(formData.height, 10);
-    if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
-      setError('Height must be a number between 0 and 300 cm.');
-      setLoading(false);
-      return;
-    }
-
-    // Validate that prompts are not duplicated
-    const selectedPrompts = [formData.prompt1, formData.prompt2, formData.prompt3].filter(Boolean);
-    const uniquePrompts = [...new Set(selectedPrompts)];
     
-    if (selectedPrompts.length !== uniquePrompts.length) {
-      setError('You have selected the same prompt multiple times. Please choose different prompts.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Create a validated copy of formData with guaranteed valid height
-      const validatedFormData = {
-        ...formData,
-        height: heightVal
-      };
-
-      const response = await fetch(`${API_URL}/api/users/complete-onboarding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(validatedFormData)
-      });
-
-      if (response.ok) {
-        // Successfully completed onboarding
-        const data = await response.json();
-        console.log('Onboarding complete response:', data);
-        
-        try {
-          // Ensure we have valid authentication tokens
-          const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({})
-          });
-          
-          if (tokenResponse.ok) {
-            // Parse and store the tokens
-            const tokenData = await tokenResponse.json();
-            console.log('Token refresh successful');
-            
-            // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
-            if (tokenData && tokenData.access) {
-              localStorage.setItem('authTokens', JSON.stringify(tokenData));
-            }
-            
-            // Force reload user profile and wait for it to complete
-            const userProfile = await loadUserProfile();
-            console.log('User profile loaded after onboarding:', userProfile);
-            
-            // If we got the user profile but onboarding_completed is still false,
-            // manually update it to ensure AppWrapper doesn't redirect back to onboarding
-            if (userProfile && userProfile.onboarding_completed === false) {
-              console.log('Forcing update of onboarding status in user context');
-              setUser({
-                ...userProfile,
-                onboarding_completed: true
-              });
-            }
-            
-            // Make one more auth check before navigating
-            const authCheckResponse = await fetch(`${API_URL}/api/cas/status`, {
-              credentials: 'include'
-            });
-            
-            if (authCheckResponse.ok) {
-              const authStatus = await authCheckResponse.json();
-              console.log('Auth status before navigation:', authStatus);
-            }
-            
-            // Increase the delay to ensure all state updates are processed
-            console.log('Preparing to navigate to home page...');
-            window.localStorage.setItem('onboardingCompleted', 'true');
-            
-            // Use window.location for a hard redirect to avoid routing issues
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 1000); // Longer delay for Heroku environment
-          } else {
-            console.error('Failed to refresh tokens after onboarding');
-            setError('Authentication error. Please try logging in again.');
-          }
-        } catch (tokenErr) {
-          console.error('Error during post-onboarding authentication:', tokenErr);
-          setError('Authentication error after onboarding. Please try logging in again.');
-        }
-      } else {
-        try {
-          const errorData = await response.json();
-          setError(errorData.detail || 'Failed to complete onboarding');
-        } catch (jsonErr) {
-          setError('Failed to complete onboarding. Please check your inputs and try again.');
+    // Validate step 3 inputs
+    if (currentStep === 3) {
+      // Validate class year
+      if (formData.classYear) {
+        const classYearNum = parseInt(formData.classYear, 10);
+        if (isNaN(classYearNum) || classYearNum < 2000 || classYearNum > 2030) {
+          setError('Please enter a valid class year between 2000 and 2030');
+          setLoading(false);
+          return;
         }
       }
-    } catch (err) {
-      console.error('Error completing onboarding:', err);
-      setError('An error occurred while submitting. Please try again.');
-    } finally {
+      
+      // Call the completeOnboarding function to handle server communication
+      const success = await completeOnboarding();
+      if (!success) {
+        // Error handling is done in the completeOnboarding function
+        return;
+      }
+    } else {
+      // Move to the next step for steps 1 and 2
+      nextStep();
       setLoading(false);
     }
   };
@@ -285,6 +197,101 @@ const Onboarding = () => {
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to complete onboarding with server
+  const completeOnboarding = async () => {
+    setLoading(true);
+    
+    try {
+      console.log('Starting onboarding completion process...');
+      
+      const userData = {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        gender: formData.gender,
+        location: formData.location || '',
+        hometown: formData.hometown || '',
+        major: formData.major || '',
+        class_year: parseInt(formData.classYear, 10) || null,
+        interests: JSON.stringify(formData.interests)
+      };
+      
+      console.log('Submitting onboarding data:', userData);
+      
+      // Make API call to complete onboarding
+      const response = await fetch(`${API_URL}/api/users/complete-onboarding`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',  // Important for CAS authentication
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Onboarding completion failed:', errorData);
+        setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
+        setLoading(false);
+        return false;
+      }
+      
+      const data = await response.json();
+      console.log('Onboarding completed successfully:', data);
+      
+      // Get fresh tokens after completing onboarding
+      console.log('Refreshing tokens after onboarding completion...');
+      const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({})
+      });
+      
+      if (tokenResponse.ok) {
+        // Parse and store the tokens
+        const tokenData = await tokenResponse.json();
+        console.log('Token refresh successful');
+        
+        // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
+        if (tokenData && tokenData.access) {
+          localStorage.setItem('authTokens', JSON.stringify(tokenData));
+          setAuthTokens(tokenData);
+        }
+        
+        // Force reload user profile and wait for it to complete
+        const userProfile = await loadUserProfile();
+        console.log('User profile loaded after onboarding:', userProfile);
+        
+        // If we got the user profile but onboarding_completed is still false,
+        // manually update it to ensure AppWrapper doesn't redirect back to onboarding
+        if (userProfile) {
+          console.log('Updating user context with completed onboarding status');
+          setUser({
+            ...userProfile,
+            onboarding_completed: true
+          });
+        }
+        
+        // Navigate to the home/swipe page
+        console.log('Navigating to home page...');
+        window.localStorage.setItem('onboardingCompleted', 'true');
+        navigate('/swipe');
+        return true;
+      } else {
+        console.error('Failed to refresh token after onboarding');
+        setError('Authentication error after onboarding. Please try logging in again.');
+        setLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error during onboarding completion:', error);
+      setError('An unexpected error occurred. Please try again.');
+      setLoading(false);
+      return false;
     }
   };
 
