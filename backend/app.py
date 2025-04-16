@@ -865,7 +865,7 @@ def cas_callback():
         if not ticket:
             return jsonify({'detail': 'No ticket provided'}), 400
         
-        # Validate ticket with CAS server
+        # Step 1: Validate ticket with CAS server - Authentication happens first
         user_info = validate(ticket)
         
         if not user_info:
@@ -880,13 +880,15 @@ def cas_callback():
         # Use principalId as the cas_id if available, otherwise use netid
         cas_id = attributes.get('principalId', netid)
         
-        # Check if user exists in our database - first by netid, then by cas_id
+        # Step 2: Check if user exists in our database - first by netid, then by cas_id
         user = User.query.filter_by(netid=netid).first()
         if not user:
             user = User.query.filter_by(cas_id=cas_id).first()
         
+        is_new_user = False
         # If user doesn't exist, we'll create one with information from CAS
         if not user:
+            is_new_user = True
             # Get display name or default to netID
             display_name = attributes.get('displayName', f"{netid.capitalize()} User")
             
@@ -929,25 +931,26 @@ def cas_callback():
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
-        # Get onboarding status to pass to frontend
-        needs_onboarding = not user.onboarding_completed
-        print(f"User {user.username} needs onboarding: {needs_onboarding}")
+        # Step 3: Determine if onboarding is needed
+        # New users ALWAYS need onboarding, existing users only if onboarding_completed is False
+        needs_onboarding = is_new_user or not user.onboarding_completed
+        print(f"User {user.username} is new: {is_new_user}, needs onboarding: {needs_onboarding}")
         
-        # For Heroku environment, redirect to the frontend with the onboarding status
-        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-            # If onboarding is needed, redirect to onboarding page
-            if needs_onboarding:
-                return redirect(f"/onboarding")
-            else:
-                # Otherwise, redirect to the requested page or swipe
-                return redirect(f"/{callback_url.lstrip('/')}" if callback_url != '/' else "/swipe")
-        
-        # For local development, use the full URL with domain
+        # Step 4: Redirect based on authentication and onboarding status
+        # Always redirect to onboarding for new users or users who haven't completed onboarding
         if needs_onboarding:
-            return redirect(f"{frontend_url}/onboarding")
+            # For production environment
+            if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+                return redirect(f"/onboarding")
+            # For local development
+            else:
+                return redirect(f"{frontend_url}/onboarding")
         else:
-            # Use the callback URL if provided, otherwise go to swipe
-            return redirect(f"{frontend_url}/{callback_url.lstrip('/')}" if callback_url != '/' else f"{frontend_url}/swipe")
+            # For authenticated users who don't need onboarding, respect the callback URL
+            if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+                return redirect(f"/{callback_url.lstrip('/')}" if callback_url != '/' else "/swipe")
+            else:
+                return redirect(f"{frontend_url}/{callback_url.lstrip('/')}" if callback_url != '/' else f"{frontend_url}/swipe")
     except Exception as e:
         print(f"CAS callback error: {str(e)}")
         return jsonify({'detail': f'Error: {str(e)}'}), 500
