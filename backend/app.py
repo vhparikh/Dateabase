@@ -937,20 +937,38 @@ def cas_callback():
         print(f"User {user.username} is new: {is_new_user}, needs onboarding: {needs_onboarding}")
         
         # Step 4: Redirect based on authentication and onboarding status
-        # Always redirect to onboarding for new users or users who haven't completed onboarding
-        if needs_onboarding:
-            # For production environment
-            if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-                return redirect(f"/onboarding")
-            # For local development
+        # For production environment (Heroku) - CRITICAL FIX: Always redirect to root with hash params to avoid 404s
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+            # In SPAs on Heroku, we need to redirect to the root and let React Router handle it
+            # Otherwise we get 404 errors when users don't have cookies
+            print(f"Heroku environment detected, redirecting to root with appropriate hash")
+            
+            # Store auth tokens in secure HttpOnly cookies
+            resp = None
+            if needs_onboarding:
+                # Send to root with #/onboarding hash for client-side routing
+                resp = redirect(f"/?redirectTo=onboarding")
+                print(f"Redirecting new user to onboarding")
             else:
-                return redirect(f"{frontend_url}/onboarding")
+                # For authenticated users with completed onboarding
+                target = callback_url.lstrip('/') if callback_url != '/' else 'swipe'
+                resp = redirect(f"/?redirectTo={target}")
+                print(f"Redirecting authenticated user to {target}")
+            
+            # Set tokens in cookies for good measure
+            resp.set_cookie('access_token', access_token, httponly=True, secure=True, max_age=86400)
+            resp.set_cookie('refresh_token', refresh_token, httponly=True, secure=True, max_age=2592000)
+            return resp
+        
+        # For local development - redirect directly to the route
         else:
-            # For authenticated users who don't need onboarding, respect the callback URL
-            if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-                return redirect(f"/{callback_url.lstrip('/')}" if callback_url != '/' else "/swipe")
+            if needs_onboarding:
+                print(f"Local dev: Redirecting to {frontend_url}/onboarding")
+                return redirect(f"{frontend_url}/onboarding")
             else:
-                return redirect(f"{frontend_url}/{callback_url.lstrip('/')}" if callback_url != '/' else f"{frontend_url}/swipe")
+                target = f"{frontend_url}/{callback_url.lstrip('/')}" if callback_url != '/' else f"{frontend_url}/swipe"
+                print(f"Local dev: Redirecting to {target}")
+                return redirect(target)
     except Exception as e:
         print(f"CAS callback error: {str(e)}")
         return jsonify({'detail': f'Error: {str(e)}'}), 500
