@@ -4,6 +4,10 @@ import { getExperiences } from '../services/api';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+// Initialize the AI client
+const ai = new GoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Experience card component with orange gradient theme
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
@@ -213,23 +217,15 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const isInappropriate = async (text) => {
     console.log('Checking for inappropriate content:', text);
     try {
-      const response = await fetch(`${API_URL}/api/check-inappropriate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data.is_inappropriate;
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with "true" or "false".\n\nText: "${text}"`;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const output = await response.text();
+      // Expecting "true" or "false" as a string in the output
+      return output.trim().toLowerCase() === "true";
     } catch (error) {
-      console.error("Error checking inappropriate content:", error);
+      console.error("GenAI error:", error);
       // Fallback: if error, assume not inappropriate
       return false;
     }
@@ -316,11 +312,8 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               onChange={handleChange}
               placeholder="Describe this experience..."
               rows="3"
-              className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             ></textarea>
-            {errors.description && (
-              <p className="text-red-500 text-xs mt-1">{errors.description}</p>
-            )}
           </div>
           
           {/* Location Image */}
