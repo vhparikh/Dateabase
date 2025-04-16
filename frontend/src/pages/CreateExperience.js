@@ -5,6 +5,7 @@ import { API_URL } from '../config';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { Autocomplete } from '@react-google-maps/api';
 
+
 // Define common experience types
 const experienceTypes = [
   'Coffee',

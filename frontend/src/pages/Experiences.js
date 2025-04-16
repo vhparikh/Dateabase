@@ -4,6 +4,10 @@ import { getExperiences } from '../services/api';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+// Initialize the AI client
+const ai = new GoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Experience card component with orange gradient theme
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
@@ -179,7 +183,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     }
   };
   
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors = {};
     
     if (!formData.experience_type) {
@@ -189,32 +193,54 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     if (!formData.location) {
       newErrors.location = 'Location is required';
     }
+
+    if(await isInappropriate(formData.description)) {
+      newErrors.description = 'Description contains inappropriate content';
+    } 
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     console.log('Form submitted', formData);
-    
-    if (validateForm()) {
+
+    if (await validateForm()) {
       console.log('Form validated, calling onSave');
       onSave(formData);
     } else {
       console.log('Form validation failed', errors);
     }
   };
-  
-  const handleButtonClick = () => {
-    // Explicitly validate the form and call onSave if valid
-    if (validateForm()) {
-      console.log('Submit button clicked, form validated');
-      onSave(formData);
-    } else {
-      console.log('Submit button clicked, validation failed', errors);
+
+  const isInappropriate = async (text) => {
+    console.log('Checking for inappropriate content:', text);
+    try {
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with "true" or "false".\n\nText: "${text}"`;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const output = await response.text();
+      // Expecting "true" or "false" as a string in the output
+      return output.trim().toLowerCase() === "true";
+    } catch (error) {
+      console.error("GenAI error:", error);
+      // Fallback: if error, assume not inappropriate
+      return false;
     }
   };
+  
+  const handleButtonClick = async () => {
+  // Explicitly validate the form and call onSave if valid
+  if (await validateForm()) {
+    console.log('Submit button clicked, form validated');
+    onSave(formData);
+  } else {
+    console.log('Submit button clicked, validation failed', errors);
+  }
+};
+  
   
   if (!isOpen) return null;
   
