@@ -5,7 +5,7 @@ import { API_URL } from '../config';
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { user, loadUserProfile, setUser } = useContext(AuthContext);
+  const { user, loadUserProfile, setUser, setAuthTokens } = useContext(AuthContext);
   
   // List of prompts for users to choose from
   const promptOptions = [
