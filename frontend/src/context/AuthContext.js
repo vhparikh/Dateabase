@@ -183,17 +183,8 @@ export const AuthProvider = ({ children }) => {
             }
             
             // Check if onboarding is needed (from URL param or user profile)
-            // First check the user profile object as the source of truth
             const needsOnboardingFromProfile = userProfile.onboarding_completed === false;
-            console.log('User onboarding status from profile:', userProfile.onboarding_completed);
-            
-            // Always prioritize the server's determination
-            const redirectToOnboarding = needsOnboardingFromProfile || needsOnboarding;
-            
-            // Update localStorage to match server status
-            if (userProfile.onboarding_completed !== undefined) {
-              localStorage.setItem('onboardingCompleted', userProfile.onboarding_completed.toString());
-            }
+            const redirectToOnboarding = needsOnboarding || needsOnboardingFromProfile;
             
             return {
               success: true,

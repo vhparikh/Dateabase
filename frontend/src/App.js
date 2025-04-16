@@ -46,16 +46,10 @@ const AppWrapper = ({ children }) => {
   }
   
   // Check if user needs to complete onboarding
-  // First check the user object from the server, which takes priority
-  if (user && user.onboarding_completed === false) {
-    console.log("User needs to complete onboarding (based on server data), redirecting...");
-    return <Navigate to="/onboarding" />;
-  }
-  
-  // Only use localStorage as a fallback if user object doesn't have onboarding status
+  // Also check localStorage for onboardingCompleted flag as a fallback
   const onboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
-  if (user && user.onboarding_completed === undefined && !onboardingCompleted) {
-    console.log("User needs to complete onboarding (based on localStorage), redirecting...");
+  if (user.onboarding_completed === false && !onboardingCompleted) {
+    console.log("User needs to complete onboarding, redirecting...");
     return <Navigate to="/onboarding" />;
   }
   

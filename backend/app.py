@@ -931,19 +931,13 @@ def cas_callback():
         # Get onboarding status to pass to frontend
         needs_onboarding = not user.onboarding_completed
         
-        # For Heroku environment, redirect differently based on onboarding status
+        # For Heroku environment, redirect to the frontend with the onboarding status
         if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-            # If onboarding is needed, redirect directly to onboarding page
-            if needs_onboarding:
-                return redirect(f"/onboarding")
-            else:
-                return redirect(f"/swipe")
+            # Use relative URL for redirect in production
+            return redirect(f"/swipe?needs_onboarding={str(needs_onboarding).lower()}")
         
         # For local development, use the full URL with domain
-        if needs_onboarding:
-            return redirect(f"{frontend_url}/onboarding")
-        else:
-            return redirect(f"{frontend_url}/swipe")
+        return redirect(f"{frontend_url}/swipe?needs_onboarding={str(needs_onboarding).lower()}")
     except Exception as e:
         print(f"CAS callback error: {str(e)}")
         return jsonify({'detail': f'Error: {str(e)}'}), 500
