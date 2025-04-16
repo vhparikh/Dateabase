@@ -207,14 +207,25 @@ const Onboarding = () => {
     try {
       console.log('Starting onboarding completion process...');
       
+      // Properly format user data from form fields
+      // Use the classYear field for class_year (resolving the mismatch)
       const userData = {
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        name: formData.name,
         gender: formData.gender,
+        sexuality: formData.sexuality,
+        height: parseInt(formData.height, 10) || 170,
         location: formData.location || '',
         hometown: formData.hometown || '',
         major: formData.major || '',
-        class_year: parseInt(formData.classYear, 10) || null,
-        interests: JSON.stringify(formData.interests)
+        class_year: parseInt(formData.classYear || formData.class_year, 10) || 2025,
+        interests: formData.interests,
+        // Ensure prompts are explicitly included
+        prompt1: formData.prompt1 || '',
+        answer1: formData.answer1 || '',
+        prompt2: formData.prompt2 || '',
+        answer2: formData.answer2 || '',
+        prompt3: formData.prompt3 || '',
+        answer3: formData.answer3 || ''
       };
       
       console.log('Submitting onboarding data:', userData);
@@ -279,7 +290,10 @@ const Onboarding = () => {
         // Navigate to the home/swipe page
         console.log('Navigating to home page...');
         window.localStorage.setItem('onboardingCompleted', 'true');
-        navigate('/swipe');
+        
+        // Use window.location for a hard redirect to avoid routing issues
+        // This is more reliable than using navigate() from react-router
+        window.location.href = '/swipe';
         return true;
       } else {
         console.error('Failed to refresh token after onboarding');

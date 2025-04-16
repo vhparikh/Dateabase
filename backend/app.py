@@ -1124,32 +1124,57 @@ def get_current_user():
 def complete_onboarding():
     """Mark user's onboarding as completed and update profile information"""
     try:
+        print("Complete onboarding endpoint called")
+        print(f"Session data: {session}")
+        
         # Check if user is authenticated via CAS
         if not is_authenticated():
+            print("User is not authenticated")
             return jsonify({'detail': 'Authentication required'}), 401
         
         user_info = session.get('user_info', {})
+        print(f"User info from session: {user_info}")
         netid = user_info.get('user', '')
+        
+        if not netid:
+            print("No netid found in session")
+            return jsonify({'detail': 'No user identified in session'}), 401
+            
+        print(f"Looking up user with netid: {netid}")
         
         # First try to find the user by netid
         user = User.query.filter_by(netid=netid).first()
         if not user:
             # Then try by username as fallback
+            print(f"User not found by netid, trying username")
             user = User.query.filter_by(username=netid).first()
             
         if not user:
+            print(f"User not found with netid or username: {netid}")
             return jsonify({'detail': 'User not found'}), 404
+            
+        print(f"Found user: {user.id}, {user.username}")
         
         # Update user data from request if provided
         if request.json:
             data = request.json
-            if 'name' in data:
+            print(f"Received onboarding data: {data}")
+            
+            if 'name' in data and data['name']:
                 user.name = data['name']
-            if 'gender' in data:
+                print(f"Updated name to: {user.name}")
+                
+            if 'gender' in data and data['gender']:
                 user.gender = data['gender']
+                
+            # CRITICAL: Handle sexuality explicitly - one of the fields not being saved
             if 'sexuality' in data:
+                print(f"Setting sexuality to: {data['sexuality']}")
                 user.sexuality = data['sexuality']
-            if 'height' in data:
+            else:
+                print("No sexuality data found in request")
+                
+            if 'height' in data and data['height']:
                 # Validate height is within reasonable bounds
                 try:
                     height_val = int(data['height'])
@@ -1158,35 +1183,59 @@ def complete_onboarding():
                     user.height = height_val
                 except (ValueError, TypeError):
                     return jsonify({'detail': 'Invalid height value. Height must be a number between 0 and 300 cm'}), 400
-            if 'location' in data:
+                    
+            if 'location' in data and data['location']:
                 user.location = data['location']
-            if 'hometown' in data:
+                
+            if 'hometown' in data and data['hometown']:
                 user.hometown = data['hometown']
-            if 'major' in data:
+                
+            if 'major' in data and data['major']:
                 user.major = data['major']
+                
+            # CRITICAL: Handle class_year explicitly - one of the fields not being saved
             if 'class_year' in data:
+                print(f"Setting class_year to: {data['class_year']}")
                 user.class_year = data['class_year']
-            if 'interests' in data:
+            else:
+                print("No class_year data found in request")
+                
+            if 'interests' in data and data['interests']:
                 user.interests = data['interests']
-            if 'profile_image' in data:
+                
+            if 'profile_image' in data and data['profile_image']:
                 user.profile_image = data['profile_image']
-            # Handle prompt responses
+                
+            # CRITICAL: Handle prompts explicitly - one of the fields not being saved
+            # Remove the requirement for non-empty data to still save empty values
             if 'prompt1' in data:
+                print(f"Setting prompt1 to: {data['prompt1']}")
                 user.prompt1 = data['prompt1']
+                
             if 'answer1' in data:
+                print(f"Setting answer1 to: {data['answer1']}")
                 user.answer1 = data['answer1']
+                
             if 'prompt2' in data:
+                print(f"Setting prompt2 to: {data['prompt2']}")
                 user.prompt2 = data['prompt2']
+                
             if 'answer2' in data:
+                print(f"Setting answer2 to: {data['answer2']}")
                 user.answer2 = data['answer2']
+                
             if 'prompt3' in data:
+                print(f"Setting prompt3 to: {data['prompt3']}")
                 user.prompt3 = data['prompt3']
+                
             if 'answer3' in data:
+                print(f"Setting answer3 to: {data['answer3']}")
                 user.answer3 = data['answer3']
         
-        # Mark onboarding as completed
+        # ALWAYS mark onboarding as completed, even if no data was provided
         user.onboarding_completed = True
         db.session.commit()
+        print(f"Marked onboarding as completed for user {user.id}, {user.username}")
         
         return jsonify({
             'success': True,
