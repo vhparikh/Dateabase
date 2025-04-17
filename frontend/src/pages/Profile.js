@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { getExperiences, getCurrentUser } from '../services/api';
 import ProfileImageUpload from '../components/ProfileImageUpload';
+import { API_URL } from '../config';
 
 const Profile = () => {
   const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
@@ -19,7 +20,31 @@ const Profile = () => {
       try {
         setProfileLoading(true);
         const response = await getCurrentUser();
-        setUserProfile(response.data);
+        
+        // Fetch user images
+        try {
+          const imagesResponse = await fetch(`${API_URL}/api/users/images`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          if (imagesResponse.ok) {
+            const imagesData = await imagesResponse.json();
+            // Update user profile with images
+            setUserProfile({
+              ...response.data,
+              images: imagesData
+            });
+          } else {
+            // Still set user profile even if images fetch fails
+            setUserProfile(response.data);
+          }
+        } catch (imgErr) {
+          console.error('Failed to load user images', imgErr);
+          // Still set user profile even if images fetch fails
+          setUserProfile(response.data);
+        }
+        
         setProfileLoading(false);
       } catch (err) {
         console.error('Failed to load user profile', err);
@@ -117,17 +142,50 @@ const Profile = () => {
     return gradients[Math.floor(Math.random() * gradients.length)];
   };
   
+  // Determine if we have a profile image to show
+  const hasProfileImage = userProfile?.profile_image || 
+    (userProfile?.images && userProfile.images.length > 0 && 
+    userProfile.images.find(img => img.position === 0));
+  
+  // Get profile image URL (prefer the main profile image URL if it exists)
+  const getProfileImageUrl = () => {
+    if (userProfile?.profile_image) {
+      return userProfile.profile_image;
+    }
+    
+    if (userProfile?.images && userProfile.images.length > 0) {
+      const mainImage = userProfile.images.find(img => img.position === 0);
+      if (mainImage) return mainImage.url;
+      
+      // If no main image but we have images, use the first one
+      return userProfile.images[0].url;
+    }
+    
+    return null;
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-card mb-8 p-6">
           <div className="flex flex-col md:flex-row items-center">
-            <div className="w-28 h-28 md:w-32 md:h-32 bg-gradient-to-r from-orange-start to-orange-end rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-md">
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </div>
+            {hasProfileImage ? (
+              <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden shadow-md">
+                <img 
+                  src={getProfileImageUrl()} 
+                  alt={`${userProfile?.name || 'User'}'s profile`}
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+            ) : (
+              <div className="w-28 h-28 md:w-32 md:h-32 bg-gradient-to-r from-orange-start to-orange-end rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-md">
+                {userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+            )}
+            
             <div className="ml-0 md:ml-8 mt-6 md:mt-0 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-gray-800">{user?.name || 'User'}</h1>
+              <h1 className="text-3xl font-bold text-gray-800">{userProfile?.name || 'User'}</h1>
               
               <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {renderInterests()}

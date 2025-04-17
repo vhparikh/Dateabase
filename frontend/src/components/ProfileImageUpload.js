@@ -93,6 +93,26 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
         return [...newImages, data.image];
       });
       
+      // If this is going to be the main profile image (position 0), update the profile_image field
+      if (data.image.position === 0) {
+        try {
+          const updateProfileResponse = await fetch(`${API_URL}/api/me`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ profile_image: data.image.url })
+          });
+          
+          if (!updateProfileResponse.ok) {
+            console.error('Failed to update profile image URL');
+          }
+        } catch (err) {
+          console.error('Error updating profile image URL:', err);
+        }
+      }
+      
       // Notify parent component
       if (onImageUploaded) {
         onImageUploaded(data.image);
@@ -160,6 +180,29 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to update image position');
+      }
+      
+      // Also update the user's profile_image field to use this as the main profile image
+      try {
+        const updateProfileResponse = await fetch(`${API_URL}/api/me`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ profile_image: image.url })
+        });
+        
+        if (!updateProfileResponse.ok) {
+          console.error('Failed to update profile image URL, but position was updated');
+        }
+      } catch (err) {
+        console.error('Error updating profile image URL:', err);
+      }
+      
+      // If the parent component needs to know about this change
+      if (onImageUploaded) {
+        onImageUploaded({...image, position: 0});
       }
       
       // Refetch images to ensure we have the latest data
