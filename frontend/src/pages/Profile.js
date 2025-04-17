@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { getExperiences, getCurrentUser } from '../services/api';
+import ProfileImageUpload from '../components/ProfileImageUpload';
 
 const Profile = () => {
   const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
@@ -222,6 +223,22 @@ const Profile = () => {
               {renderInterests() || (
                 <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">No interests added yet</p>
               )}
+            </div>
+
+            {/* Profile Images */}
+            <div className="pt-6 border-t border-gray-200">
+              <ProfileImageUpload 
+                userId={userProfile?.id} 
+                onImageUploaded={(image) => {
+                  // Update profile image in state if it's the main photo
+                  if (image.position === 0) {
+                    setUserProfile({
+                      ...userProfile,
+                      profile_image: image.url
+                    });
+                  }
+                }}
+              />
             </div>
             
             {/* Prompt Responses */}

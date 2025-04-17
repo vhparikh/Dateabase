@@ -23,7 +23,7 @@ class User(db.Model):
     major = db.Column(db.String(100), nullable=True)  # Major
     class_year = db.Column(db.Integer, nullable=True)  # Made nullable for initial CAS login
     interests = db.Column(db.Text, nullable=True)  # Made nullable for initial CAS login
-    profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
+    profile_image = db.Column(db.Text, nullable=True)  # URL to primary profile image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
     # Hinge-like prompt responses
@@ -31,7 +31,7 @@ class User(db.Model):
     answer1 = db.Column(db.Text, nullable=True)  # The answer to prompt 1
     prompt2 = db.Column(db.String(200), nullable=True)  # The prompt question
     answer2 = db.Column(db.Text, nullable=True)  # The answer to prompt 2
-    prompt3 = db.Column(db.String(200), nullable=True)  # The prompt question
+    prompt3 = db.Column(db.String(200), nullable=True)
     answer3 = db.Column(db.Text, nullable=True)  # The answer to prompt 3
     
     def set_password(self, password):
@@ -39,6 +39,16 @@ class User(db.Model):
         
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class UserImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    image_url = db.Column(db.Text, nullable=False)  # Cloudinary URL
+    public_id = db.Column(db.String(255), nullable=False)  # Cloudinary public ID for deletion
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    position = db.Column(db.Integer, nullable=False, default=0)  # Position in the gallery (0-3)
+    
+    user = db.relationship('User', backref=db.backref('images', lazy=True))
 
 class Experience(db.Model):
     id = db.Column(db.Integer, primary_key=True)
