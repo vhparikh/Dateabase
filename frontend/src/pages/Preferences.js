@@ -139,11 +139,10 @@ const Preferences = () => {
         // Update the user in context
         setUser(updatedUserData);
         setSaveSuccess(true);
-        
-        // Clear success message after 3 seconds
+        // Redirect to profile after a short delay
         setTimeout(() => {
-          setSaveSuccess(false);
-        }, 3000);
+          navigate('/profile');
+        }, 1200);
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to update preferences');
