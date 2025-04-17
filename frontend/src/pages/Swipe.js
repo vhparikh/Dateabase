@@ -3,6 +3,7 @@ import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Swipe.css'; // Import the CSS file
+import { Link } from 'react-router-dom';
 
 const Swipe = () => {
   const [experiences, setExperiences] = useState([]);
@@ -326,12 +327,12 @@ const Swipe = () => {
                     Keep Swiping
                   </button>
                   
-                  <button 
-                    onClick={() => setMatchFound(false)}
-                    className="py-3 px-4 bg-gradient-to-r from-orange-start to-orange-end rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all"
+                  <Link 
+                    to="/matches"
+                    className="py-3 px-4 bg-gradient-to-r from-orange-start to-orange-end rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all text-center"
                   >
                     View Matches
-                  </button>
+                  </Link>
                 </div>
               </div>
             </motion.div>

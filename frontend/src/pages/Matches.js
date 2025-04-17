@@ -5,11 +5,294 @@ import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
+// UserProfileModal component for displaying a user's full profile
+const UserProfileModal = ({ userId, isOpen, onClose }) => {
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('photos');
+
+  useEffect(() => {
+    if (isOpen && userId) {
+      fetchUserProfile();
+    }
+  }, [isOpen, userId]);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/api/users/${userId}/profile`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      
+      const data = await response.json();
+      setUserProfile(data);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      setError('Failed to load profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format the interests from JSON string to an array of selected interests
+  const renderInterests = () => {
+    if (!userProfile?.interests) return null;
+    
+    let interestsObj = {};
+    try {
+      // Try to parse if it's a JSON string
+      interestsObj = typeof userProfile.interests === 'string' ? 
+        JSON.parse(userProfile.interests) : userProfile.interests;
+    } catch (e) {
+      // If it's not valid JSON, try a different approach
+      try {
+        // Try to parse as comma-separated values
+        const interests = userProfile.interests.split(',').map(item => item.trim());
+        interests.forEach(interest => {
+          interestsObj[interest] = true;
+        });
+      } catch (err) {
+        return null;
+      }
+    }
+    
+    // Convert to array of interest names - only ones that are true
+    const interestNames = Object.keys(interestsObj).filter(key => interestsObj[key] === true);
+    
+    if (interestNames.length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {interestNames.map(interest => (
+          <span 
+            key={interest} 
+            className="px-3 py-1 bg-orange-50 text-orange-800 rounded-full text-sm font-medium"
+          >
+            {interest.charAt(0).toUpperCase() + interest.slice(1)}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
+          <h2 className="text-xl font-bold text-gray-800">User Profile</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading profile...</p>
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button 
+              onClick={fetchUserProfile} 
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : userProfile ? (
+          <div>
+            {/* Profile Header */}
+            <div className="relative">
+              <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+              <div className="absolute -bottom-16 left-6">
+                <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden">
+                  <img 
+                    src={userProfile.profile_image || `https://ui-avatars.com/api/?name=${userProfile.name}&background=orange&color=fff`} 
+                    alt={userProfile.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Profile Basic Info */}
+            <div className="pt-20 px-6 pb-6">
+              <h3 className="text-2xl font-bold text-gray-800">{userProfile.name}</h3>
+              <p className="text-gray-600">
+                {userProfile.gender && `${userProfile.gender}`}
+                {userProfile.class_year && ` • Class of ${userProfile.class_year}`}
+                {userProfile.major && ` • ${userProfile.major}`}
+              </p>
+              
+              {/* Tabs */}
+              <div className="mt-6 border-b border-gray-200">
+                <div className="flex">
+                  <button 
+                    onClick={() => setActiveTab('photos')} 
+                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
+                      activeTab === 'photos' 
+                        ? 'border-orange-500 text-orange-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Photos
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('about')} 
+                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
+                      activeTab === 'about' 
+                        ? 'border-orange-500 text-orange-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    About
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('interests')} 
+                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
+                      activeTab === 'interests' 
+                        ? 'border-orange-500 text-orange-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Interests
+                  </button>
+                </div>
+              </div>
+              
+              {/* Tab Content */}
+              <div className="mt-6">
+                {activeTab === 'photos' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-4">Photos</h4>
+                    
+                    {userProfile.images && userProfile.images.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {userProfile.images.map(image => (
+                          <div key={image.id} className="aspect-square rounded-lg overflow-hidden">
+                            <img 
+                              src={image.url} 
+                              alt={`${userProfile.name}'s photo`} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">No photos available</p>
+                    )}
+                  </div>
+                )}
+                
+                {activeTab === 'about' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-4">About</h4>
+                    
+                    <div className="space-y-6">
+                      {userProfile.prompt1 && userProfile.answer1 && (
+                        <div className="bg-orange-50 rounded-lg p-4">
+                          <p className="font-medium text-orange-800 mb-2">{userProfile.prompt1}</p>
+                          <p className="text-gray-700">{userProfile.answer1}</p>
+                        </div>
+                      )}
+                      
+                      {userProfile.prompt2 && userProfile.answer2 && (
+                        <div className="bg-orange-50 rounded-lg p-4">
+                          <p className="font-medium text-orange-800 mb-2">{userProfile.prompt2}</p>
+                          <p className="text-gray-700">{userProfile.answer2}</p>
+                        </div>
+                      )}
+                      
+                      {userProfile.prompt3 && userProfile.answer3 && (
+                        <div className="bg-orange-50 rounded-lg p-4">
+                          <p className="font-medium text-orange-800 mb-2">{userProfile.prompt3}</p>
+                          <p className="text-gray-700">{userProfile.answer3}</p>
+                        </div>
+                      )}
+                      
+                      {!userProfile.prompt1 && !userProfile.prompt2 && !userProfile.prompt3 && (
+                        <p className="text-gray-500">No prompts answered yet</p>
+                      )}
+                    </div>
+                    
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {userProfile.hometown && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <p className="text-sm text-gray-500 mb-1">Hometown</p>
+                          <p className="font-medium">{userProfile.hometown}</p>
+                        </div>
+                      )}
+                      
+                      {userProfile.location && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <p className="text-sm text-gray-500 mb-1">Current Location</p>
+                          <p className="font-medium">{userProfile.location}</p>
+                        </div>
+                      )}
+                      
+                      {userProfile.height && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <p className="text-sm text-gray-500 mb-1">Height</p>
+                          <p className="font-medium">
+                            {userProfile.height} cm 
+                            ({Math.floor(userProfile.height / 30.48)} ft {Math.round(userProfile.height % 30.48 / 2.54)} in)
+                          </p>
+                        </div>
+                      )}
+                      
+                      {userProfile.sexuality && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <p className="text-sm text-gray-500 mb-1">Sexuality</p>
+                          <p className="font-medium">{userProfile.sexuality}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {activeTab === 'interests' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-4">Interests</h4>
+                    
+                    {renderInterests() || (
+                      <p className="text-gray-500">No interests specified</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <p className="text-gray-500">User not found</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Updated Match Card with orange gradient theme
 const MatchCard = ({ match }) => {
   const [showMap, setShowMap] = useState(false);
   const [locationImage, setLocationImage] = useState(null);
   const [currentSection, setCurrentSection] = useState(0);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   
   // Create profile sections for Hinge-style UI
   const profileSections = [
@@ -118,7 +401,12 @@ const MatchCard = ({ match }) => {
               </div>
               
               <div className="flex justify-between mt-2">
-                <button className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all">Message</button>
+                <button 
+                  onClick={() => setShowProfileModal(true)} 
+                  className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
+                >
+                  View Profile
+                </button>
                 <button 
                   onClick={() => navigateSections('next')}
                   className="text-orange-600 text-sm flex items-center"
@@ -298,6 +586,13 @@ const MatchCard = ({ match }) => {
     <div className="w-full mb-6 mx-auto max-w-sm">
       {renderSection(profileSections[currentSection])}
       {renderDots()}
+      
+      {/* User Profile Modal */}
+      <UserProfileModal 
+        userId={match.other_user.id}
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </div>
   );
 };

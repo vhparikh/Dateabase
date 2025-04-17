@@ -1681,6 +1681,53 @@ def update_image_position(image_id, current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
+@app.route('/api/users/<int:user_id>/profile', methods=['GET'])
+def get_user_full_profile(user_id):
+    """Get a user's full profile data including images for match details."""
+    try:
+        # Get the user
+        user = User.query.get_or_404(user_id)
+        
+        # Get user's images
+        user_images = UserImage.query.filter_by(user_id=user_id).order_by(UserImage.position).all()
+        
+        images = []
+        for img in user_images:
+            images.append({
+                'id': img.id,
+                'url': img.image_url,
+                'position': img.position,
+                'created_at': img.created_at.isoformat()
+            })
+        
+        # Return complete user profile data
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'netid': user.netid,
+            'name': user.name,
+            'gender': user.gender,
+            'sexuality': user.sexuality,
+            'height': user.height,
+            'location': user.location,
+            'hometown': user.hometown,
+            'major': user.major,
+            'class_year': user.class_year,
+            'interests': user.interests,
+            'profile_image': user.profile_image,
+            'prompt1': user.prompt1,
+            'answer1': user.answer1,
+            'prompt2': user.prompt2,
+            'answer2': user.answer2,
+            'prompt3': user.prompt3,
+            'answer3': user.answer3,
+            'images': images,
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        })
+    except Exception as e:
+        print(f"Error getting user profile: {e}")
+        return jsonify({'detail': str(e)}), 500
+
 # Create database tables (moved from before_first_request decorator)
 def create_tables():
     with app.app_context():
