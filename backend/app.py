@@ -29,7 +29,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
 # Configure Gemini API key
-GEMINI_API_KEY = "AIzaSyAp0MOZGo9rH3C3TFNpep7jWN0e4EhhGT8" # os.environ.get('GEMINI_API_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
