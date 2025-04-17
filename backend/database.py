@@ -34,6 +34,13 @@ class User(db.Model):
     prompt3 = db.Column(db.String(200), nullable=True)
     answer3 = db.Column(db.Text, nullable=True)  # The answer to prompt 3
     
+    # Preference fields for recommendation engine
+    gender_pref = db.Column(db.String(100), nullable=True)  # Gender preference (can be multiple, stored as JSON string)
+    experience_type_prefs = db.Column(db.Text, nullable=True)  # Experience type preferences (JSON string)
+    class_year_min_pref = db.Column(db.Integer, nullable=True)  # Minimum class year preference
+    class_year_max_pref = db.Column(db.Integer, nullable=True)  # Maximum class year preference
+    interests_prefs = db.Column(db.Text, nullable=True)  # Interest preferences (JSON string)
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         

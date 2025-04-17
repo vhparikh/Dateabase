@@ -1098,7 +1098,13 @@ def get_or_update_current_user():
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
                 'onboarding_completed': user.onboarding_completed,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                # Add preference fields
+                'gender_pref': user.gender_pref,
+                'experience_type_prefs': user.experience_type_prefs,
+                'class_year_min_pref': user.class_year_min_pref,
+                'class_year_max_pref': user.class_year_max_pref,
+                'interests_prefs': user.interests_prefs
             })
         
         elif request.method == 'PUT':
@@ -1145,6 +1151,34 @@ def get_or_update_current_user():
                 user.prompt3 = data['prompt3']
             if 'answer3' in data:
                 user.answer3 = data['answer3']
+                
+            # Handle preference fields
+            if 'gender_pref' in data:
+                user.gender_pref = data['gender_pref']
+            if 'experience_type_prefs' in data:
+                user.experience_type_prefs = data['experience_type_prefs']
+            if 'class_year_min_pref' in data:
+                # Validate class year is within reasonable bounds
+                try:
+                    if data['class_year_min_pref'] is not None:
+                        year_val = int(data['class_year_min_pref'])
+                        if year_val < 2000 or year_val > 2100:
+                            return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
+                    user.class_year_min_pref = data['class_year_min_pref']
+                except (ValueError, TypeError):
+                    return jsonify({'detail': 'Invalid class year value'}), 400
+            if 'class_year_max_pref' in data:
+                # Validate class year is within reasonable bounds
+                try:
+                    if data['class_year_max_pref'] is not None:
+                        year_val = int(data['class_year_max_pref'])
+                        if year_val < 2000 or year_val > 2100:
+                            return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
+                    user.class_year_max_pref = data['class_year_max_pref']
+                except (ValueError, TypeError):
+                    return jsonify({'detail': 'Invalid class year value'}), 400
+            if 'interests_prefs' in data:
+                user.interests_prefs = data['interests_prefs']
             
             db.session.commit()
             
@@ -1170,7 +1204,13 @@ def get_or_update_current_user():
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
                 'onboarding_completed': user.onboarding_completed,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                # Add preference fields to response
+                'gender_pref': user.gender_pref,
+                'experience_type_prefs': user.experience_type_prefs,
+                'class_year_min_pref': user.class_year_min_pref,
+                'class_year_max_pref': user.class_year_max_pref,
+                'interests_prefs': user.interests_prefs
             })
             
     except Exception as e:

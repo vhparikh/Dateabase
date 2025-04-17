@@ -15,6 +15,7 @@ import Login from './pages/Login';
 import CASCallback from './pages/CASCallback';
 import CASSuccess from './pages/CASSuccess';
 import Onboarding from './pages/Onboarding';
+import Preferences from './pages/Preferences';
 
 // Context Provider
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -84,6 +85,7 @@ function App() {
             <Route index element={<Navigate to="/swipe" replace />} />
             <Route path="profile" element={<Profile />} />
             <Route path="profile/edit" element={<EditProfile />} />
+            <Route path="profile/preferences" element={<Preferences />} />
             <Route path="experiences" element={<Experiences />} />
             <Route path="experiences/add" element={<AddExperience />} />
             <Route path="swipe" element={<Swipe />} />

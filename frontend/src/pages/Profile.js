@@ -13,6 +13,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('profile'); // New state for tab management
   
   // Fetch user profile directly from the API to ensure latest data
   useEffect(() => {
@@ -164,9 +165,62 @@ const Profile = () => {
     return null;
   };
   
+  // Function to handle tab switching
+  const handleTabChange = (tab) => {
+    if (tab === 'preferences') {
+      navigate('/profile/preferences');
+    } else {
+      setActiveTab(tab);
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 sm:mb-0">Your Profile</h1>
+          <div className="flex space-x-2">
+            <Link 
+              to="/profile/edit" 
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none"
+            >
+              Edit Profile
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-full shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+        
+        {/* Tab navigation */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-6">
+            <button
+              onClick={() => handleTabChange('profile')}
+              className={`pb-3 px-1 font-medium text-sm ${
+                activeTab === 'profile'
+                  ? 'border-b-2 border-orange-500 text-orange-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => handleTabChange('preferences')}
+              className={`pb-3 px-1 font-medium text-sm ${
+                activeTab === 'preferences'
+                  ? 'border-b-2 border-orange-500 text-orange-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Preferences
+            </button>
+          </nav>
+        </div>
+        
         {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-card mb-8 p-6">
           <div className="flex flex-col md:flex-row items-center">
@@ -189,28 +243,6 @@ const Profile = () => {
               
               <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {renderInterests()}
-              </div>
-              
-              <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
-                <button 
-                  onClick={handleLogout} 
-                  className="px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition-colors flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                  </svg>
-                  Logout
-                </button>
-                
-                <Link 
-                  to="/profile/edit" 
-                  className="px-4 py-2 bg-white text-orange-600 border border-orange-300 rounded-lg font-medium shadow-sm hover:bg-orange-50 transition-colors flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                  </svg>
-                  Edit Profile
-                </Link>
               </div>
             </div>
           </div>
