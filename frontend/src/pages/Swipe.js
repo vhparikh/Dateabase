@@ -432,11 +432,21 @@ const Swipe = () => {
               
               <div className="creator-info mb-3">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
-                    <span className="text-white font-bold">
-                      {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
-                    </span>
-                  </div>
+                  {currentExperience.creator_profile_image ? (
+                    <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-md">
+                      <img
+                        src={currentExperience.creator_profile_image}
+                        alt={currentExperience.creator_name || 'User'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
+                      <span className="text-white font-bold">
+                        {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <p className="text-white font-bold text-lg">
                       {currentExperience.creator_name || 'Anonymous'}

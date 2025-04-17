@@ -864,6 +864,7 @@ def get_swipe_experiences(current_user_id=None):
                 'user_id': exp.user_id,
                 'creator_name': creator.name if creator else 'Unknown',
                 'creator_netid': creator.netid if creator else '',
+                'creator_profile_image': creator.profile_image if creator else None,
                 'experience_type': experience_type,
                 'location': location,
                 'description': description,
