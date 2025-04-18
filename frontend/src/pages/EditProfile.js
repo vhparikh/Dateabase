@@ -26,7 +26,9 @@ const EditProfile = () => {
     prompt2: '',
     answer2: '',
     prompt3: '',
-    answer3: ''
+    answer3: '',
+    phone_number: '',
+    preferred_email: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -113,7 +115,9 @@ const EditProfile = () => {
         prompt2: user.prompt2 || '',
         answer2: user.answer2 || '',
         prompt3: user.prompt3 || '',
-        answer3: user.answer3 || ''
+        answer3: user.answer3 || '',
+        phone_number: user.phone_number || '',
+        preferred_email: user.preferred_email || ''
       });
     }
   }, [user]);
@@ -130,6 +134,33 @@ const EditProfile = () => {
         // Still update the form value for UX purposes, but it won't pass submission validation
       } else {
         setError(''); // Clear error if height is valid
+      }
+    }
+    
+    // Validate email field - now required
+    if (name === 'preferred_email') {
+      if (!value.trim()) {
+        setError('Email address is required.');
+      } else {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(value)) {
+          setError('Please enter a valid email address.');
+          // Still update the form value for UX purposes
+        } else {
+          setError(''); // Clear error if email is valid
+        }
+      }
+    }
+    
+    // Validate phone number field
+    if (name === 'phone_number' && value) {
+      // Basic phone validation - allows various formats with optional country code
+      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+      if (!phoneRegex.test(value)) {
+        setError('Please enter a valid phone number.');
+        // Still update the form value for UX purposes
+      } else {
+        setError(''); // Clear error if phone is valid
       }
     }
     
@@ -180,6 +211,30 @@ const EditProfile = () => {
       return;
     }
     
+    // Validate email - now required
+    if (!formData.preferred_email.trim()) {
+      setError('Email address is required.');
+      setLoading(false);
+      return;
+    }
+    
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(formData.preferred_email)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
+    
+    // Validate phone number if provided
+    if (formData.phone_number) {
+      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+      if (!phoneRegex.test(formData.phone_number)) {
+        setError('Please enter a valid phone number.');
+        setLoading(false);
+        return;
+      }
+    }
+    
     // Validate that prompts are not duplicated
     const selectedPrompts = [formData.prompt1, formData.prompt2, formData.prompt3].filter(Boolean);
     const uniquePrompts = [...new Set(selectedPrompts)];
@@ -209,6 +264,7 @@ const EditProfile = () => {
       const height = formData.height ? heightVal : null;
       const class_year = formData.class_year ? parseInt(formData.class_year, 10) : null;
       
+      // Ensure phone number and email are explicitly included in userData
       const userData = {
         name,
         gender: formData.gender,
@@ -224,7 +280,9 @@ const EditProfile = () => {
         prompt2: formData.prompt2,
         answer2: formData.answer2,
         prompt3: formData.prompt3,
-        answer3: formData.answer3
+        answer3: formData.answer3,
+        phone_number: formData.phone_number || '',
+        preferred_email: formData.preferred_email || ''
       };
       
       console.log('Submitting profile update with data:', userData);
@@ -249,10 +307,21 @@ const EditProfile = () => {
         
         if (response.data) {
           console.log('Profile updated successfully:', response.data);
+          // Verify the response includes contact information
+          if (!response.data.preferred_email && formData.preferred_email) {
+            console.warn('Email was not returned in the response data');
+          }
+          if (!response.data.phone_number && formData.phone_number) {
+            console.warn('Phone number was not returned in the response data');
+          }
+          
           // Update AuthContext with new data
           setUser({
             ...user,
-            ...response.data
+            ...response.data,
+            // Explicitly ensure these fields are included in case they're missing
+            preferred_email: response.data.preferred_email || formData.preferred_email,
+            phone_number: response.data.phone_number || formData.phone_number
           });
           
           setSuccess(true);
@@ -525,6 +594,51 @@ const EditProfile = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Contact Information */}
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">Contact Information</h2>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter your phone number (optional)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Will be shown to your matches for contact purposes
+                  </p>
+                </div>
+                
+                <div>
+                  <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="preferred_email"
+                    name="preferred_email"
+                    value={formData.preferred_email}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter your email address"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your email will only be shared with confirmed matches
+                  </p>
                 </div>
               </div>
             </div>

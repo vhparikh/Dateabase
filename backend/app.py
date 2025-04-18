@@ -12,11 +12,11 @@ from urllib.parse import quote_plus, urlencode, quote
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage
+    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage
+    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
 from functools import wraps
 
 # Setup Flask app with proper static folder configuration for production deployment
@@ -45,6 +45,12 @@ else:
 
 # Initialize the database with our app
 init_db(app)
+
+# Add phone_number and preferred_email columns if they don't exist
+add_new_columns(app)
+
+# Drop bio and dietary_restrictions columns
+drop_unused_columns(app)
 
 # Auth Helper Functions
 def generate_token(user_id):
@@ -950,7 +956,9 @@ def cas_callback():
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
                 password_hash=secrets.token_hex(16),
-                onboarding_completed=False  # Explicitly set onboarding as not completed for new users
+                onboarding_completed=False,  # Explicitly set onboarding as not completed for new users
+                phone_number=attributes.get('phoneNumber', ''),
+                preferred_email=attributes.get('email', '')
             )
             db.session.add(new_user)
             db.session.commit()
@@ -1104,7 +1112,9 @@ def get_or_update_current_user():
                 'experience_type_prefs': user.experience_type_prefs,
                 'class_year_min_pref': user.class_year_min_pref,
                 'class_year_max_pref': user.class_year_max_pref,
-                'interests_prefs': user.interests_prefs
+                'interests_prefs': user.interests_prefs,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email,
             })
         
         elif request.method == 'PUT':
@@ -1179,6 +1189,11 @@ def get_or_update_current_user():
                     return jsonify({'detail': 'Invalid class year value'}), 400
             if 'interests_prefs' in data:
                 user.interests_prefs = data['interests_prefs']
+            # Add handling for phone_number and preferred_email fields
+            if 'phone_number' in data:
+                user.phone_number = data['phone_number']
+            if 'preferred_email' in data:
+                user.preferred_email = data['preferred_email']
             
             db.session.commit()
             
@@ -1210,7 +1225,9 @@ def get_or_update_current_user():
                 'experience_type_prefs': user.experience_type_prefs,
                 'class_year_min_pref': user.class_year_min_pref,
                 'class_year_max_pref': user.class_year_max_pref,
-                'interests_prefs': user.interests_prefs
+                'interests_prefs': user.interests_prefs,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email,
             })
             
     except Exception as e:
@@ -1335,6 +1352,14 @@ def complete_onboarding():
             if 'answer3' in data:
                 print(f"Setting answer3 to: {data['answer3']}")
                 user.answer3 = data['answer3']
+                
+            if 'phone_number' in data:
+                print(f"Setting phone_number to: {data['phone_number']}")
+                user.phone_number = data['phone_number']
+                
+            if 'preferred_email' in data:
+                print(f"Setting preferred_email to: {data['preferred_email']}")
+                user.preferred_email = data['preferred_email']
         
         # ALWAYS mark onboarding as completed, even if no data was provided
         user.onboarding_completed = True
@@ -1364,7 +1389,9 @@ def complete_onboarding():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
-                'onboarding_completed': user.onboarding_completed
+                'onboarding_completed': user.onboarding_completed,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email
             }
         })
     except Exception as e:
