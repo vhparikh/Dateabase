@@ -115,7 +115,7 @@ const Swipe = () => {
         
         return nextStep;
       });
-    }, 30); // Run every 30ms for smooth animation (approximately 16 steps in 500ms)
+    }, 20); // Run every 20ms instead of 30ms for a more fluid animation (all 16 steps in ~320ms)
   };
   
   const finishSwipe = async (isLike) => {
@@ -142,7 +142,7 @@ const Swipe = () => {
         throw new Error(errorData.detail || 'Failed to record swipe');
       }
 
-      // Wait a bit before moving to next experience for animation to complete visually
+      // Give more time for the animation to complete visually before transitioning
       setTimeout(() => {
         // Move to next experience
         setCurrentIndex(prev => prev + 1);
@@ -155,7 +155,7 @@ const Swipe = () => {
         if (currentIndex >= experiences.length - 2) {
           fetchExperiences();
         }
-      }, 150);
+      }, 450); // Increased from 150ms to 450ms to allow full visual of animation
       
     } catch (err) {
       console.error('Error in swipe handling:', err);
@@ -164,7 +164,7 @@ const Swipe = () => {
         setCurrentIndex(prev => prev + 1);
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
-      }, 150);
+      }, 450); // Increased from 150ms to match the success case
     }
   };
 
