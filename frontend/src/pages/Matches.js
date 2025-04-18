@@ -638,18 +638,30 @@ const EmptyState = () => (
   </div>
 );
 
-// Pending Match Card (matches you've sent that are waiting for response)
-const PendingSentMatchCard = ({ match }) => {
-  const [locationImage, setLocationImage] = useState(null);
+// Pending Match Card (matches you've sent that are waiting for response) - Grouped by user
+const GroupedPendingSentMatchCard = ({ user, experiences }) => {
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [expandedExperience, setExpandedExperience] = useState(null);
+  const [locationImages, setLocationImages] = useState({});
   
-  // Load location image on component mount
+  // Load location images on component mount
   useEffect(() => {
-    if (match.experience.location_image) {
-      setLocationImage(match.experience.location_image);
-    } else if (match.experience.location) {
-      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
+    const images = {};
+    experiences.forEach(exp => {
+      if (exp.experience.location_image) {
+        images[exp.experience.id] = exp.experience.location_image;
+      } else if (exp.experience.location) {
+        // Fallback to Unsplash if no location image is provided
+        images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${exp.experience.location.replace(/\s+/g, '+')}`;
+      }
+    });
+    setLocationImages(images);
+    
+    // Set the first experience as expanded by default
+    if (experiences.length > 0 && !expandedExperience) {
+      setExpandedExperience(experiences[0].experience.id);
     }
-  }, [match.experience.location, match.experience.location_image]);
+  }, [experiences]);
   
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
@@ -664,34 +676,123 @@ const PendingSentMatchCard = ({ match }) => {
         </div>
       </div>
       
-      <div className="p-4 flex items-center">
-        <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
-          <img 
-            src={match.other_user.profile_image || `https://ui-avatars.com/api/?name=${match.other_user.name}&background=orange&color=fff`}
-            alt={match.other_user.name}
-            className="w-full h-full object-cover"
-          />
+      <div className="p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
+            <img 
+              src={user.profile_image || `https://ui-avatars.com/api/?name=${user.name}&background=orange&color=fff`}
+              alt={user.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          
+          <div>
+            <h3 className="font-medium text-gray-800">{user.name}</h3>
+            <p className="text-sm text-gray-500">Class of {user.class_year || 'N/A'}</p>
+          </div>
         </div>
         
-        <div>
-          <h3 className="font-medium text-gray-800">{match.other_user.name}</h3>
-          <p className="text-sm text-gray-500">Class of {match.other_user.class_year || 'N/A'}</p>
-        </div>
+        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+          {experiences.length} {experiences.length === 1 ? 'request' : 'requests'}
+        </span>
       </div>
       
       <div className="px-4 pb-4">
-        <div className="flex items-center mb-2">
-          <svg className="w-4 h-4 text-gray-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        <button 
+          onClick={() => setShowProfileModal(true)} 
+          className="text-sm text-orange-600 hover:text-orange-800 transition-colors mb-3 inline-flex items-center"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
           </svg>
-          <span className="text-sm text-gray-700">{match.experience.location}</span>
-        </div>
+          View Profile
+        </button>
         
-        <div className="text-xs text-gray-500">
-          Sent on {new Date(match.created_at).toLocaleDateString()}
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Experiences</h4>
+        
+        {/* Pending Experience Cards */}
+        <div className="space-y-2">
+          {experiences.map((exp) => (
+            <div 
+              key={exp.match_id} 
+              className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
+            >
+              <div 
+                className="flex items-center p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => setExpandedExperience(
+                  expandedExperience === exp.experience.id ? null : exp.experience.id
+                )}
+              >
+                <div 
+                  className="w-10 h-10 rounded-lg flex-shrink-0 bg-amber-100 mr-3 overflow-hidden"
+                  style={{
+                    backgroundImage: `url(${locationImages[exp.experience.id] || ''})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                ></div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-medium text-gray-800 text-sm truncate">
+                      {exp.experience.experience_type}
+                    </h5>
+                    <div className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+                      {new Date(exp.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center text-xs text-gray-600 mt-1">
+                    <svg className="w-3 h-3 text-gray-500 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{exp.experience.location}</span>
+                  </div>
+                </div>
+                
+                <div className="ml-2">
+                  {expandedExperience === exp.experience.id ? (
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              
+              {/* Expanded details */}
+              {expandedExperience === exp.experience.id && (
+                <div className="px-3 pb-3 pt-0">
+                  <div className="text-sm text-gray-700 mb-2 mt-1">
+                    {exp.experience.description || "No description provided."}
+                  </div>
+                  
+                  <div className="text-xs text-amber-600 flex items-center">
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Waiting for {user.name} to respond
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
+      
+      {/* User Profile Modal */}
+      {showProfileModal && (
+        <UserProfileModal 
+          userId={user.id}
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </div>
   );
 };
@@ -702,6 +803,7 @@ const Matches = () => {
   const [pendingSentMatches, setPendingSentMatches] = useState([]);
   const [groupedConfirmedMatches, setGroupedConfirmedMatches] = useState({});
   const [groupedPendingReceivedMatches, setGroupedPendingReceivedMatches] = useState({});
+  const [groupedPendingSentMatches, setGroupedPendingSentMatches] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('confirmed');
@@ -759,6 +861,7 @@ const Matches = () => {
       // Group matches by user
       setGroupedConfirmedMatches(groupMatchesByUser(data.confirmed || []));
       setGroupedPendingReceivedMatches(groupMatchesByUser(data.pending_received || []));
+      setGroupedPendingSentMatches(groupMatchesByUser(data.pending_sent || []));
       
     } catch (err) {
       console.error('Error fetching matches:', err);
@@ -902,7 +1005,7 @@ const Matches = () => {
           )
         ) : (
           <div>
-            {Object.keys(groupedPendingReceivedMatches).length === 0 && pendingSentMatches.length === 0 ? (
+            {Object.keys(groupedPendingReceivedMatches).length === 0 && Object.keys(groupedPendingSentMatches).length === 0 ? (
               <div className="text-center py-10 bg-white rounded-xl shadow-sm">
                 <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
                   <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -934,12 +1037,16 @@ const Matches = () => {
                   </div>
                 )}
                 
-                {pendingSentMatches.length > 0 && (
+                {Object.keys(groupedPendingSentMatches).length > 0 && (
                   <div>
                     <h2 className="text-lg font-bold text-gray-800 mb-3">Experiences you're interested in</h2>
                     <div className="grid gap-4">
-                      {pendingSentMatches.map(match => (
-                        <PendingSentMatchCard key={match.match_id} match={match} />
+                      {Object.values(groupedPendingSentMatches).map(groupedMatch => (
+                        <GroupedPendingSentMatchCard 
+                          key={groupedMatch.user.id} 
+                          user={groupedMatch.user} 
+                          experiences={groupedMatch.experiences}
+                        />
                       ))}
                     </div>
                   </div>
