@@ -313,27 +313,64 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   // Validate contact info when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Get the email address that will be displayed
-      const displayEmail = getEmailAddress();
+      // First check for any emails that might be available
+      let emailToValidate = null;
+      if (user.preferred_email && user.preferred_email.trim() !== '') {
+        emailToValidate = user.preferred_email.trim();
+      } else if (user.netid && user.netid.trim() !== '') {
+        emailToValidate = `${user.netid.trim()}@princeton.edu`;
+      } else if (user.email && user.email.trim() !== '') {
+        emailToValidate = user.email.trim();
+      }
       
       // Only validate if there's an email to validate
-      const emailValid = displayEmail ? validateEmail(displayEmail) : true;
+      const emailValid = emailToValidate ? validateEmail(emailToValidate) : true;
+      // Princeton emails are always valid
+      const isPrincetonEmail = emailToValidate && emailToValidate.endsWith('@princeton.edu');
+      
+      // Validate phone number
       const phoneValid = validatePhone(user.phone_number);
       
       setErrors({
-        email: emailValid ? '' : 'Invalid email format',
+        // Princeton emails are always valid for our purposes
+        email: (isPrincetonEmail || emailValid) ? '' : 'Invalid email format',
         phone: phoneValid ? '' : 'Invalid phone number format'
+      });
+      
+      console.log("Email validation:", {
+        emailToValidate,
+        emailValid,
+        isPrincetonEmail,
+        errors: {
+          email: (isPrincetonEmail || emailValid) ? '' : 'Invalid email format',
+          phone: phoneValid ? '' : 'Invalid phone number format'
+        }
       });
     }
   }, [isOpen, user]);
 
   // Get the appropriate email address to display and use for mailto link
   const getEmailAddress = () => {
-    if (user.preferred_email && user.preferred_email.trim()) {
+    console.log("User data for email:", { 
+      preferred_email: user.preferred_email, 
+      netid: user.netid,
+      name: user.name,
+      id: user.id
+    });
+    
+    // Check if preferred email exists and is not empty
+    if (user.preferred_email && user.preferred_email.trim() !== '') {
       return user.preferred_email.trim();
-    } else if (user.netid && user.netid.trim()) {
+    } 
+    // Otherwise use Princeton email if netid exists
+    else if (user.netid && user.netid.trim() !== '') {
       return `${user.netid.trim()}@princeton.edu`;
     }
+    // Last resort fallback - if user has email directly on the user object
+    else if (user.email && user.email.trim() !== '') {
+      return user.email.trim();
+    }
+    
     return null;
   };
 
@@ -364,10 +401,12 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   
   // Format for displaying the type of email (Princeton or preferred)
   const getEmailLabel = () => {
-    if (user.preferred_email && user.preferred_email.trim()) {
+    if (user.preferred_email && user.preferred_email.trim() !== '') {
       return "Preferred email";
-    } else if (user.netid && user.netid.trim()) {
+    } else if (user.netid && user.netid.trim() !== '') {
       return "Princeton email";
+    } else if (user.email && user.email.trim() !== '') {
+      return "Email";
     }
     return null;
   };
@@ -427,22 +466,73 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                   </span>
                 )}
               </div>
-              <p className="text-gray-700 font-medium">
-                {emailAddress || 'Not available'}
-              </p>
+              
+              {/* Manually create email display - ensuring Princeton email always shows if netid available */}
+              {(() => {
+                // This is an immediately invoked function to allow complex logic in JSX
+                if (user.preferred_email && user.preferred_email.trim() !== '') {
+                  // Use preferred email if available
+                  return (
+                    <p className="text-gray-700 font-medium">
+                      {user.preferred_email.trim()}
+                    </p>
+                  );
+                } else if (user.netid && user.netid.trim() !== '') {
+                  // Use Princeton email if netid is available
+                  const princetonEmail = `${user.netid.trim()}@princeton.edu`;
+                  return (
+                    <p className="text-gray-700 font-medium">
+                      {princetonEmail}
+                    </p>
+                  );
+                } else if (user.email && user.email.trim() !== '') {
+                  // Use direct email if available
+                  return (
+                    <p className="text-gray-700 font-medium">
+                      {user.email.trim()}
+                    </p>
+                  );
+                } else {
+                  // No email available
+                  return (
+                    <p className="text-gray-700 font-medium">
+                      Not available
+                    </p>
+                  );
+                }
+              })()}
+              
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-              {!errors.email && emailAddress && (
-                <a 
-                  href={`mailto:${emailAddress}`}
-                  onClick={handleEmailLinkClick}
-                  className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  Open in mail app
-                </a>
-              )}
+              
+              {/* Only show email link if we have a valid email */}
+              {(() => {
+                // Determine the correct email to use for the mailto link
+                let mailtoEmail = null;
+                if (user.preferred_email && user.preferred_email.trim() !== '') {
+                  mailtoEmail = user.preferred_email.trim();
+                } else if (user.netid && user.netid.trim() !== '') {
+                  mailtoEmail = `${user.netid.trim()}@princeton.edu`;
+                } else if (user.email && user.email.trim() !== '') {
+                  mailtoEmail = user.email.trim();
+                }
+                
+                // Only render the link if we have a valid email and no validation errors
+                if (!errors.email && mailtoEmail) {
+                  return (
+                    <a 
+                      href={`mailto:${mailtoEmail}`}
+                      onClick={handleEmailLinkClick}
+                      className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Open in mail app
+                    </a>
+                  );
+                }
+                return null;
+              })()}
             </div>
             
             {/* Phone Number */}
@@ -470,6 +560,25 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 </a>
               )}
             </div>
+            
+            {/* Hidden debug section - only visible in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+                <details>
+                  <summary className="font-medium cursor-pointer">Debug User Data</summary>
+                  <pre className="mt-2 whitespace-pre-wrap">
+                    {JSON.stringify({
+                      id: user.id,
+                      name: user.name, 
+                      netid: user.netid,
+                      preferred_email: user.preferred_email,
+                      email: user.email,
+                      phone: user.phone_number
+                    }, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
           </div>
         </div>
       </div>
