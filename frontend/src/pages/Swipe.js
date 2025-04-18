@@ -39,8 +39,15 @@ const Swipe = () => {
       }
       
       const data = await response.json();
-      setExperiences(data);
-      setCurrentIndex(0);
+      
+      if (data && data.length > 0) {
+        setExperiences(data);
+        setCurrentIndex(0);
+      } else {
+        // If no experiences are returned, just set an empty array
+        // This will trigger the "No more experiences" UI
+        setExperiences([]);
+      }
     } catch (err) {
       console.error('Error fetching experiences:', err);
       setError('Failed to load experiences. Please try again.');
@@ -162,15 +169,17 @@ const Swipe = () => {
       // Give more time for the animation to complete visually before transitioning
       setTimeout(() => {
         // Move to next experience
-        setCurrentIndex(prev => prev + 1);
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
         
         // Reset the position and swipe direction
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
         setIsAnimating(false); // Reset animation state when complete
         
-        // If we're about to run out of experiences, fetch new ones
-        if (currentIndex >= experiences.length - 2) {
+        // Only try to fetch more experiences if we're not already at the end
+        // and if we're getting close to the end of the list
+        if (nextIndex < experiences.length && nextIndex >= experiences.length - 2) {
           fetchExperiences();
         }
       }, 350); // Reduced from 450ms to 350ms for faster transition
@@ -188,6 +197,9 @@ const Swipe = () => {
   };
 
   const handleRetry = () => {
+    // Reset current index to 0 to avoid any out-of-bounds issues
+    setCurrentIndex(0);
+    // Fetch fresh experiences
     fetchExperiences();
   };
 
