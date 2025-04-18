@@ -404,17 +404,26 @@ const GroupedMatchCard = ({ user, experiences }) => {
           {/* Conditionally show Google Map */}
           {showMap && (
             <div className="mb-4">
-              <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""}>
-                <GoogleMap
-                  mapContainerStyle={mapContainerStyle}
-                  center={mapCenter}
-                  zoom={15}
-                  options={mapOptions}
-                >
-                  <Marker position={mapCenter} />
-                </GoogleMap>
-              </LoadScript>
-              
+              {activeExperience.experience.latitude && activeExperience.experience.longitude ? (
+                <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""}>
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={15}
+                    options={mapOptions}
+                  >
+                    <Marker position={mapCenter} />
+                  </GoogleMap>
+                </LoadScript>
+              ) : (
+                <iframe
+                  width="100%"
+                  height="200px"
+                  className="rounded-lg"
+                  loading="lazy"
+                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(activeExperience.experience.location)}`}
+                ></iframe>
+              )}
               <div className="mt-2 flex justify-end">
                 <button
                   onClick={openGoogleMaps}
