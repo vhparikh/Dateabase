@@ -313,7 +313,8 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   // Validate contact info when modal opens
   useEffect(() => {
     if (isOpen) {
-      const emailValid = validateEmail(user.preferred_email || (user.netid ? `${user.netid}@princeton.edu` : ''));
+      const emailToValidate = user.preferred_email || (user.netid ? `${user.netid}@princeton.edu` : '');
+      const emailValid = validateEmail(emailToValidate);
       const phoneValid = validatePhone(user.phone_number);
       
       setErrors({
@@ -329,6 +330,43 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   const formatPhoneForLink = (phone) => {
     if (!phone) return '';
     return phone.replace(/\D/g, '');
+  };
+  
+  // Format phone number for display (if needed)
+  const formatPhoneForDisplay = (phone) => {
+    if (!phone) return '';
+    
+    // Simple formatting for common US number format
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    // Return original if not a standard 10-digit number
+    return phone;
+  };
+  
+  // Get the appropriate email address to display and use for mailto link
+  const getEmailAddress = () => {
+    if (user.preferred_email) {
+      return user.preferred_email;
+    } else if (user.netid) {
+      return `${user.netid}@princeton.edu`;
+    }
+    return null;
+  };
+  
+  const emailAddress = getEmailAddress();
+  const formattedPhone = user.phone_number ? formatPhoneForDisplay(user.phone_number) : null;
+  
+  // Handle email click directly - use native anchor instead of window.location.href for single opening
+  const handleEmailClick = (e) => {
+    // This is handled by the href attribute on the anchor tag
+    // The event is passed through normally, no need to manipulate it
+  };
+
+  // Handle phone click directly
+  const handlePhoneClick = (e) => {
+    // This is handled by the href attribute
   };
 
   return (
@@ -371,12 +409,18 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 <h4 className="font-medium text-gray-800">Email</h4>
               </div>
               <p className="text-gray-700">
-                {user.preferred_email || (user.netid ? `${user.netid}@princeton.edu` : 'Not available')}
+                {emailAddress || 'Not available'}
               </p>
+              {user.netid && !user.preferred_email && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Using Princeton email address
+                </p>
+              )}
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-              {!errors.email && (user.preferred_email || user.netid) && (
+              {!errors.email && emailAddress && (
                 <a 
-                  href={`mailto:${user.preferred_email || `${user.netid}@princeton.edu`}`}
+                  href={`mailto:${emailAddress}`}
+                  onClick={handleEmailClick}
                   className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -396,12 +440,13 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 <h4 className="font-medium text-gray-800">Phone Number</h4>
               </div>
               <p className="text-gray-700">
-                {user.phone_number || 'Not provided'}
+                {formattedPhone || 'Not provided'}
               </p>
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
               {!errors.phone && user.phone_number && (
                 <a 
                   href={`tel:${formatPhoneForLink(user.phone_number)}`}
+                  onClick={handlePhoneClick}
                   className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

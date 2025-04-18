@@ -137,6 +137,29 @@ const EditProfile = () => {
       }
     }
     
+    // Validate email field
+    if (name === 'preferred_email' && value) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(value)) {
+        setError('Please enter a valid email address.');
+        // Still update the form value for UX purposes
+      } else {
+        setError(''); // Clear error if email is valid
+      }
+    }
+    
+    // Validate phone number field
+    if (name === 'phone_number' && value) {
+      // Basic phone validation - allows various formats with optional country code
+      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+      if (!phoneRegex.test(value)) {
+        setError('Please enter a valid phone number.');
+        // Still update the form value for UX purposes
+      } else {
+        setError(''); // Clear error if phone is valid
+      }
+    }
+    
     setFormData({ ...formData, [name]: value });
   };
   
@@ -182,6 +205,26 @@ const EditProfile = () => {
       setError('Height must be a number between 0 and 300 cm.');
       setLoading(false);
       return;
+    }
+    
+    // Validate email if provided
+    if (formData.preferred_email) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(formData.preferred_email)) {
+        setError('Please enter a valid email address.');
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Validate phone number if provided
+    if (formData.phone_number) {
+      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+      if (!phoneRegex.test(formData.phone_number)) {
+        setError('Please enter a valid phone number.');
+        setLoading(false);
+        return;
+      }
     }
     
     // Validate that prompts are not duplicated
