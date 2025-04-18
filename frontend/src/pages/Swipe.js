@@ -13,6 +13,7 @@ const Swipe = () => {
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
   const [animationStep, setAnimationStep] = useState(0); // Track animation progress
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -44,6 +45,8 @@ const Swipe = () => {
       setError('Failed to load experiences. Please try again.');
     } finally {
       setLoading(false);
+      // After initial data load, mark as no longer the initial page load
+      setIsInitialLoad(false);
     }
   };
 
@@ -315,30 +318,36 @@ const Swipe = () => {
       
       <div className="max-w-md mx-auto px-4">
         {/* Swipe indicators - Like */}
-        <div 
-          className={`absolute top-32 right-6 transform rotate-12 bg-green-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getLikeIndicatorClass()}`}
-          style={{ 
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-            transformOrigin: 'center',
-            zIndex: 20,
-            opacity: swipeDirection === 'right' ? 1 : 0 // Ensure it's only visible during swipe
-          }}
-        >
-          LIKE
-        </div>
-        
-        {/* Swipe indicators - Pass */}
-        <div 
-          className={`absolute top-32 left-6 transform -rotate-12 bg-red-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getPassIndicatorClass()}`}
-          style={{ 
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-            transformOrigin: 'center',
-            zIndex: 20,
-            opacity: swipeDirection === 'left' ? 1 : 0 // Ensure it's only visible during swipe
-          }}
-        >
-          PASS
-        </div>
+        {!isInitialLoad && (
+          <>
+            <div 
+              className={`absolute top-32 right-6 transform rotate-12 bg-green-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getLikeIndicatorClass()}`}
+              style={{ 
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                transformOrigin: 'center',
+                zIndex: 20,
+                opacity: swipeDirection === 'right' ? 1 : 0, // Ensure it's only visible during swipe
+                display: swipeDirection === 'right' ? 'block' : 'none' // Completely hide it when not needed
+              }}
+            >
+              LIKE
+            </div>
+            
+            {/* Swipe indicators - Pass */}
+            <div 
+              className={`absolute top-32 left-6 transform -rotate-12 bg-red-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getPassIndicatorClass()}`}
+              style={{ 
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                transformOrigin: 'center',
+                zIndex: 20,
+                opacity: swipeDirection === 'left' ? 1 : 0, // Ensure it's only visible during swipe
+                display: swipeDirection === 'left' ? 'block' : 'none' // Completely hide it when not needed
+              }}
+            >
+              PASS
+            </div>
+          </>
+        )}
         
         {/* Experience Card - Hinge Style */}
         <motion.div 
