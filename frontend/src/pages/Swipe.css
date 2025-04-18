@@ -111,12 +111,12 @@
 /* Card swipe transition effects - enhanced for multi-step animation */
 .swipe-right-exit {
   pointer-events: none;
-  animation: swipeRightExit 0.45s forwards;
+  animation: swipeRightExit 0.35s forwards;
 }
 
 .swipe-left-exit {
   pointer-events: none;
-  animation: swipeLeftExit 0.45s forwards;
+  animation: swipeLeftExit 0.35s forwards;
 }
 
 /* Add explicit swipe animations for fallback and additional visual reinforcement */

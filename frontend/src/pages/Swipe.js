@@ -115,7 +115,7 @@ const Swipe = () => {
         
         return nextStep;
       });
-    }, 20); // Run every 20ms instead of 30ms for a more fluid animation (all 16 steps in ~320ms)
+    }, 15); // Run even faster at 15ms for quicker animation
   };
   
   const finishSwipe = async (isLike) => {
@@ -155,7 +155,7 @@ const Swipe = () => {
         if (currentIndex >= experiences.length - 2) {
           fetchExperiences();
         }
-      }, 450); // Increased from 150ms to 450ms to allow full visual of animation
+      }, 350); // Reduced from 450ms to 350ms for faster transition
       
     } catch (err) {
       console.error('Error in swipe handling:', err);
@@ -164,7 +164,7 @@ const Swipe = () => {
         setCurrentIndex(prev => prev + 1);
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
-      }, 450); // Increased from 150ms to match the success case
+      }, 350); // Reduced from 450ms to 350ms for faster transition
     }
   };
 
@@ -246,6 +246,12 @@ const Swipe = () => {
       : 'opacity-0 scale-90';
   };
 
+  // Make sure swipeDirection is properly initialized as null
+  useEffect(() => {
+    // Reset swipe direction when loading experiences
+    setSwipeDirection(null);
+  }, [experiences]);
+
   return (
     <div className="pt-6 pb-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[90vh]">
       {/* Match modal - Commented out but preserved for future use
@@ -314,7 +320,8 @@ const Swipe = () => {
           style={{ 
             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
             transformOrigin: 'center',
-            zIndex: 20
+            zIndex: 20,
+            opacity: swipeDirection === 'right' ? 1 : 0 // Ensure it's only visible during swipe
           }}
         >
           LIKE
@@ -326,7 +333,8 @@ const Swipe = () => {
           style={{ 
             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
             transformOrigin: 'center',
-            zIndex: 20
+            zIndex: 20,
+            opacity: swipeDirection === 'left' ? 1 : 0 // Ensure it's only visible during swipe
           }}
         >
           PASS
