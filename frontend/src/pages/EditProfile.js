@@ -612,7 +612,7 @@ const EditProfile = () => {
                 
                 <div>
                   <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email <span className="text-red-500">*</span>
+                    Email
                   </label>
                   <input
                     type="email"
