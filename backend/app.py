@@ -950,7 +950,9 @@ def cas_callback():
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
                 password_hash=secrets.token_hex(16),
-                onboarding_completed=False  # Explicitly set onboarding as not completed for new users
+                onboarding_completed=False,  # Explicitly set onboarding as not completed for new users
+                phone_number=attributes.get('phoneNumber', ''),
+                preferred_email=attributes.get('email', '')
             )
             db.session.add(new_user)
             db.session.commit()
@@ -1097,7 +1099,11 @@ def get_or_update_current_user():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
+                'bio': user.bio,
+                'dietary_restrictions': user.dietary_restrictions,
                 'onboarding_completed': user.onboarding_completed,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email,
                 'created_at': user.created_at.isoformat() if user.created_at else None
             })
         
@@ -1145,6 +1151,10 @@ def get_or_update_current_user():
                 user.prompt3 = data['prompt3']
             if 'answer3' in data:
                 user.answer3 = data['answer3']
+            if 'bio' in data:
+                user.bio = data['bio']
+            if 'dietary_restrictions' in data:
+                user.dietary_restrictions = data['dietary_restrictions']
             
             db.session.commit()
             
@@ -1169,7 +1179,11 @@ def get_or_update_current_user():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
+                'bio': user.bio,
+                'dietary_restrictions': user.dietary_restrictions,
                 'onboarding_completed': user.onboarding_completed,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email,
                 'created_at': user.created_at.isoformat() if user.created_at else None
             })
             
@@ -1295,6 +1309,14 @@ def complete_onboarding():
             if 'answer3' in data:
                 print(f"Setting answer3 to: {data['answer3']}")
                 user.answer3 = data['answer3']
+                
+            if 'phone_number' in data:
+                print(f"Setting phone_number to: {data['phone_number']}")
+                user.phone_number = data['phone_number']
+                
+            if 'preferred_email' in data:
+                print(f"Setting preferred_email to: {data['preferred_email']}")
+                user.preferred_email = data['preferred_email']
         
         # ALWAYS mark onboarding as completed, even if no data was provided
         user.onboarding_completed = True
@@ -1324,7 +1346,9 @@ def complete_onboarding():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
-                'onboarding_completed': user.onboarding_completed
+                'onboarding_completed': user.onboarding_completed,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email
             }
         })
     except Exception as e:

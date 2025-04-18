@@ -37,7 +37,11 @@ const Onboarding = () => {
     answer2: user?.answer2 || '',
     prompt3: user?.prompt3 || promptOptions[2],
     answer3: user?.answer3 || '',
-    classYear: user?.class_year ? user.class_year.toString() : ''
+    classYear: user?.class_year ? user.class_year.toString() : '',
+    bio: user?.bio || '',
+    dietary_restrictions: user?.dietary_restrictions || '',
+    phone_number: user?.phone_number || '',
+    preferred_email: user?.preferred_email || ''
   });
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -225,7 +229,11 @@ const Onboarding = () => {
         prompt2: formData.prompt2 || '',
         answer2: formData.answer2 || '',
         prompt3: formData.prompt3 || '',
-        answer3: formData.answer3 || ''
+        answer3: formData.answer3 || '',
+        bio: formData.bio || '',
+        dietary_restrictions: formData.dietary_restrictions || '',
+        phone_number: formData.phone_number || '',
+        preferred_email: formData.preferred_email || ''
       };
       
       console.log('Submitting onboarding data:', userData);
@@ -377,6 +385,19 @@ const Onboarding = () => {
           {Math.floor(formData.height / 30.48)} ft {Math.round(formData.height % 30.48 / 2.54)} in
         </p>
       </div>
+
+      <div>
+        <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+        <textarea
+          id="bio"
+          name="bio"
+          rows="3"
+          value={formData.bio}
+          onChange={handleChange}
+          placeholder="Tell us a bit about yourself..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+        />
+      </div>
     </div>
   );
   
@@ -405,6 +426,52 @@ const Onboarding = () => {
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
+      </div>
+
+      <div>
+        <label htmlFor="dietary_restrictions" className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
+        <input
+          type="text"
+          id="dietary_restrictions"
+          name="dietary_restrictions"
+          value={formData.dietary_restrictions}
+          onChange={handleChange}
+          placeholder="Vegetarian, gluten-free, etc."
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+        />
+      </div>
+      
+      <div className="mt-6">
+        <h3 className="text-lg font-medium text-gray-700 mb-3">Contact Information</h3>
+        <p className="text-sm text-gray-500 mb-3">This information will be shared with your matches</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <input
+              type="tel"
+              id="phone_number"
+              name="phone_number"
+              value={formData.phone_number}
+              onChange={handleChange}
+              placeholder="(123) 456-7890"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">Preferred Email</label>
+            <input
+              type="email"
+              id="preferred_email"
+              name="preferred_email"
+              value={formData.preferred_email}
+              onChange={handleChange}
+              placeholder="If different from Princeton email"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+            />
+          </div>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -23,9 +23,13 @@ class User(db.Model):
     major = db.Column(db.String(100), nullable=True)  # Major
     class_year = db.Column(db.Integer, nullable=True)  # Made nullable for initial CAS login
     interests = db.Column(db.Text, nullable=True)  # Made nullable for initial CAS login
+    bio = db.Column(db.Text, nullable=True)  # General user bio
+    dietary_restrictions = db.Column(db.String(200), nullable=True)  # Dietary preferences or restrictions
     profile_image = db.Column(db.Text, nullable=True)  # URL to primary profile image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
+    phone_number = db.Column(db.String(50), nullable=True)  # User's phone number for contact
+    preferred_email = db.Column(db.String(100), nullable=True)  # User's preferred email if different from netid
     # Hinge-like prompt responses
     prompt1 = db.Column(db.String(200), nullable=True)  # The prompt question
     answer1 = db.Column(db.Text, nullable=True)  # The answer to prompt 1

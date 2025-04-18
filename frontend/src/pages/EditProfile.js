@@ -26,7 +26,9 @@ const EditProfile = () => {
     prompt2: '',
     answer2: '',
     prompt3: '',
-    answer3: ''
+    answer3: '',
+    phone_number: '',
+    preferred_email: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -113,7 +115,9 @@ const EditProfile = () => {
         prompt2: user.prompt2 || '',
         answer2: user.answer2 || '',
         prompt3: user.prompt3 || '',
-        answer3: user.answer3 || ''
+        answer3: user.answer3 || '',
+        phone_number: user.phone_number || '',
+        preferred_email: user.preferred_email || ''
       });
     }
   }, [user]);
@@ -224,7 +228,9 @@ const EditProfile = () => {
         prompt2: formData.prompt2,
         answer2: formData.answer2,
         prompt3: formData.prompt3,
-        answer3: formData.answer3
+        answer3: formData.answer3,
+        phone_number: formData.phone_number,
+        preferred_email: formData.preferred_email
       };
       
       console.log('Submitting profile update with data:', userData);
@@ -525,6 +531,50 @@ const EditProfile = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Contact Information */}
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">Contact Information</h2>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter your phone number (optional)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Will be shown to your matches for contact purposes
+                  </p>
+                </div>
+                
+                <div>
+                  <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Preferred Email
+                  </label>
+                  <input
+                    type="email"
+                    id="preferred_email"
+                    name="preferred_email"
+                    value={formData.preferred_email}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter preferred email (optional)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    If different from your Princeton email
+                  </p>
                 </div>
               </div>
             </div>
