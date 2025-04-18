@@ -10,11 +10,8 @@ const Swipe = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [matchFound, setMatchFound] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
-  const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
-  const [isSwiping, setIsSwiping] = useState(false);
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -52,83 +49,11 @@ const Swipe = () => {
   useEffect(() => {
     fetchExperiences();
   }, [user.id, authTokens]);
-  
-  const handleTouchStart = (e) => {
-    const pageX = e.touches ? e.touches[0].pageX : e.pageX;
-    const pageY = e.touches ? e.touches[0].pageY : e.pageY;
-    
-    setStartPosition({ x: pageX, y: pageY });
-    setIsSwiping(true);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isSwiping) return;
-    
-    const pageX = e.touches ? e.touches[0].pageX : e.pageX;
-    const pageY = e.touches ? e.touches[0].pageY : e.pageY;
-    
-    // Make the card precisely follow the mouse with no resistance
-    const deltaX = pageX - startPosition.x;
-    const deltaY = Math.min(Math.max(pageY - startPosition.y, -30), 30); // Limit vertical movement
-    
-    setCurrentPosition({
-      x: deltaX,
-      y: deltaY * 0.2 // Slight vertical movement for natural feel
-    });
-    
-    // Show direction indicators with minimal threshold
-    if (deltaX > 10) {
-      setSwipeDirection('right');
-    } else if (deltaX < -10) {
-      setSwipeDirection('left');
-    } else {
-      setSwipeDirection(null);
-    }
-  };
-
-  const handleTouchEnd = async () => {
-    if (!isSwiping) return;
-    
-    // Very low threshold for triggering swipe - makes it feel responsive
-    const swipedRight = currentPosition.x > 30;
-    const swipedLeft = currentPosition.x < -30;
-    
-    if (swipedRight || swipedLeft) {
-      // Let the handleSwipe function take care of setting the swipe direction
-      // and handling the animation timing
-      handleSwipe(swipedRight);
-    } else {
-      // For small movements, animate back to center smoothly instead of snapping
-      const element = document.querySelector('.hinge-card');
-      if (element) {
-        element.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        element.style.transform = 'translateX(0px) translateY(0px) rotate(0deg)';
-        
-        // Reset the position after the animation completes
-        setTimeout(() => {
-          setCurrentPosition({ x: 0, y: 0 });
-          setSwipeDirection(null);
-          element.style.transition = '';
-          element.style.transform = '';
-        }, 300);
-      } else {
-        // Fallback if element not found
-        setCurrentPosition({ x: 0, y: 0 });
-        setSwipeDirection(null);
-      }
-    }
-    
-    // Reset the swiping state
-    setIsSwiping(false);
-  };
 
   const handleSwipe = async (isLike) => {
     try {
       const currentExperience = experiences[currentIndex];
       if (!currentExperience) return;
-
-      // Keep a reference to the current experience for the match modal
-      const swipedExperience = {...currentExperience};
 
       // Set animation direction for swipe-out
       setSwipeDirection(isLike ? 'right' : 'left');
@@ -146,7 +71,7 @@ const Swipe = () => {
             credentials: 'include',
             body: JSON.stringify({
               user_id: user.id,
-              experience_id: swipedExperience.id,
+              experience_id: currentExperience.id,
               is_like: isLike
             })
           });
@@ -154,23 +79,6 @@ const Swipe = () => {
           if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.detail || 'Failed to record swipe');
-          }
-
-          // Get the response data which should tell us if this specific swipe created a match
-          const swipeData = await response.json();
-          console.log('Swipe response:', swipeData);
-          
-          // Only show match modal for right swipes that create a match
-          if (isLike && swipeData.match) {
-            // Store the swiped experience details to show in match modal
-            console.log('Match found with experience:', swipedExperience);
-            
-            // Set the current swiped experience for the match modal to use
-            window.lastMatchedExperience = swipedExperience;
-            
-            // Show match modal
-            setMatchFound(true);
-            setTimeout(() => setMatchFound(false), 3000);
           }
 
           // Move to next experience
@@ -281,9 +189,9 @@ const Swipe = () => {
 
   return (
     <div className="pt-6 pb-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[90vh]">
-      {/* Match modal */}
+      {/* Match modal - Commented out but preserved for future use
       <AnimatePresence>
-        {matchFound && (
+        {false && (
           <motion.div 
             className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -313,15 +221,14 @@ const Swipe = () => {
                   </div>
                   
                   <div className="w-16 h-16 rounded-full bg-gradient-to-r from-orange-end to-orange-start flex items-center justify-center text-white text-2xl font-bold">
-                    {currentExperience.creator?.username?.charAt(0).toUpperCase() || 'M'}
+                    M
                   </div>
                 </div>
                 
-                <p className="text-gray-700 mb-6">You both want to try {window.lastMatchedExperience?.experience_type || 'an experience'} at {window.lastMatchedExperience?.location || 'a location'}!</p>
+                <p className="text-gray-700 mb-6">You both want to try an experience at a location!</p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => setMatchFound(false)}
                     className="py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                   >
                     Keep Swiping
@@ -339,6 +246,7 @@ const Swipe = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      */}
       
       <div className="max-w-md mx-auto px-4">
         {/* Swipe indicators - Like */}
@@ -376,17 +284,7 @@ const Swipe = () => {
             touchAction: 'none',
             zIndex: 10
           }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseDown={handleTouchStart}
-          onMouseMove={handleTouchMove}
-          onMouseUp={handleTouchEnd}
-          onMouseLeave={handleTouchEnd}
           whileHover={{ scale: 1.02 }}
-          drag={false}
-          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-          dragElastic={0.2}
           transition={{ 
             type: "spring",
             stiffness: 1000,
@@ -514,7 +412,7 @@ const Swipe = () => {
       
       <div className="max-w-md mx-auto mt-6 text-center px-4">
         <p className="text-sm text-orange-800">
-          Swipe right to like, left to pass, or use the buttons below
+          Use the buttons below to like or pass
         </p>
       </div>
     </div>
