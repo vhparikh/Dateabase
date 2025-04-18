@@ -12,11 +12,11 @@ from urllib.parse import quote_plus, urlencode, quote
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage
+    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage
+    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
 from functools import wraps
 
 # Setup Flask app with proper static folder configuration for production deployment
@@ -45,6 +45,12 @@ else:
 
 # Initialize the database with our app
 init_db(app)
+
+# Add phone_number and preferred_email columns if they don't exist
+add_new_columns(app)
+
+# Drop bio and dietary_restrictions columns
+drop_unused_columns(app)
 
 # Auth Helper Functions
 def generate_token(user_id):
@@ -1099,8 +1105,6 @@ def get_or_update_current_user():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
-                'bio': user.bio,
-                'dietary_restrictions': user.dietary_restrictions,
                 'onboarding_completed': user.onboarding_completed,
                 'phone_number': user.phone_number,
                 'preferred_email': user.preferred_email,
@@ -1151,10 +1155,6 @@ def get_or_update_current_user():
                 user.prompt3 = data['prompt3']
             if 'answer3' in data:
                 user.answer3 = data['answer3']
-            if 'bio' in data:
-                user.bio = data['bio']
-            if 'dietary_restrictions' in data:
-                user.dietary_restrictions = data['dietary_restrictions']
             
             db.session.commit()
             
@@ -1179,8 +1179,6 @@ def get_or_update_current_user():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
-                'bio': user.bio,
-                'dietary_restrictions': user.dietary_restrictions,
                 'onboarding_completed': user.onboarding_completed,
                 'phone_number': user.phone_number,
                 'preferred_email': user.preferred_email,

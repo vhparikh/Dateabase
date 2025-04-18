@@ -38,8 +38,6 @@ const Onboarding = () => {
     prompt3: user?.prompt3 || promptOptions[2],
     answer3: user?.answer3 || '',
     classYear: user?.class_year ? user.class_year.toString() : '',
-    bio: user?.bio || '',
-    dietary_restrictions: user?.dietary_restrictions || '',
     phone_number: user?.phone_number || '',
     preferred_email: user?.preferred_email || ''
   });
@@ -230,8 +228,6 @@ const Onboarding = () => {
         answer2: formData.answer2 || '',
         prompt3: formData.prompt3 || '',
         answer3: formData.answer3 || '',
-        bio: formData.bio || '',
-        dietary_restrictions: formData.dietary_restrictions || '',
         phone_number: formData.phone_number || '',
         preferred_email: formData.preferred_email || ''
       };
@@ -385,19 +381,6 @@ const Onboarding = () => {
           {Math.floor(formData.height / 30.48)} ft {Math.round(formData.height % 30.48 / 2.54)} in
         </p>
       </div>
-
-      <div>
-        <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-        <textarea
-          id="bio"
-          name="bio"
-          rows="3"
-          value={formData.bio}
-          onChange={handleChange}
-          placeholder="Tell us a bit about yourself..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-        />
-      </div>
     </div>
   );
   
@@ -424,19 +407,6 @@ const Onboarding = () => {
           name="hometown"
           value={formData.hometown}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="dietary_restrictions" className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
-        <input
-          type="text"
-          id="dietary_restrictions"
-          name="dietary_restrictions"
-          value={formData.dietary_restrictions}
-          onChange={handleChange}
-          placeholder="Vegetarian, gluten-free, etc."
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
       </div>
