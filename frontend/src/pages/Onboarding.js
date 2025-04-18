@@ -61,6 +61,17 @@ const Onboarding = () => {
       }
     }
     
+    // Validate email field
+    if (name === 'preferred_email' && value) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(value)) {
+        setError('Please enter a valid email address.');
+        // Still update the form value for UX purposes
+      } else {
+        setError(''); // Clear error if email is valid
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -208,6 +219,16 @@ const Onboarding = () => {
     
     try {
       console.log('Starting onboarding completion process...');
+      
+      // Validate email if provided
+      if (formData.preferred_email) {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(formData.preferred_email)) {
+          setError('Please enter a valid email address.');
+          setLoading(false);
+          return false;
+        }
+      }
       
       // Properly format user data from form fields
       // Use the classYear field for class_year (resolving the mismatch)
@@ -430,14 +451,14 @@ const Onboarding = () => {
           </div>
           
           <div>
-            <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">Preferred Email</label>
+            <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               id="preferred_email"
               name="preferred_email"
               value={formData.preferred_email}
               onChange={handleChange}
-              placeholder="If different from Princeton email"
+              placeholder="If different from your Princeton email"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             />
           </div>
