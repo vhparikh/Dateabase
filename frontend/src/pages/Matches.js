@@ -404,7 +404,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
           {/* Conditionally show Google Map */}
           {showMap && (
             <div className="mb-4">
-              <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
+              <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""}>
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={mapCenter}
