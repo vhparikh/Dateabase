@@ -408,28 +408,12 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
         email: (isPrincetonEmail || emailValid) ? '' : 'Invalid email format',
         phone: phoneValid ? '' : 'Invalid phone number format'
       });
-      
-      console.log("Email validation:", {
-        emailToValidate,
-        emailValid,
-        isPrincetonEmail,
-        errors: {
-          email: (isPrincetonEmail || emailValid) ? '' : 'Invalid email format',
-          phone: phoneValid ? '' : 'Invalid phone number format'
-        }
-      });
     }
   }, [isOpen, user]);
 
-  // Get the appropriate email address to display and use for mailto link
+  if (!isOpen) return null;
+
   const getEmailAddress = () => {
-    console.log("User data for email:", { 
-      preferred_email: user.preferred_email, 
-      netid: user.netid,
-      name: user.name,
-      id: user.id
-    });
-    
     // Check if preferred email exists and is not empty
     if (user.preferred_email && user.preferred_email.trim() !== '') {
       return user.preferred_email.trim();
@@ -445,9 +429,7 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
     
     return null;
   };
-
-  if (!isOpen) return null;
-
+  
   // Format phone number for tel: link (remove non-numeric characters)
   const formatPhoneForLink = (phone) => {
     if (!phone) return '';
@@ -467,11 +449,7 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
     return phone;
   };
   
-  // Get the appropriate email address to display and use for mailto link
-  const emailAddress = getEmailAddress();
-  const formattedPhone = user.phone_number ? formatPhoneForDisplay(user.phone_number) : null;
-  
-  // Format for displaying the type of email (Princeton or preferred)
+  // Get email label text
   const getEmailLabel = () => {
     if (user.preferred_email && user.preferred_email.trim() !== '') {
       return "Preferred email";
@@ -481,17 +459,6 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
       return "Email";
     }
     return null;
-  };
-  
-  // Clear previous click handlers to prevent double opening
-  const handleEmailLinkClick = (e) => {
-    // No additional handling needed as we're using native <a> tag functionality
-    console.log("Opening email client with address:", emailAddress);
-  };
-
-  // Handle phone click directly
-  const handlePhoneClick = (e) => {
-    // This is handled by the href attribute
   };
 
   return (
@@ -539,35 +506,32 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 )}
               </div>
               
-              {/* Manually create email display - ensuring Princeton email always shows if netid available */}
               {(() => {
-                // This is an immediately invoked function to allow complex logic in JSX
                 if (user.preferred_email && user.preferred_email.trim() !== '') {
-                  // Use preferred email if available
                   return (
                     <p className="text-gray-700 font-medium">
                       {user.preferred_email.trim()}
                     </p>
                   );
                 } else if (user.netid && user.netid.trim() !== '') {
-                  // Use Princeton email if netid is available
                   const princetonEmail = `${user.netid.trim()}@princeton.edu`;
                   return (
                     <p className="text-gray-700 font-medium">
                       {princetonEmail}
+                      <span className="block text-xs text-gray-500 mt-1">
+                        Princeton email address
+                      </span>
                     </p>
                   );
                 } else if (user.email && user.email.trim() !== '') {
-                  // Use direct email if available
                   return (
                     <p className="text-gray-700 font-medium">
                       {user.email.trim()}
                     </p>
                   );
                 } else {
-                  // No email available
                   return (
-                    <p className="text-gray-700 font-medium">
+                    <p className="text-gray-700">
                       Not available
                     </p>
                   );
@@ -576,24 +540,13 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
               
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               
-              {/* Only show email link if we have a valid email */}
               {(() => {
-                // Determine the correct email to use for the mailto link
-                let mailtoEmail = null;
-                if (user.preferred_email && user.preferred_email.trim() !== '') {
-                  mailtoEmail = user.preferred_email.trim();
-                } else if (user.netid && user.netid.trim() !== '') {
-                  mailtoEmail = `${user.netid.trim()}@princeton.edu`;
-                } else if (user.email && user.email.trim() !== '') {
-                  mailtoEmail = user.email.trim();
-                }
+                let emailAddress = getEmailAddress();
                 
-                // Only render the link if we have a valid email and no validation errors
-                if (!errors.email && mailtoEmail) {
+                if (!errors.email && emailAddress) {
                   return (
                     <a 
-                      href={`mailto:${mailtoEmail}`}
-                      onClick={handleEmailLinkClick}
+                      href={`mailto:${emailAddress}`}
                       className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -615,14 +568,13 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 </svg>
                 <h4 className="font-medium text-gray-800">Phone Number</h4>
               </div>
-              <p className="text-gray-700">
-                {formattedPhone || 'Not provided'}
+              <p className="text-gray-700 font-medium">
+                {user.phone_number ? formatPhoneForDisplay(user.phone_number) : 'Not provided'}
               </p>
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
               {!errors.phone && user.phone_number && (
                 <a 
                   href={`tel:${formatPhoneForLink(user.phone_number)}`}
-                  onClick={handlePhoneClick}
                   className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -632,25 +584,6 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 </a>
               )}
             </div>
-            
-            {/* Hidden debug section - only visible in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
-                <details>
-                  <summary className="font-medium cursor-pointer">Debug User Data</summary>
-                  <pre className="mt-2 whitespace-pre-wrap">
-                    {JSON.stringify({
-                      id: user.id,
-                      name: user.name, 
-                      netid: user.netid,
-                      preferred_email: user.preferred_email,
-                      email: user.email,
-                      phone: user.phone_number
-                    }, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -840,10 +773,9 @@ const GroupedMatchCard = ({ user, experiences }) => {
   );
 };
 
-// Updated Potential Match Card - Grouped by user with individual experience selection
+// Updated Potential Match Card - Remove contact info button for potential matches
 const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);
   const [locationImages, setLocationImages] = useState({});
   
@@ -907,12 +839,6 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
             className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-md text-sm hover:bg-orange-200 transition-colors"
           >
             View Profile
-          </button>
-          <button 
-            onClick={() => setShowContactModal(true)} 
-            className="px-3 py-1.5 border border-orange-300 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition-colors ml-2"
-          >
-            Contact Info
           </button>
         </div>
         
@@ -1003,15 +929,6 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
           onClose={() => setShowProfileModal(false)}
         />
       )}
-      
-      {/* Contact Info Modal */}
-      {showContactModal && (
-        <ContactInfoModal 
-          user={user}
-          isOpen={showContactModal}
-          onClose={() => setShowContactModal(false)}
-        />
-      )}
     </div>
   );
 };
@@ -1035,10 +952,9 @@ const EmptyState = () => (
   </div>
 );
 
-// Pending Match Card (matches you've sent that are waiting for response) - Grouped by user
+// Updated Pending Sent Match Card - Remove contact info button for pending sent matches
 const GroupedPendingSentMatchCard = ({ user, experiences }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);
   const [locationImages, setLocationImages] = useState({});
   
@@ -1106,15 +1022,6 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
             View Profile
-          </button>
-          <button 
-            onClick={() => setShowContactModal(true)} 
-            className="text-sm text-orange-600 hover:text-orange-800 transition-colors inline-flex items-center ml-4"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            Contact Info
           </button>
         </div>
         
@@ -1200,15 +1107,6 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
           userId={user.id}
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-        />
-      )}
-      
-      {/* Contact Info Modal */}
-      {showContactModal && (
-        <ContactInfoModal 
-          user={user}
-          isOpen={showContactModal}
-          onClose={() => setShowContactModal(false)}
         />
       )}
     </div>
