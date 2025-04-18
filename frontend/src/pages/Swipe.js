@@ -50,6 +50,12 @@ const Swipe = () => {
   useEffect(() => {
     fetchExperiences();
   }, [user.id, authTokens]);
+  
+  // Make sure swipeDirection is properly initialized as null
+  useEffect(() => {
+    // Reset swipe direction when loading experiences
+    setSwipeDirection(null);
+  }, [experiences]);
 
   const handleSwipe = async (isLike) => {
     try {
@@ -245,12 +251,6 @@ const Swipe = () => {
       ? 'opacity-100 scale-110 pass-indicator' 
       : 'opacity-0 scale-90';
   };
-
-  // Make sure swipeDirection is properly initialized as null
-  useEffect(() => {
-    // Reset swipe direction when loading experiences
-    setSwipeDirection(null);
-  }, [experiences]);
 
   return (
     <div className="pt-6 pb-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[90vh]">
