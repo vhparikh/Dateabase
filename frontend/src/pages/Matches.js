@@ -431,10 +431,10 @@ const GroupedMatchCard = ({ user, experiences }) => {
           
           <div className="flex justify-between">
             <button
-              onClick={() => window.location.href = `mailto:${user.netid}@princeton.edu`}
+              onClick={() => window.location.href = `mailto:${user.netid || user.username || 'unknown'}@princeton.edu`}
               className="px-3 py-1.5 border border-orange-300 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition-colors"
             >
-              Email
+              Email {user.netid ? `(${user.netid})` : ''}
             </button>
             
             <button
@@ -525,6 +525,12 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
             className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-md text-sm hover:bg-orange-200 transition-colors"
           >
             View Profile
+          </button>
+          <button 
+            onClick={() => window.location.href = `mailto:${user.netid || user.username || 'unknown'}@princeton.edu`}
+            className="px-3 py-1.5 border border-orange-300 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition-colors ml-2"
+          >
+            Email {user.netid ? `(${user.netid})` : ''}
           </button>
         </div>
         
@@ -707,6 +713,15 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
           </svg>
           View Profile
+        </button>
+        <button 
+          onClick={() => window.location.href = `mailto:${user.netid || user.username || 'unknown'}@princeton.edu`}
+          className="text-sm text-orange-600 hover:text-orange-800 transition-colors mb-3 inline-flex items-center ml-4"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Email {user.netid ? `(${user.netid})` : ''}
         </button>
         
         <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Experiences</h4>
