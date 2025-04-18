@@ -313,8 +313,11 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   // Validate contact info when modal opens
   useEffect(() => {
     if (isOpen) {
-      const emailToValidate = user.preferred_email || (user.netid ? `${user.netid}@princeton.edu` : '');
-      const emailValid = validateEmail(emailToValidate);
+      // Get the email address that will be displayed
+      const displayEmail = getEmailAddress();
+      
+      // Only validate if there's an email to validate
+      const emailValid = displayEmail ? validateEmail(displayEmail) : true;
       const phoneValid = validatePhone(user.phone_number);
       
       setErrors({
@@ -323,6 +326,16 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
       });
     }
   }, [isOpen, user]);
+
+  // Get the appropriate email address to display and use for mailto link
+  const getEmailAddress = () => {
+    if (user.preferred_email && user.preferred_email.trim()) {
+      return user.preferred_email.trim();
+    } else if (user.netid && user.netid.trim()) {
+      return `${user.netid.trim()}@princeton.edu`;
+    }
+    return null;
+  };
 
   if (!isOpen) return null;
 
@@ -346,22 +359,23 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   };
   
   // Get the appropriate email address to display and use for mailto link
-  const getEmailAddress = () => {
-    if (user.preferred_email) {
-      return user.preferred_email;
-    } else if (user.netid) {
-      return `${user.netid}@princeton.edu`;
+  const emailAddress = getEmailAddress();
+  const formattedPhone = user.phone_number ? formatPhoneForDisplay(user.phone_number) : null;
+  
+  // Format for displaying the type of email (Princeton or preferred)
+  const getEmailLabel = () => {
+    if (user.preferred_email && user.preferred_email.trim()) {
+      return "Preferred email";
+    } else if (user.netid && user.netid.trim()) {
+      return "Princeton email";
     }
     return null;
   };
   
-  const emailAddress = getEmailAddress();
-  const formattedPhone = user.phone_number ? formatPhoneForDisplay(user.phone_number) : null;
-  
-  // Handle email click directly - use native anchor instead of window.location.href for single opening
-  const handleEmailClick = (e) => {
-    // This is handled by the href attribute on the anchor tag
-    // The event is passed through normally, no need to manipulate it
+  // Clear previous click handlers to prevent double opening
+  const handleEmailLinkClick = (e) => {
+    // No additional handling needed as we're using native <a> tag functionality
+    console.log("Opening email client with address:", emailAddress);
   };
 
   // Handle phone click directly
@@ -407,20 +421,20 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
                 <h4 className="font-medium text-gray-800">Email</h4>
+                {getEmailLabel() && (
+                  <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+                    {getEmailLabel()}
+                  </span>
+                )}
               </div>
-              <p className="text-gray-700">
+              <p className="text-gray-700 font-medium">
                 {emailAddress || 'Not available'}
               </p>
-              {user.netid && !user.preferred_email && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Using Princeton email address
-                </p>
-              )}
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               {!errors.email && emailAddress && (
                 <a 
                   href={`mailto:${emailAddress}`}
-                  onClick={handleEmailClick}
+                  onClick={handleEmailLinkClick}
                   className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
