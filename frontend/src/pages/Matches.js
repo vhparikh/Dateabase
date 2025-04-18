@@ -172,16 +172,6 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
                   >
                     Interests
                   </button>
-                  <button 
-                    onClick={() => setActiveTab('contact')} 
-                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
-                      activeTab === 'contact' 
-                        ? 'border-orange-500 text-orange-600' 
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Contact
-                  </button>
                 </div>
               </div>
               
@@ -251,101 +241,6 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
                     )}
                   </div>
                 )}
-                
-                {activeTab === 'contact' && (
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-800 mb-4">Contact Information</h4>
-                    
-                    <div className="space-y-4">
-                      {/* Email */}
-                      <div className="bg-orange-50 rounded-lg p-4">
-                        <div className="flex items-center mb-2">
-                          <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          <h4 className="font-medium text-gray-800">Email</h4>
-                        </div>
-                        
-                        {/* Render Princeton email if no preferred email is available */}
-                        {(() => {
-                          if (userProfile.preferred_email && userProfile.preferred_email.trim() !== '') {
-                            return (
-                              <p className="text-gray-700 font-medium">
-                                {userProfile.preferred_email.trim()}
-                              </p>
-                            );
-                          } else if (userProfile.netid && userProfile.netid.trim() !== '') {
-                            const princetonEmail = `${userProfile.netid.trim()}@princeton.edu`;
-                            return (
-                              <p className="text-gray-700 font-medium">
-                                {princetonEmail}
-                                <span className="block text-xs text-gray-500 mt-1">
-                                  Princeton email address
-                                </span>
-                              </p>
-                            );
-                          } else {
-                            return (
-                              <p className="text-gray-700">
-                                Not available
-                              </p>
-                            );
-                          }
-                        })()}
-                        
-                        {/* Open email app button */}
-                        {(() => {
-                          let emailAddress = null;
-                          
-                          if (userProfile.preferred_email && userProfile.preferred_email.trim() !== '') {
-                            emailAddress = userProfile.preferred_email.trim();
-                          } else if (userProfile.netid && userProfile.netid.trim() !== '') {
-                            emailAddress = `${userProfile.netid.trim()}@princeton.edu`;
-                          }
-                          
-                          if (emailAddress) {
-                            return (
-                              <a 
-                                href={`mailto:${emailAddress}`}
-                                className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
-                              >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Open in mail app
-                              </a>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      
-                      {/* Phone Number */}
-                      <div className="bg-orange-50 rounded-lg p-4">
-                        <div className="flex items-center mb-2">
-                          <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          <h4 className="font-medium text-gray-800">Phone Number</h4>
-                        </div>
-                        <p className="text-gray-700">
-                          {userProfile.phone_number || 'Not provided'}
-                        </p>
-                        {userProfile.phone_number && (
-                          <a 
-                            href={`tel:${userProfile.phone_number.replace(/\D/g, '')}`}
-                            className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                            Call
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -361,106 +256,8 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
 
 // ContactInfoModal component for displaying a user's contact information
 const ContactInfoModal = ({ user, isOpen, onClose }) => {
-  // Add state for validation errors
-  const [errors, setErrors] = useState({
-    email: '',
-    phone: ''
-  });
-
-  // Validate email
-  const validateEmail = (email) => {
-    if (!email) return true; // Empty email is valid (not provided)
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email);
-  };
-
-  // Validate phone number
-  const validatePhone = (phone) => {
-    if (!phone) return true; // Empty phone is valid (not provided)
-    // Basic phone validation - allows various formats with optional country code
-    const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
-    return phoneRegex.test(phone);
-  };
-
-  // Validate contact info when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      // First check for any emails that might be available
-      let emailToValidate = null;
-      if (user.preferred_email && user.preferred_email.trim() !== '') {
-        emailToValidate = user.preferred_email.trim();
-      } else if (user.netid && user.netid.trim() !== '') {
-        emailToValidate = `${user.netid.trim()}@princeton.edu`;
-      } else if (user.email && user.email.trim() !== '') {
-        emailToValidate = user.email.trim();
-      }
-      
-      // Only validate if there's an email to validate
-      const emailValid = emailToValidate ? validateEmail(emailToValidate) : true;
-      // Princeton emails are always valid
-      const isPrincetonEmail = emailToValidate && emailToValidate.endsWith('@princeton.edu');
-      
-      // Validate phone number
-      const phoneValid = validatePhone(user.phone_number);
-      
-      setErrors({
-        // Princeton emails are always valid for our purposes
-        email: (isPrincetonEmail || emailValid) ? '' : 'Invalid email format',
-        phone: phoneValid ? '' : 'Invalid phone number format'
-      });
-    }
-  }, [isOpen, user]);
-
   if (!isOpen) return null;
-
-  const getEmailAddress = () => {
-    // Check if preferred email exists and is not empty
-    if (user.preferred_email && user.preferred_email.trim() !== '') {
-      return user.preferred_email.trim();
-    } 
-    // Otherwise use Princeton email if netid exists
-    else if (user.netid && user.netid.trim() !== '') {
-      return `${user.netid.trim()}@princeton.edu`;
-    }
-    // Last resort fallback - if user has email directly on the user object
-    else if (user.email && user.email.trim() !== '') {
-      return user.email.trim();
-    }
-    
-    return null;
-  };
   
-  // Format phone number for tel: link (remove non-numeric characters)
-  const formatPhoneForLink = (phone) => {
-    if (!phone) return '';
-    return phone.replace(/\D/g, '');
-  };
-  
-  // Format phone number for display (if needed)
-  const formatPhoneForDisplay = (phone) => {
-    if (!phone) return '';
-    
-    // Simple formatting for common US number format
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-    }
-    // Return original if not a standard 10-digit number
-    return phone;
-  };
-  
-  // Get email label text
-  const getEmailLabel = () => {
-    if (user.preferred_email && user.preferred_email.trim() !== '') {
-      return "Preferred email";
-    } else if (user.netid && user.netid.trim() !== '') {
-      return "Princeton email";
-    } else if (user.email && user.email.trim() !== '') {
-      return "Email";
-    }
-    return null;
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
@@ -499,13 +296,9 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
                 <h4 className="font-medium text-gray-800">Email</h4>
-                {getEmailLabel() && (
-                  <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
-                    {getEmailLabel()}
-                  </span>
-                )}
               </div>
               
+              {/* Render Princeton email if no preferred email is available */}
               {(() => {
                 if (user.preferred_email && user.preferred_email.trim() !== '') {
                   return (
@@ -523,12 +316,6 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                       </span>
                     </p>
                   );
-                } else if (user.email && user.email.trim() !== '') {
-                  return (
-                    <p className="text-gray-700 font-medium">
-                      {user.email.trim()}
-                    </p>
-                  );
                 } else {
                   return (
                     <p className="text-gray-700">
@@ -538,12 +325,17 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 }
               })()}
               
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-              
+              {/* Open email app button */}
               {(() => {
-                let emailAddress = getEmailAddress();
+                let emailAddress = null;
                 
-                if (!errors.email && emailAddress) {
+                if (user.preferred_email && user.preferred_email.trim() !== '') {
+                  emailAddress = user.preferred_email.trim();
+                } else if (user.netid && user.netid.trim() !== '') {
+                  emailAddress = `${user.netid.trim()}@princeton.edu`;
+                }
+                
+                if (emailAddress) {
                   return (
                     <a 
                       href={`mailto:${emailAddress}`}
@@ -568,13 +360,12 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
                 </svg>
                 <h4 className="font-medium text-gray-800">Phone Number</h4>
               </div>
-              <p className="text-gray-700 font-medium">
-                {user.phone_number ? formatPhoneForDisplay(user.phone_number) : 'Not provided'}
+              <p className="text-gray-700">
+                {user.phone_number || 'Not provided'}
               </p>
-              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-              {!errors.phone && user.phone_number && (
+              {user.phone_number && (
                 <a 
-                  href={`tel:${formatPhoneForLink(user.phone_number)}`}
+                  href={`tel:${user.phone_number.replace(/\D/g, '')}`}
                   className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -590,6 +381,25 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
     </div>
   );
 };
+
+// Empty state component
+const EmptyState = () => (
+  <div className="bg-white rounded-xl shadow-card border border-orange-100 p-8 text-center max-w-md mx-auto">
+    <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+      </svg>
+    </div>
+    <h3 className="text-xl font-bold text-gray-800 mb-2">No matches yet</h3>
+    <p className="text-gray-600 mb-6">Start swiping to find people who share your interests!</p>
+    <Link 
+      to="/swipe" 
+      className="px-6 py-3 bg-gradient-to-r from-orange-start to-orange-end text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all inline-block"
+    >
+      Start Swiping
+    </Link>
+  </div>
+);
 
 // Updated Match Card with orange gradient theme - Grouped by user
 const GroupedMatchCard = ({ user, experiences }) => {
@@ -932,25 +742,6 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
     </div>
   );
 };
-
-// Empty state component
-const EmptyState = () => (
-  <div className="bg-white rounded-xl shadow-card border border-orange-100 p-8 text-center max-w-md mx-auto">
-    <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-      </svg>
-    </div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">No matches yet</h3>
-    <p className="text-gray-600 mb-6">Start swiping to find people who share your interests!</p>
-    <Link 
-      to="/swipe" 
-      className="px-6 py-3 bg-gradient-to-r from-orange-start to-orange-end text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all inline-block"
-    >
-      Start Swiping
-    </Link>
-  </div>
-);
 
 // Updated Pending Sent Match Card - Remove contact info button for pending sent matches
 const GroupedPendingSentMatchCard = ({ user, experiences }) => {
