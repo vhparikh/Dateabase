@@ -12,6 +12,7 @@ const Swipe = () => {
   const [error, setError] = useState(null);
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
+  const [animationStep, setAnimationStep] = useState(0); // Track animation progress
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -57,55 +58,113 @@ const Swipe = () => {
 
       // Set animation direction for swipe-out
       setSwipeDirection(isLike ? 'right' : 'left');
-
-      // Wait for the animation to complete (matches the CSS transition time)
-      // then proceed with the API call and state updates
-      setTimeout(async () => {
-        try {
-          // Send swipe to backend
-          const response = await fetch(`${API_URL}/api/swipes`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              user_id: user.id,
-              experience_id: currentExperience.id,
-              is_like: isLike
-            })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to record swipe');
-          }
-
-          // Move to next experience
-          setCurrentIndex(prev => prev + 1);
-          
-          // Reset the position and swipe direction 
-          setCurrentPosition({ x: 0, y: 0 });
-          setSwipeDirection(null);
-          
-          // If we're about to run out of experiences, fetch new ones
-          if (currentIndex >= experiences.length - 2) {
-            fetchExperiences();
-          }
-        } catch (err) {
-          console.error('Error in swipe handling:', err);
-          // Even if there's an error, we should still move to the next card
-          setCurrentIndex(prev => prev + 1);
-          setCurrentPosition({ x: 0, y: 0 });
-          setSwipeDirection(null);
-        }
-      }, 650); // This matches our CSS transition duration for swipe-exit (600ms) plus a small buffer
       
+      // Start multi-step animation
+      animateSwipe(isLike);
+
     } catch (err) {
       console.error('Error handling swipe:', err);
       // Ensure we still reset state on error
       setCurrentPosition({ x: 0, y: 0 });
       setSwipeDirection(null);
+      setAnimationStep(0);
+    }
+  };
+  
+  const animateSwipe = (isLike) => {
+    // Define the total animation steps
+    const totalSteps = 16;
+    // Define the max distance the card should move
+    const maxDistance = isLike ? 500 : -500;
+    // Define the max rotation
+    const maxRotation = isLike ? 30 : -30;
+    
+    // Set initial animation step
+    setAnimationStep(1);
+    
+    // Create an animation sequence
+    const animationInterval = setInterval(() => {
+      setAnimationStep(prevStep => {
+        const nextStep = prevStep + 1;
+        
+        // Calculate progress ratio (0 to 1)
+        const progress = nextStep / totalSteps;
+        
+        // Apply easing function for more natural movement
+        // Using cubic-bezier like easing for smooth acceleration and deceleration
+        const easedProgress = progress < 0.5 
+          ? 4 * progress * progress * progress 
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+          
+        // Calculate new position and rotation with easing
+        const newX = maxDistance * easedProgress;
+        const newRotation = maxRotation * easedProgress;
+        
+        // Update card position with easing
+        setCurrentPosition({ 
+          x: newX, 
+          y: 0 
+        });
+        
+        // If we've completed all steps, clear the interval and finish the swipe
+        if (nextStep >= totalSteps) {
+          clearInterval(animationInterval);
+          finishSwipe(isLike);
+          return 0; // Reset step counter
+        }
+        
+        return nextStep;
+      });
+    }, 30); // Run every 30ms for smooth animation (approximately 16 steps in 500ms)
+  };
+  
+  const finishSwipe = async (isLike) => {
+    try {
+      const currentExperience = experiences[currentIndex];
+      if (!currentExperience) return;
+      
+      // Send swipe to backend
+      const response = await fetch(`${API_URL}/api/swipes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          user_id: user.id,
+          experience_id: currentExperience.id,
+          is_like: isLike
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to record swipe');
+      }
+
+      // Wait a bit before moving to next experience for animation to complete visually
+      setTimeout(() => {
+        // Move to next experience
+        setCurrentIndex(prev => prev + 1);
+        
+        // Reset the position and swipe direction
+        setCurrentPosition({ x: 0, y: 0 });
+        setSwipeDirection(null);
+        
+        // If we're about to run out of experiences, fetch new ones
+        if (currentIndex >= experiences.length - 2) {
+          fetchExperiences();
+        }
+      }, 150);
+      
+    } catch (err) {
+      console.error('Error in swipe handling:', err);
+      // Even if there's an error, we should still move to the next card
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setCurrentPosition({ x: 0, y: 0 });
+        setSwipeDirection(null);
+      }, 150);
     }
   };
 
@@ -171,7 +230,7 @@ const Swipe = () => {
   const currentExperience = experiences[currentIndex];
   
   // Calculate rotation and opacity based on swipe position
-  const cardRotation = currentPosition.x * 0.1;
+  const cardRotation = currentPosition.x * 0.06;
   const cardOpacity = Math.max(0.5, 1 - Math.abs(currentPosition.x) / 500);
 
   // Get classes for the like/pass indicators
@@ -281,16 +340,14 @@ const Swipe = () => {
             y: currentPosition.y,
             rotate: cardRotation,
             opacity: cardOpacity,
-            touchAction: 'none',
             zIndex: 10
           }}
           whileHover={{ scale: 1.02 }}
           transition={{ 
             type: "spring",
-            stiffness: 1000,
-            damping: 100,
-            mass: 3,
-            velocity: 0
+            stiffness: 300,
+            damping: 30,
+            mass: 2
           }}
         >
           {/* Card Background Image */}
@@ -372,8 +429,7 @@ const Swipe = () => {
         <div className="flex justify-center items-center space-x-6 mt-8">
           <button 
             onClick={() => {
-              // Show visual indicator before triggering swipe
-              setCurrentPosition({ x: -30, y: 0 });
+              // Trigger the full multi-step animation
               handleSwipe(false);
             }}
             className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-red-400 transition-colors action-button"
@@ -396,8 +452,7 @@ const Swipe = () => {
           
           <button 
             onClick={() => {
-              // Show visual indicator before triggering swipe
-              setCurrentPosition({ x: 30, y: 0 });
+              // Trigger the full multi-step animation
               handleSwipe(true);
             }}
             className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-green-400 transition-colors action-button"
@@ -412,7 +467,7 @@ const Swipe = () => {
       
       <div className="max-w-md mx-auto mt-6 text-center px-4">
         <p className="text-sm text-orange-800">
-          Use the buttons below to like or pass
+          Click the buttons to like or pass
         </p>
       </div>
     </div>
