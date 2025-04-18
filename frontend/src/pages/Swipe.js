@@ -14,6 +14,7 @@ const Swipe = () => {
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
   const [animationStep, setAnimationStep] = useState(0); // Track animation progress
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
+  const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -61,10 +62,16 @@ const Swipe = () => {
   }, [experiences]);
 
   const handleSwipe = async (isLike) => {
+    // Prevent multiple animations from running simultaneously
+    if (isAnimating) return;
+    
     try {
       const currentExperience = experiences[currentIndex];
       if (!currentExperience) return;
 
+      // Set animation in progress
+      setIsAnimating(true);
+      
       // Set animation direction for swipe-out
       setSwipeDirection(isLike ? 'right' : 'left');
       
@@ -77,6 +84,7 @@ const Swipe = () => {
       setCurrentPosition({ x: 0, y: 0 });
       setSwipeDirection(null);
       setAnimationStep(0);
+      setIsAnimating(false); // Reset animation state on error
     }
   };
   
@@ -159,6 +167,7 @@ const Swipe = () => {
         // Reset the position and swipe direction
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
+        setIsAnimating(false); // Reset animation state when complete
         
         // If we're about to run out of experiences, fetch new ones
         if (currentIndex >= experiences.length - 2) {
@@ -173,6 +182,7 @@ const Swipe = () => {
         setCurrentIndex(prev => prev + 1);
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
+        setIsAnimating(false); // Reset animation state on error
       }, 350); // Reduced from 450ms to 350ms for faster transition
     }
   };
@@ -449,7 +459,8 @@ const Swipe = () => {
               // Trigger the full multi-step animation
               handleSwipe(false);
             }}
-            className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-red-400 transition-colors action-button"
+            disabled={isAnimating}
+            className={`w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-red-400 transition-colors action-button ${isAnimating ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label="Pass"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -459,7 +470,8 @@ const Swipe = () => {
           
           <button
             onClick={handleRetry}
-            className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-blue-400 transition-colors action-button"
+            disabled={isAnimating}
+            className={`w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-blue-400 transition-colors action-button ${isAnimating ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label="Refresh"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -472,7 +484,8 @@ const Swipe = () => {
               // Trigger the full multi-step animation
               handleSwipe(true);
             }}
-            className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-green-400 transition-colors action-button"
+            disabled={isAnimating}
+            className={`w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-green-400 transition-colors action-button ${isAnimating ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label="Like"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
