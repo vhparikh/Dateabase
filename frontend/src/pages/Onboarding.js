@@ -459,7 +459,7 @@ const Onboarding = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
             <input
               type="tel"
               id="phone_number"
@@ -469,6 +469,9 @@ const Onboarding = () => {
               placeholder="(123) 456-7890"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Will only be shared with confirmed matches
+            </p>
           </div>
           
           <div>
@@ -484,7 +487,7 @@ const Onboarding = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Your email will only be shared with confirmed matches
+              Your email will only be shared with confirmed matches (required)
             </p>
           </div>
         </div>

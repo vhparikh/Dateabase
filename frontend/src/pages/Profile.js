@@ -286,9 +286,9 @@ const Profile = () => {
             {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
               <div>
-                <h3 className="text-lg font-medium text-gray-700 mb-2">Email</h3>
+                <h3 className="text-lg font-medium text-gray-700 mb-2">Phone Number</h3>
                 <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">
-                  {userProfile?.preferred_email || 'Not set'}
+                  {userProfile?.phone_number || 'Not set'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Visible only to confirmed matches
@@ -296,9 +296,9 @@ const Profile = () => {
               </div>
               
               <div>
-                <h3 className="text-lg font-medium text-gray-700 mb-2">Phone Number</h3>
+                <h3 className="text-lg font-medium text-gray-700 mb-2">Email</h3>
                 <p className="bg-orange-50 rounded-lg p-3 border border-orange-100 text-gray-800">
-                  {userProfile?.phone_number || 'Not set'}
+                  {userProfile?.preferred_email || 'Not set'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Visible only to confirmed matches

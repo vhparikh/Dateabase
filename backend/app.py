@@ -1155,6 +1155,11 @@ def get_or_update_current_user():
                 user.prompt3 = data['prompt3']
             if 'answer3' in data:
                 user.answer3 = data['answer3']
+            # Add handling for phone_number and preferred_email fields
+            if 'phone_number' in data:
+                user.phone_number = data['phone_number']
+            if 'preferred_email' in data:
+                user.preferred_email = data['preferred_email']
             
             db.session.commit()
             

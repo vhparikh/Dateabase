@@ -264,6 +264,7 @@ const EditProfile = () => {
       const height = formData.height ? heightVal : null;
       const class_year = formData.class_year ? parseInt(formData.class_year, 10) : null;
       
+      // Ensure phone number and email are explicitly included in userData
       const userData = {
         name,
         gender: formData.gender,
@@ -280,8 +281,8 @@ const EditProfile = () => {
         answer2: formData.answer2,
         prompt3: formData.prompt3,
         answer3: formData.answer3,
-        phone_number: formData.phone_number,
-        preferred_email: formData.preferred_email
+        phone_number: formData.phone_number || '',
+        preferred_email: formData.preferred_email || ''
       };
       
       console.log('Submitting profile update with data:', userData);
@@ -306,10 +307,21 @@ const EditProfile = () => {
         
         if (response.data) {
           console.log('Profile updated successfully:', response.data);
+          // Verify the response includes contact information
+          if (!response.data.preferred_email && formData.preferred_email) {
+            console.warn('Email was not returned in the response data');
+          }
+          if (!response.data.phone_number && formData.phone_number) {
+            console.warn('Phone number was not returned in the response data');
+          }
+          
           // Update AuthContext with new data
           setUser({
             ...user,
-            ...response.data
+            ...response.data,
+            // Explicitly ensure these fields are included in case they're missing
+            preferred_email: response.data.preferred_email || formData.preferred_email,
+            phone_number: response.data.phone_number || formData.phone_number
           });
           
           setSuccess(true);
