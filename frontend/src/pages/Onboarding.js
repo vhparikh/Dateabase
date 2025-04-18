@@ -49,33 +49,36 @@ const Onboarding = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Special validation for height field
+    // Specific validation for height input
     if (name === 'height') {
-      // Check if height is a valid number within the acceptable range
-      const heightVal = parseInt(value, 10);
-      if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
+      const height = parseInt(value, 10);
+      
+      if (isNaN(height) || height < 0 || height > 300) {
         setError('Height must be a number between 0 and 300 cm.');
-        // Still update the form value for UX purposes, but it won't pass submission validation
       } else {
-        setError(''); // Clear error if height is valid
+        setError('');
       }
     }
     
-    // Validate email field
-    if (name === 'preferred_email' && value) {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(value)) {
-        setError('Please enter a valid email address.');
-        // Still update the form value for UX purposes
+    // Validate email
+    if (name === 'preferred_email') {
+      if (!value) {
+        setError('Email address is required.');
       } else {
-        setError(''); // Clear error if email is valid
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(value)) {
+          setError('Please enter a valid email address.');
+        } else {
+          setError('');
+        }
       }
     }
     
-    setFormData(prev => ({
-      ...prev,
+    // Update form data
+    setFormData({
+      ...formData,
       [name]: value
-    }));
+    });
   };
   
   // Handle prompt selection with duplicate prevention
@@ -107,6 +110,20 @@ const Onboarding = () => {
       const heightVal = parseInt(formData.height, 10);
       if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
         setError('Height must be a number between 0 and 300 cm.');
+        return;
+      }
+    }
+    
+    // Validate email before proceeding to step 3
+    if (currentStep === 2) {
+      if (!formData.preferred_email) {
+        setError('Email address is required.');
+        return;
+      }
+      
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(formData.preferred_email)) {
+        setError('Please enter a valid email address.');
         return;
       }
     }
@@ -220,14 +237,18 @@ const Onboarding = () => {
     try {
       console.log('Starting onboarding completion process...');
       
-      // Validate email if provided
-      if (formData.preferred_email) {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(formData.preferred_email)) {
-          setError('Please enter a valid email address.');
-          setLoading(false);
-          return false;
-        }
+      // Validate email (now required)
+      if (!formData.preferred_email) {
+        setError('Email address is required.');
+        setLoading(false);
+        return false;
+      }
+      
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(formData.preferred_email)) {
+        setError('Please enter a valid email address.');
+        setLoading(false);
+        return false;
       }
       
       // Properly format user data from form fields
@@ -250,7 +271,7 @@ const Onboarding = () => {
         prompt3: formData.prompt3 || '',
         answer3: formData.answer3 || '',
         phone_number: formData.phone_number || '',
-        preferred_email: formData.preferred_email || ''
+        preferred_email: formData.preferred_email
       };
       
       console.log('Submitting onboarding data:', userData);
@@ -451,16 +472,20 @@ const Onboarding = () => {
           </div>
           
           <div>
-            <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
             <input
               type="email"
               id="preferred_email"
               name="preferred_email"
               value={formData.preferred_email}
               onChange={handleChange}
-              placeholder="If different from your Princeton email"
+              placeholder="Enter your email address"
+              required
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Your email will only be shared with confirmed matches
+            </p>
           </div>
         </div>
       </div>

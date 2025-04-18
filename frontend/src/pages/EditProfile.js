@@ -137,14 +137,18 @@ const EditProfile = () => {
       }
     }
     
-    // Validate email field
-    if (name === 'preferred_email' && value) {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(value)) {
-        setError('Please enter a valid email address.');
-        // Still update the form value for UX purposes
+    // Validate email field - now required
+    if (name === 'preferred_email') {
+      if (!value.trim()) {
+        setError('Email address is required.');
       } else {
-        setError(''); // Clear error if email is valid
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(value)) {
+          setError('Please enter a valid email address.');
+          // Still update the form value for UX purposes
+        } else {
+          setError(''); // Clear error if email is valid
+        }
       }
     }
     
@@ -207,14 +211,18 @@ const EditProfile = () => {
       return;
     }
     
-    // Validate email if provided
-    if (formData.preferred_email) {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(formData.preferred_email)) {
-        setError('Please enter a valid email address.');
-        setLoading(false);
-        return;
-      }
+    // Validate email - now required
+    if (!formData.preferred_email.trim()) {
+      setError('Email address is required.');
+      setLoading(false);
+      return;
+    }
+    
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(formData.preferred_email)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
     }
     
     // Validate phone number if provided
@@ -604,7 +612,7 @@ const EditProfile = () => {
                 
                 <div>
                   <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Preferred Email
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -613,10 +621,11 @@ const EditProfile = () => {
                     value={formData.preferred_email}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    placeholder="Enter preferred email (optional)"
+                    placeholder="Enter your email address"
+                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    If different from your Princeton email
+                    Your email will only be shared with confirmed matches
                   </p>
                 </div>
               </div>
