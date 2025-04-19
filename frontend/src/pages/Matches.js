@@ -447,7 +447,17 @@ const GroupedMatchCard = ({ user, experiences }) => {
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
       {/* User Profile Header */}
       <div className="relative">
-        <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+        {activeExperience.experience.location_image ? (
+          <div className="h-40 overflow-hidden">
+            <img
+              src={activeExperience.experience.location_image}
+              alt={activeExperience.experience.location}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+        )}
         <div className="absolute -bottom-16 left-6">
           <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden">
             <img 
@@ -669,12 +679,6 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
             className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-md text-sm hover:bg-orange-200 transition-colors"
           >
             View Profile
-          </button>
-          <button 
-            onClick={() => window.location.href = `mailto:${user.netid || user.username || 'unknown'}@princeton.edu`}
-            className="px-3 py-1.5 border border-orange-300 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition-colors ml-2"
-          >
-            Email {user.netid ? `(${user.netid})` : ''}
           </button>
         </div>
         
