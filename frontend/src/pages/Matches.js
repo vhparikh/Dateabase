@@ -118,7 +118,17 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
           <div>
             {/* Profile Header */}
             <div className="relative">
-              <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+      {activeExperience.experience.location_image ? (
+        <div className="h-40 overflow-hidden">
+          <img
+            src={activeExperience.experience.location_image}
+            alt={activeExperience.experience.location}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+      )}
               <div className="absolute -bottom-16 left-6">
                 <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden">
                   <img 
@@ -490,7 +500,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {exp.experience.experience_type}
+              {exp.experience.location}
             </button>
           ))}
         </div>
