@@ -6,7 +6,7 @@ import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 // UserProfileModal component for displaying a user's full profile
-const UserProfileModal = ({ userId, isOpen, onClose }) => {
+const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -118,17 +118,17 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
           <div>
             {/* Profile Header */}
             <div className="relative">
-      {activeExperience.experience.location_image ? (
-        <div className="h-40 overflow-hidden">
-          <img
-            src={activeExperience.experience.location_image}
-            alt={activeExperience.experience.location}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : (
-        <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
-      )}
+              {backgroundImage ? (
+                <div className="h-40 overflow-hidden">
+                  <img
+                    src={backgroundImage}
+                    alt="Experience background"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+              )}
               <div className="absolute -bottom-16 left-6">
                 <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden">
                   <img 
@@ -587,6 +587,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
           userId={user.id}
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
+          backgroundImage={activeExperience.experience.location_image}
         />
       )}
       
