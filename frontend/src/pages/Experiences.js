@@ -30,8 +30,12 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   
   // Open Google Maps directions in a new tab
   const openDirections = () => {
-    if (experience.latitude && experience.longitude) {
-      // Use coordinates if available
+    if (experience.place_id) {
+      // Use place_id if available for better directions
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}&query_place_id=${experience.place_id}`;
+      window.open(url, '_blank');
+    } else if (experience.latitude && experience.longitude) {
+      // Fall back to coordinates if place_id is not available
       const url = `https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`;
       window.open(url, '_blank');
     } else {
@@ -254,35 +258,38 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || place.name || '';
       
-      setFormData(prev => ({
-        ...prev,
+      // Create updated form data
+      const updatedFormData = {
+        ...formData,
         location: formattedAddress,
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
-      }));
+      };
+      
+      // Try to get a location image from Google Maps if available
+      if (place.photos && place.photos.length > 0) {
+        try {
+          const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+          updatedFormData.location_image = photoUrl;
+        } catch (error) {
+          console.error('Error getting place photo:', error);
+          // Fallback to Unsplash
+          const locationForImage = formattedAddress.split(',')[0].trim();
+          updatedFormData.location_image = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+        }
+      } else {
+        // Fallback to Unsplash for image
+        const locationForImage = formattedAddress.split(',')[0].trim();
+        updatedFormData.location_image = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+      }
+      
+      setFormData(updatedFormData);
       
       setMapCenter({
         lat,
         lng
       });
-      
-      // Try to get a location image from Google Maps if available
-      if (place.photos && place.photos.length > 0) {
-        const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
-        setFormData(prev => ({
-          ...prev,
-          location_image: photoUrl
-        }));
-      } else {
-        // Fallback to Unsplash
-        const locationForImage = formattedAddress.split(',')[0].trim(); // Use first part of address for better image results
-        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-        setFormData(prev => ({
-          ...prev,
-          location_image: imageUrl
-        }));
-      }
       
       // Clear location error if it exists
       if (errors.location) {
@@ -754,84 +761,41 @@ const Experiences = () => {
     }
   };
 
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Your Experiences</h1>
-          </div>
-          <p className="text-gray-600 mt-2">Share your favorite places and activities</p>
-        </div>
-        
-        {/* Add Experience button */}
-        <div className="flex justify-end mb-6">
-          <button
-            onClick={handleAddExperience}
-            className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Experience
-          </button>
-        </div>
-        
-        {/* Content */}
-        {loading && experiences.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your experiences...</p>
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center max-w-md mx-auto">
-            <p className="text-red-600 mb-2">{error}</p>
-            <button 
-              onClick={() => {
-                const fetchExperiences = async () => {
-                  try {
-                    setLoading(true);
-                    const response = await fetch(`${API_URL}/api/my-experiences`, {
-                      credentials: 'include'
-                    });
-                    if (!response.ok) {
-                      throw new Error('Failed to fetch experiences');
-                    }
-                    const data = await response.json();
-                    setExperiences(data);
-                    setError('');
-                  } catch (err) {
-                    console.error('Error fetching experiences:', err);
-                    setError('Failed to fetch experiences. Please try again later.');
-                  } finally {
-                    setLoading(false);
-                  }
-                };
-                fetchExperiences();
-              }}
-              className="px-4 py-2 bg-white border border-red-300 rounded-md text-red-600 text-sm hover:bg-red-50"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : experiences.length === 0 ? (
-          <EmptyState onAddClick={handleAddExperience} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {experiences.map(experience => (
-              <ExperienceCard 
-                key={experience.id} 
-                experience={experience}
-                onEdit={handleEditExperience}
-                onDelete={openDeleteConfirmation}
-              />
-            ))}
-          </div>
-        )}
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Experiences</h1>
+
+      {/* Add Experience button */}
+      <div className="flex justify-end mb-6">
+        <button
+          onClick={handleAddExperience}
+          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Experience
+        </button>
       </div>
-      
+
+      {experiences.length === 0 ? (
+        <EmptyState onAddClick={handleAddExperience} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {experiences.map(experience => (
+            <ExperienceCard
+              key={experience.id}
+              experience={experience}
+              onEdit={handleEditExperience}
+              onDelete={handleDeleteExperience}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Modals */}
       <ExperienceModal 
         isOpen={isModalOpen}

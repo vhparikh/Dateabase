@@ -154,37 +154,42 @@ const CreateExperience = () => {
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || place.name || '';
       
-      setFormData({
+      // Setup initial form data with location info
+      const updatedFormData = {
         ...formData,
         location: formattedAddress,
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
-      });
+      };
       
+      // Try to get a better location image from Google Maps if available
+      if (place.photos && place.photos.length > 0) {
+        try {
+          const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+          updatedFormData.location_image = photoUrl;
+          setBackgroundImage(photoUrl);
+        } catch (error) {
+          console.error('Error getting place photo:', error);
+          // Fallback to Unsplash with a more targeted search
+          const locationForImage = formattedAddress.split(',')[0].trim();
+          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          updatedFormData.location_image = imageUrl;
+          setBackgroundImage(imageUrl);
+        }
+      } else {
+        // Fallback to Unsplash with a more targeted search term
+        const locationForImage = formattedAddress.split(',')[0].trim();
+        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+        updatedFormData.location_image = imageUrl;
+        setBackgroundImage(imageUrl);
+      }
+      
+      setFormData(updatedFormData);
       setMapCenter({
         lat,
         lng
       });
-      
-      // Try to get a better location image from Google Maps if available
-      if (place.photos && place.photos.length > 0) {
-        const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
-        setBackgroundImage(photoUrl);
-        setFormData(prevData => ({
-          ...prevData,
-          location_image: photoUrl
-        }));
-      } else {
-        // Fallback to Unsplash
-        const locationForImage = formattedAddress.split(',')[0].trim(); // Use first part of address for better image results
-        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-        setBackgroundImage(imageUrl);
-        setFormData(prevData => ({
-          ...prevData,
-          location_image: imageUrl
-        }));
-      }
       
       setShowLocationSuggestions(false);
     }
