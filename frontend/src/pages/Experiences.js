@@ -156,7 +156,7 @@ const customMarker = {
   anchor: { x: 12, y: 22 },
 };
 
-// Experience card component with orange gradient theme
+// Experience card component with simplified styling
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   const cardVariants = {
     initial: { opacity: 0, y: 20 },
@@ -164,20 +164,6 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
     exit: { opacity: 0, y: -20 }
   };
 
-  // Generate a random gradient for the background if no image
-  const randomGradient = () => {
-    const gradients = [
-      'from-orange-400 to-red-500',
-      'from-orange-300 to-orange-600',
-      'from-amber-400 to-orange-500', 
-      'from-yellow-400 to-orange-500',
-      'from-orange-400 to-pink-500',
-    ];
-    return gradients[Math.floor(Math.random() * gradients.length)];
-  };
-
-  const [gradient] = useState(randomGradient());
-  
   // Open Google Maps directions in a new tab
   const openDirections = () => {
     if (experience.place_id) {
@@ -194,22 +180,17 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
       window.open(url, '_blank');
     }
   };
-  
-  // Generate a static map URL with custom styling if coordinates are available
-  const staticMapUrl = experience.latitude && experience.longitude
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=15&size=600x300&scale=2&maptype=roadmap&markers=icon:https://i.imgur.com/SYzII5i.png|${experience.latitude},${experience.longitude}&style=feature:water|element:geometry|color:0xe9e9e9|lightness:17&style=feature:landscape|element:geometry|color:0xf5f5f5|lightness:20&style=feature:road|element:geometry|color:0xffffff|lightness:17&style=feature:poi|element:geometry|color:0xf5f5f5|lightness:21&style=feature:poi.park|element:geometry|color:0xdedede|lightness:21&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`
-    : null;
 
   return (
     <motion.div 
-      className="rounded-xl overflow-hidden shadow-card bg-white"
+      className="rounded overflow-hidden shadow-md bg-white"
       variants={cardVariants}
       initial="initial"
       animate="animate"
       exit="exit"
       transition={{ duration: 0.3 }}
     >
-      {/* Image or gradient header */}
+      {/* Image header */}
       <div className="relative h-48">
         {experience.location_image ? (
           <img 
@@ -218,23 +199,16 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className={`w-full h-full bg-gradient-to-r ${gradient} flex items-center justify-center`}>
-            <span className="text-white text-2xl font-bold px-4 text-center">{experience.experience_type}</span>
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <span className="text-gray-600 text-xl font-semibold px-4 text-center">{experience.experience_type}</span>
           </div>
         )}
-        
-        {/* Overlay with location and type */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white p-4">
-          <span className="bg-orange-500/80 text-white text-xs px-2 py-1 rounded-full uppercase tracking-wide font-semibold backdrop-blur-sm">
-            {experience.experience_type}
-          </span>
-          <h3 className="text-xl font-bold mt-2">{experience.experience_name || experience.location}</h3>
-        </div>
       </div>
       
       {/* Content section */}
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
+          {/* Display experience_name (place name) as title if available, otherwise fall back to location */}
           <h3 className="text-lg font-bold text-gray-800">{experience.experience_name || experience.location}</h3>
           
           {!readOnly && (
@@ -262,10 +236,17 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           )}
         </div>
         
+        {/* Experience type */}
+        <div className="mb-2">
+          <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">
+            {experience.experience_type}
+          </span>
+        </div>
+        
         {/* Location with directions button */}
         <div className="text-sm text-gray-600 mb-3 flex items-center justify-between">
           <div className="flex items-center">
-            <svg className="h-4 w-4 text-orange-500 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-4 w-4 text-gray-500 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -282,23 +263,12 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           </button>
         </div>
         
-        {/* Static map if coordinates available */}
-        {staticMapUrl && (
-          <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
-            <img 
-              src={staticMapUrl} 
-              alt={`Map of ${experience.location}`}
-              className="w-full h-36 object-cover"
-            />
-          </div>
-        )}
-        
         <p className="text-gray-700 text-sm mb-3">
           {experience.description || "No description provided."}
         </p>
         
         {/* Additional details */}
-        <div className="border-t border-orange-100 pt-3 mt-3">
+        <div className="border-t border-gray-200 pt-3 mt-3">
           <div className="text-xs text-gray-500">
             Added {new Date(experience.created_at).toLocaleDateString()}
           </div>
@@ -318,6 +288,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     longitude: null,
     place_id: '',
     location_image: '',
+    experience_name: '', // Added field for the place name
     is_active: true
   });
   
@@ -329,22 +300,8 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   // Map configuration
   const mapContainerStyle = {
     width: '100%',
-    height: '250px', // Increased height for better visibility
-    borderRadius: '12px',
+    height: '250px',
     marginTop: '12px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    border: '1px solid rgba(249, 115, 22, 0.2)' // Light orange border
-  };
-  
-  const mapOptions = {
-    disableDefaultUI: false,
-    zoomControl: true,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: true,
-    styles: mapStyles,
-    scrollwheel: false,
-    gestureHandling: 'cooperative',
   };
   
   // Experience types dropdown options
@@ -365,6 +322,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         longitude: experience.longitude || null,
         place_id: experience.place_id || '',
         location_image: experience.location_image || '',
+        experience_name: experience.experience_name || '',
         is_active: experience.is_active !== undefined ? experience.is_active : true
       });
       
@@ -387,6 +345,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         longitude: null,
         place_id: '',
         location_image: '',
+        experience_name: '',
         is_active: true
       });
       setMapCenter(null);
@@ -415,13 +374,15 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || '';
+      
+      // Extract place name - prioritize the name field
       const placeName = place.name || formattedAddress.split(',')[0].trim();
       
       // Create updated form data
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
-        experience_name: placeName,
+        experience_name: placeName, // Set the place name as the title
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -515,23 +476,22 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   };
   
   const handleButtonClick = async () => {
-  // Explicitly validate the form and call onSave if valid
-  if (await validateForm()) {
-    console.log('Submit button clicked, form validated');
-    onSave(formData);
-  } else {
-    console.log('Submit button clicked, validation failed', errors);
-  }
-};
-  
+    // Explicitly validate the form and call onSave if valid
+    if (await validateForm()) {
+      console.log('Submit button clicked, form validated');
+      onSave(formData);
+    } else {
+      console.log('Submit button clicked, validation failed', errors);
+    }
+  };
   
   if (!isOpen) return null;
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="border-b border-orange-100 px-6 py-4 flex justify-between items-center sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-800">
+      <div className="bg-white rounded shadow-md w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="border-b px-6 py-4 flex justify-between items-center sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-bold">
             {experience ? 'Edit Experience' : 'Add New Experience'}
           </h2>
           <button 
@@ -554,7 +514,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               name="experience_type"
               value={formData.experience_type}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border ${errors.experience_type ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
+              className={`w-full px-3 py-2 border ${errors.experience_type ? 'border-red-500' : 'border-gray-300'} rounded`}
             >
               <option value="">Select an experience type</option>
               {experienceTypes.map(type => (
@@ -596,7 +556,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
                     value={formData.location}
                     onChange={handleChange}
                     placeholder="Search for a location..."
-                    className={`w-full px-3 py-2 border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                    className={`w-full px-3 py-2 border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded`}
                   />
                 </Autocomplete>
                 {errors.location && (
@@ -604,25 +564,22 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
                 )}
               </div>
               
+              {/* Display place name */}
+              {formData.experience_name && (
+                <div className="mt-2 text-sm text-gray-600">
+                  <strong>Place Name:</strong> {formData.experience_name}
+                </div>
+              )}
+              
               {/* Map preview */}
               {mapCenter && (
-                <div className="mt-3 relative overflow-hidden">
-                  <div className="absolute top-3 left-3 z-10 bg-white px-3 py-1 rounded-full shadow-md text-sm font-medium text-orange-500 border border-orange-200">
-                    {formData.experience_name || formData.location}
-                  </div>
-                  <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    center={mapCenter}
-                    zoom={15}
-                    options={mapOptions}
-                  >
-                    <Marker 
-                      position={mapCenter}
-                      icon={customMarker}
-                      animation={window.google?.maps?.Animation?.DROP}
-                    />
-                  </GoogleMap>
-                </div>
+                <GoogleMap
+                  mapContainerStyle={mapContainerStyle}
+                  center={mapCenter}
+                  zoom={15}
+                >
+                  <Marker position={mapCenter} />
+                </GoogleMap>
               )}
             </LoadScript>
           </div>
@@ -638,7 +595,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               onChange={handleChange}
               placeholder="Describe this experience..."
               rows="3"
-              className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
+              className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded`}
             ></textarea>
             {errors.description && (
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
@@ -656,9 +613,9 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               value={formData.location_image}
               onChange={handleChange}
               placeholder="https://example.com/image.jpg"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded"
             />
-            <p className="text-xs text-gray-500 mt-1">Leave empty for a color gradient</p>
+            <p className="text-xs text-gray-500 mt-1">Leave empty for a default background</p>
           </div>
           
           {/* Active Status */}
@@ -669,7 +626,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="rounded text-orange-600 focus:ring-orange-500 h-4 w-4"
+                className="rounded h-4 w-4"
               />
               <span className="ml-2 text-sm text-gray-700">Active (visible to others)</span>
             </label>
@@ -680,14 +637,14 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
-              type="button" /* Changed from 'submit' to 'button' to prevent default form submission */
+              type="button"
               onClick={handleButtonClick}
-              className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg shadow-sm hover:shadow-md transition-all"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               {experience ? 'Save Changes' : 'Add Experience'}
             </button>
@@ -700,17 +657,17 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
 
 // Empty state component
 const EmptyState = ({ onAddClick }) => (
-  <div className="bg-white rounded-xl shadow-card border border-orange-100 p-8 text-center max-w-md mx-auto">
-    <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <div className="bg-white rounded shadow-md p-8 text-center max-w-md mx-auto">
+    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
     </div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">No experiences added</h3>
+    <h3 className="text-xl font-bold mb-2">No experiences added</h3>
     <p className="text-gray-600 mb-6">Add your favorite spots, activities, and places you'd like to share.</p>
     <button 
       onClick={onAddClick}
-      className="px-6 py-3 bg-gradient-to-r from-orange-start to-orange-end text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all inline-block"
+      className="px-4 py-2 bg-blue-500 text-white font-medium rounded hover:bg-blue-600"
     >
       Add Your First Experience
     </button>
@@ -723,20 +680,20 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, experienceId }) =
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
+      <div className="bg-white rounded shadow-md w-full max-w-md p-6">
+        <h3 className="text-xl font-bold mb-4">Confirm Deletion</h3>
         <p className="text-gray-600 mb-6">Are you sure you want to delete this experience? This action cannot be undone.</p>
         
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(experienceId)}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Delete
           </button>
@@ -939,7 +896,7 @@ const Experiences = () => {
       <div className="flex justify-end mb-6">
         <button
           onClick={handleAddExperience}
-          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -957,7 +914,7 @@ const Experiences = () => {
               key={experience.id}
               experience={experience}
               onEdit={handleEditExperience}
-              onDelete={handleDeleteExperience}
+              onDelete={openDeleteConfirmation}
             />
           ))}
         </div>

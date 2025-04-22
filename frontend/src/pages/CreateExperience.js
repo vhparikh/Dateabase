@@ -204,6 +204,7 @@ const CreateExperience = () => {
     longitude: null,
     place_id: null,
     location_image: '',
+    experience_name: '', // Added field for the place name
   });
   const [customType, setCustomType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -220,11 +221,8 @@ const CreateExperience = () => {
   // Map configuration
   const mapContainerStyle = {
     width: '100%',
-    height: '250px', // Increased height for better visibility
-    borderRadius: '12px',
+    height: '250px',
     marginTop: '12px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    border: '1px solid rgba(249, 115, 22, 0.2)' // Light orange border
   };
   
   const mapOptions = {
@@ -272,26 +270,26 @@ const CreateExperience = () => {
         try {
           // Since we can't directly call the Google API from the frontend due to CORS,
           // we'll use Unsplash as a fallback for images
-          setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
           
           // Set the location image in form data too for submission
           setFormData(prevData => ({
             ...prevData,
-            location_image: `https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`
+            location_image: `https://source.unsplash.com/random/800x600/?${formData.experience_name.replace(/\s+/g, '+')}`
           }));
         } catch (err) {
           console.error('Error fetching place photo:', err);
-          // Fallback to Unsplash
-          setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
         }
       };
       
       fetchPlacePhoto();
     } else if (formData.location && formData.location.length > 3) {
       // Fallback to Unsplash if we don't have a place_id
-      setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
+      setFormData(prevData => ({
+        ...prevData,
+        location_image: `https://source.unsplash.com/random/800x600/?${formData.experience_name.replace(/\s+/g, '+')}`
+      }));
     }
-  }, [formData.location, formData.place_id]);
+  }, [formData.location, formData.place_id, formData.experience_name]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -311,13 +309,15 @@ const CreateExperience = () => {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || '';
+      
+      // Extract place name - prioritize the name field
       const placeName = place.name || formattedAddress.split(',')[0].trim();
       
       // Setup initial form data with location info
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
-        experience_name: placeName,
+        experience_name: placeName, // Set the place name as the experience name
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -328,19 +328,16 @@ const CreateExperience = () => {
         try {
           const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
           updatedFormData.location_image = photoUrl;
-          setBackgroundImage(photoUrl);
         } catch (error) {
           console.error('Error getting place photo:', error);
           // Fallback to Unsplash with a more targeted search
           const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
           updatedFormData.location_image = imageUrl;
-          setBackgroundImage(imageUrl);
         }
       } else {
         // Fallback to Unsplash with a more targeted search term
         const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
         updatedFormData.location_image = imageUrl;
-        setBackgroundImage(imageUrl);
       }
       
       setFormData(updatedFormData);
@@ -375,7 +372,8 @@ const CreateExperience = () => {
   const selectSuggestedLocation = (location) => {
     setFormData({
       ...formData,
-      location
+      location,
+      experience_name: location // Set the suggested location as experience_name too
     });
     setShowLocationSuggestions(false);
   };
@@ -644,6 +642,13 @@ const CreateExperience = () => {
                       required
                     />
                   </Autocomplete>
+                  
+                  {/* Display selected place name */}
+                  {formData.experience_name && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      <strong>Place Name:</strong> {formData.experience_name}
+                    </div>
+                  )}
                   
                   {/* Map display when location is selected */}
                   {formData.latitude && formData.longitude && (
