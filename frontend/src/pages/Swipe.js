@@ -15,6 +15,7 @@ const Swipe = () => {
   const [animationStep, setAnimationStep] = useState(0); // Track animation progress
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
+  const [imageLoading, setImageLoading] = useState(true); // New state for image loading
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -139,7 +140,7 @@ const Swipe = () => {
         
         return nextStep;
       });
-    }, 15); // Run even faster at 15ms for quicker animation
+    }, 10); // change ms for faster/slower swipe
   };
   
   const finishSwipe = async (isLike) => {
@@ -396,6 +397,7 @@ const Swipe = () => {
                 src={currentExperience.location_image}
                 alt={currentExperience.location}
                 className="w-full h-full object-cover"
+                onLoad={() => setImageLoading(false)}
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = `https://source.unsplash.com/featured/?${encodeURIComponent(currentExperience.location || 'restaurant')}`;
@@ -420,47 +422,49 @@ const Swipe = () => {
             <div className="card-gradient-overlay"></div>
             
             {/* Card Info Section */}
-            <div className="card-info-section">
-              <h2 className="text-3xl font-bold text-white mb-1">
-                {currentExperience.location}
-              </h2>
-              
-              <div className="creator-info mb-3">
-                <div className="flex items-center">
-                  {currentExperience.creator_profile_image ? (
-                    <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-md">
-                      <img
-                        src={currentExperience.creator_profile_image}
-                        alt={currentExperience.creator_name || 'User'}
-                        className="w-full h-full object-cover"
-                      />
+            {!imageLoading && (
+              <div className="card-info-section">
+                <h2 className="text-3xl font-bold text-white mb-1">
+                  {currentExperience.location}
+                </h2>
+                
+                <div className="creator-info mb-3">
+                  <div className="flex items-center">
+                    {currentExperience.creator_profile_image ? (
+                      <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-md">
+                        <img
+                          src={currentExperience.creator_profile_image}
+                          alt={currentExperience.creator_name || 'User'}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
+                        <span className="text-white font-bold">
+                          {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-white font-bold text-lg">
+                        {currentExperience.creator_name || 'Anonymous'}
+                      </p>
+                      <p className="text-white/80 text-sm">
+                        {currentExperience.creator_netid || 'Experience Creator'}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
-                      <span className="text-white font-bold">
-                        {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-white font-bold text-lg">
-                      {currentExperience.creator_name || 'Anonymous'}
-                    </p>
-                    <p className="text-white/80 text-sm">
-                      {currentExperience.creator_netid || 'Experience Creator'}
-                    </p>
+                  </div>
+                </div>
+                
+                {/* Prompt/Description Section */}
+                <div className="prompt-section">
+                  <div className="text-white/90 text-base">
+                    <span className="font-semibold">About this experience: </span>
+                    {currentExperience.description || "No description provided."}
                   </div>
                 </div>
               </div>
-              
-              {/* Prompt/Description Section */}
-              <div className="prompt-section">
-                <div className="text-white/90 text-base">
-                  <span className="font-semibold">About this experience: </span>
-                  {currentExperience.description || "No description provided."}
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </motion.div>
         
