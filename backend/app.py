@@ -13,6 +13,48 @@ import pinecone
 import numpy as np
 import json
 try:
+    # Try to import sentence transformers for embeddings
+    from sentence_transformers import SentenceTransformer
+    embedding_model = None
+    
+    def get_embedding(text):
+        """Generate embeddings using sentence-transformers"""
+        global embedding_model
+        
+        try:
+            # Lazy-load the model only when needed
+            if embedding_model is None:
+                print("Loading embedding model...")
+                embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+                print("Embedding model loaded successfully")
+            
+            # Generate embedding
+            embedding = embedding_model.encode(text).tolist()
+            
+            # The model produces 384-dim vectors, but Pinecone expects 1024-dim
+            # Pad with zeros to match the expected dimension
+            if len(embedding) < 1024:
+                embedding = embedding + [0.0] * (1024 - len(embedding))
+            
+            # Truncate if longer (shouldn't happen with this model)
+            if len(embedding) > 1024:
+                embedding = embedding[:1024]
+                
+            return embedding
+            
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            # Return dummy vector as fallback
+            return [0.1] * 1024
+            
+except ImportError:
+    print("Warning: sentence-transformers not available. Using dummy vectors for embeddings.")
+    def get_embedding(text):
+        """Return dummy embedding when sentence-transformers is not available"""
+        print(f"Using dummy embedding for text: {text[:50]}...")
+        return [0.1] * 1024
+
+try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
     from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
@@ -173,6 +215,7 @@ def index_experience(experience, creator=None):
     try:
         # Generate text description of the experience
         text_description = get_experience_text(experience, creator)
+        print(f"Generated text description for experience {experience.id}: {text_description[:100]}...")
         
         # Create metadata for the experience
         metadata = {
@@ -193,18 +236,28 @@ def index_experience(experience, creator=None):
                 'creator_major': creator.major if creator.major else "",
             })
         
-        # Create the Pinecone vector record using text
+        print(f"Created metadata for experience {experience.id}")
+        
+        # Generate real embedding for the text description
+        print(f"Generating embedding for experience {experience.id}")
+        embedding = get_embedding(text_description)
+        print(f"Generated embedding with dimension {len(embedding)}")
+        
+        # Create the Pinecone vector record with real embedding
         record = {
             'id': f"exp_{experience.id}",
-            'values': [0.1] * 1024,  # Dummy vector with 1024 dimensions
+            'values': embedding,  # Real embedding vector
             'metadata': {
                 **metadata,
                 'text': text_description  # Put text in metadata
             }
         }
         
+        print(f"Created vector record for experience {experience.id}")
+        
         # Upsert the record into Pinecone - updated pattern
         try:
+            print(f"Attempting to upsert to Pinecone: exp_{experience.id}")
             result = pinecone_index.upsert(
                 vectors=[record],
             )
@@ -215,10 +268,11 @@ def index_experience(experience, creator=None):
             
             # Additional debug - try a simple test vector to verify connectivity
             try:
-                # Create a simple test vector
+                print("Trying a simpler test vector...")
+                # Create a simple test vector with the same dimension
                 test_vector = {
                     "id": f"test_vector_{experience.id}",
-                    "values": [0.1] * 1024,  # Dummy vector with 1024 dimensions
+                    "values": [0.1] * 1024,  # 1024-dimensional vector
                     "metadata": {
                         "test": True,
                         "text": "This is a test vector to verify Pinecone connectivity"
@@ -232,7 +286,7 @@ def index_experience(experience, creator=None):
             return False
             
     except Exception as e:
-        print(f"Error indexing experience in Pinecone: {e}")
+        print(f"Error preparing data for Pinecone indexing: {e}")
         return False
 
 # Helper function to query Pinecone with user preferences
@@ -247,25 +301,27 @@ def get_personalized_experiences(user, top_k=20):
         preference_text = get_user_preference_text(user)
         print(f"Generated preference text for user {user.id}: {preference_text}")
         
+        # Generate embedding for user preferences
+        print(f"Generating embedding for user preferences")
+        preference_embedding = get_embedding(preference_text)
+        print(f"Generated embedding with dimension {len(preference_embedding)}")
+        
         # Filter to exclude experiences created by the user
         filter_obj = {
             "user_id": {"$ne": user.id}
         }
         
-        # Create a dummy vector for querying
-        # In a real implementation, you would generate embeddings for the preference text
-        dummy_vector = [0.1] * 1024  # 1024-dimensional vector
-        
         # Query Pinecone for similar vectors with updated pattern
         try:
+            print(f"Querying Pinecone with user preference embedding")
             query_results = pinecone_index.query(
                 top_k=top_k,
-                vector=dummy_vector,
+                vector=preference_embedding,
                 filter=filter_obj,
                 include_metadata=True
             )
             
-            print(f"Pinecone query results: {query_results}")
+            print(f"Pinecone query returned {len(query_results.get('matches', []))} matches")
             
             # Extract and return the matching experiences
             matches = []
@@ -591,102 +647,109 @@ def update_user(user_id):
 @app.route('/api/experiences', methods=['POST'])
 @login_required()
 def create_experience(current_user_id=None):
+    """Create a new experience and optionally index it in Pinecone"""
+    print(f"Creating experience for user ID: {current_user_id}")
+    
+    # Check if we received JSON data
+    if not request.is_json:
+        print("Error: Request does not contain JSON data")
+        return jsonify({'detail': 'Request must be JSON'}), 400
+        
+    data = request.json
+    print(f"Received data: {data}")
+    
+    if not data:
+        return jsonify({'detail': 'No data provided'}), 400
+    
+    required_fields = ['experience_type', 'location']
+    for field in required_fields:
+        if field not in data:
+            print(f"Missing required field: {field}")
+            return jsonify({'detail': f'Missing required field: {field}'}), 400
+            
+    # Use authenticated user's ID instead of passing it in the request
+    user = User.query.get(current_user_id)
+    if not user:
+        print(f"User not found with ID: {current_user_id}")
+        return jsonify({'detail': 'User not found'}), 404
+    
+    print(f"Creating experience for user: {user.username}")
+    
+    # Clean up input data to prevent duplication
+    experience_type = data['experience_type'].strip() if data['experience_type'] else ''
+    location = data['location'].strip() if data['location'] else ''
+    description = data.get('description', '').strip()
+    
+    # Handle new fields
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    place_id = data.get('place_id', '').strip() if data.get('place_id') else None
+    location_image = data.get('location_image', '').strip() if data.get('location_image') else None
+    
+    print(f"Creating experience with type: {experience_type}, location: {location}")
+    
     try:
-        print(f"Creating experience for user ID: {current_user_id}")
+        # Create and save the experience first
+        new_experience = Experience(
+            user_id=current_user_id,
+            experience_type=experience_type,
+            location=location,
+            description=description,
+            latitude=latitude,
+            longitude=longitude,
+            place_id=place_id,
+            location_image=location_image
+        )
+        db.session.add(new_experience)
+        db.session.commit()
         
-        # Check if we received JSON data
-        if not request.is_json:
-            print("Error: Request does not contain JSON data")
-            return jsonify({'detail': 'Request must be JSON'}), 400
-            
-        data = request.json
-        print(f"Received data: {data}")
+        print(f"Experience created successfully with ID: {new_experience.id}")
         
-        if not data:
-            return jsonify({'detail': 'No data provided'}), 400
+        # Prepare response object first
+        response_data = {
+            'id': new_experience.id, 
+            'message': 'Experience created successfully',
+            'experience': {
+                'id': new_experience.id,
+                'user_id': new_experience.user_id,
+                'experience_type': new_experience.experience_type,
+                'location': new_experience.location,
+                'description': new_experience.description,
+                'latitude': new_experience.latitude,
+                'longitude': new_experience.longitude,
+                'place_id': new_experience.place_id,
+                'location_image': new_experience.location_image,
+                'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
+            }
+        }
         
-        required_fields = ['experience_type', 'location']
-        for field in required_fields:
-            if field not in data:
-                print(f"Missing required field: {field}")
-                return jsonify({'detail': f'Missing required field: {field}'}), 400
-                
-        # Use authenticated user's ID instead of passing it in the request
-        user = User.query.get(current_user_id)
-        if not user:
-            print(f"User not found with ID: {current_user_id}")
-            return jsonify({'detail': 'User not found'}), 404
+        # Try to index the experience, but don't let indexing failure affect the response
+        if pinecone_initialized:
+            # Do the indexing in a try-except block that can't affect the main response
+            try:
+                print(f"Attempting to index experience {new_experience.id} in Pinecone...")
+                index_result = index_experience(new_experience, user)
+                if index_result:
+                    print(f"Experience indexed in Pinecone successfully")
+                    response_data['indexed'] = True
+                else:
+                    print(f"Warning: Failed to index experience in Pinecone, but continuing")
+                    response_data['indexed'] = False
+            except Exception as index_error:
+                print(f"Error indexing experience in Pinecone: {index_error}")
+                response_data['indexed'] = False
+                # Continue even if indexing fails - don't block experience creation
+        else:
+            print("Pinecone not initialized. Skipping vector indexing.")
+            response_data['indexed'] = False
         
-        print(f"Creating experience for user: {user.username}")
+        # Return success response regardless of Pinecone indexing result
+        return jsonify(response_data)
         
-        # Clean up input data to prevent duplication
-        experience_type = data['experience_type'].strip() if data['experience_type'] else ''
-        location = data['location'].strip() if data['location'] else ''
-        description = data.get('description', '').strip()
-        
-        # Handle new fields
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
-        place_id = data.get('place_id', '').strip() if data.get('place_id') else None
-        location_image = data.get('location_image', '').strip() if data.get('location_image') else None
-        
-        print(f"Creating experience with type: {experience_type}, location: {location}")
-        
-        try:
-            new_experience = Experience(
-                user_id=current_user_id,
-                experience_type=experience_type,
-                location=location,
-                description=description,
-                latitude=latitude,
-                longitude=longitude,
-                place_id=place_id,
-                location_image=location_image
-            )
-            db.session.add(new_experience)
-            db.session.commit()
-            
-            print(f"Experience created successfully with ID: {new_experience.id}")
-            
-            # Index the new experience in Pinecone for vector search
-            if pinecone_initialized:
-                try:
-                    index_result = index_experience(new_experience, user)
-                    if index_result:
-                        print(f"Experience indexed in Pinecone for vector search successfully")
-                    else:
-                        print(f"Warning: Failed to index experience in Pinecone, but continuing")
-                except Exception as index_error:
-                    print(f"Error indexing experience in Pinecone: {index_error}")
-                    # Continue even if indexing fails - don't block experience creation
-            else:
-                print("Pinecone not initialized. Skipping vector indexing.")
-            
-            return jsonify({
-                'id': new_experience.id, 
-                'message': 'Experience created successfully',
-                'experience': {
-                    'id': new_experience.id,
-                    'user_id': new_experience.user_id,
-                    'experience_type': new_experience.experience_type,
-                    'location': new_experience.location,
-                    'description': new_experience.description,
-                    'latitude': new_experience.latitude,
-                    'longitude': new_experience.longitude,
-                    'place_id': new_experience.place_id,
-                    'location_image': new_experience.location_image,
-                    'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
-                }
-            })
-        except Exception as db_error:
-            print(f"Database error creating experience: {db_error}")
-            db.session.rollback()
-            return jsonify({'detail': f'Database error: {str(db_error)}'}), 500
-            
-    except Exception as e:
-        print(f"Unexpected error creating experience: {e}")
+    except Exception as db_error:
+        print(f"Database error creating experience: {db_error}")
         db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
+        return jsonify({'detail': f'Database error: {str(db_error)}'}), 500
 
 @app.route('/api/experiences', methods=['GET'])
 @login_required()

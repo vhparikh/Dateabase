@@ -6,6 +6,27 @@ Run this script to check if your Pinecone setup is working correctly.
 import os
 import pinecone
 
+# Simple embedding helper for testing
+def get_test_embedding(text):
+    """Generate a simple test embedding for the given text.
+    This is just for testing - not for real usage"""
+    # Create a deterministic but somewhat varied vector based on the text
+    # This is NOT a real embedding, just a test vector
+    import hashlib
+    
+    # Use a hash of the text to seed the vector values
+    hash_obj = hashlib.md5(text.encode())
+    hash_val = int(hash_obj.hexdigest(), 16)
+    
+    # Create a 1024-dimensional vector with values between -1 and 1
+    vector = []
+    for i in range(1024):
+        # Use the hash and position to generate a value
+        val = ((hash_val + i) % 1000) / 500.0 - 1.0
+        vector.append(val)
+    
+    return vector
+
 def test_pinecone_connection():
     """Test Pinecone connectivity and basic operations"""
     
@@ -47,25 +68,35 @@ def test_pinecone_connection():
         stats = index.describe_index_stats()
         print(f"Index stats: {stats}")
         
-        # Try a simple upsert using the text embedding model
+        # Try a simple upsert using an embedding
         try:
-            # Updated format for Pinecone SDK v3.x
+            test_text = "This is a test vector to verify Pinecone connectivity"
+            print(f"Generating test embedding for: {test_text}")
+            
+            # Generate a test embedding
+            test_embedding = get_test_embedding(test_text)
+            print(f"Generated test embedding with dimension: {len(test_embedding)}")
+            
+            # Create the test vector
             test_vector = {
                 "id": "test_vector_1",
-                "values": [0.1] * 1024,  # Dummy vector with 1024 dimensions
+                "values": test_embedding,
                 "metadata": {
                     "test": True, 
                     "purpose": "connectivity_test",
-                    "text": "This is a test vector to verify Pinecone connectivity"
+                    "text": test_text
                 }
             }
             
+            # Upsert the test vector
+            print("Upserting test vector...")
             result = index.upsert(vectors=[test_vector])
             print(f"Test vector upsert successful: {result}")
             
             # Try a simple query
+            print("Querying with test embedding...")
             query_result = index.query(
-                vector=[0.1] * 1024,  # Use dummy vector for query
+                vector=test_embedding,
                 top_k=1,
                 include_metadata=True
             )
@@ -73,6 +104,7 @@ def test_pinecone_connection():
             print(f"Test query successful: {query_result}")
             
             # Try to delete the test vector
+            print("Deleting test vector...")
             delete_result = index.delete(ids=["test_vector_1"])
             print(f"Test vector deletion successful: {delete_result}")
             

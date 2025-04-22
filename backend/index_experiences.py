@@ -7,7 +7,7 @@ New experiences will be automatically indexed when created.
 import os
 import pinecone
 import json
-from app import app, get_experience_text
+from app import app, get_experience_text, get_embedding
 from database import db, Experience, User
 
 def index_all_experiences():
@@ -35,9 +35,12 @@ def index_all_experiences():
         
         # Test connection with a simple query to verify index is accessible
         try:
-            # Use a dummy vector for the test query
-            dummy_vector = [0.1] * 1024  # 1024-dimensional vector
-            test_result = index.query(top_k=1, vector=dummy_vector)
+            # Generate a simple embedding for testing
+            test_text = "Test connection to Pinecone index"
+            test_embedding = get_embedding(test_text)
+            print(f"Generated test embedding with dimension {len(test_embedding)}")
+            
+            test_result = index.query(top_k=1, vector=test_embedding)
             print(f"Connection test successful: {test_result}")
         except Exception as test_e:
             print(f"Warning: Could not perform test query: {test_e}")
@@ -57,6 +60,7 @@ def index_all_experiences():
                     
                     # Generate text description
                     text_description = get_experience_text(exp, creator)
+                    print(f"Generated text description for experience {exp.id}: {text_description[:50]}...")
                     
                     # Create metadata
                     metadata = {
@@ -77,10 +81,15 @@ def index_all_experiences():
                             'creator_major': creator.major if creator.major else "",
                         })
                     
+                    # Generate real embedding for the experience
+                    print(f"Generating embedding for experience {exp.id}")
+                    embedding = get_embedding(text_description)
+                    print(f"Generated embedding with dimension {len(embedding)}")
+                    
                     # Create vector record with the correct format for SDK v3
                     vector = {
                         'id': f"exp_{exp.id}",
-                        'values': [0.1] * 1024,  # Dummy vector with 1024 dimensions
+                        'values': embedding,  # Real embedding
                         'metadata': {
                             **metadata,
                             'text': text_description  # Text goes in metadata
