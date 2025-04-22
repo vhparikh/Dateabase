@@ -372,11 +372,17 @@ def create_experience(current_user_id=None):
         if not data.get('location'):
             return jsonify({'error': 'Location is required'}), 400
             
+        # Set experience_name to location if empty
+        experience_name = data.get('experience_name')
+        if not experience_name or experience_name.strip() == '':
+            experience_name = data.get('location')
+            
         # Create new experience
         new_experience = Experience(
             user_id=current_user_id,
             experience_type=data.get('experience_type'),
             location=data.get('location'),
+            experience_name=experience_name,
             description=data.get('description', ''),
             latitude=data.get('latitude'),
             longitude=data.get('longitude'),
@@ -403,6 +409,7 @@ def create_experience(current_user_id=None):
             'experience': {
                 'id': new_experience.id,
                 'experience_type': new_experience.experience_type,
+                'experience_name': new_experience.experience_name,
                 'location': new_experience.location,
                 'description': new_experience.description,
                 'latitude': new_experience.latitude,
@@ -431,12 +438,14 @@ def get_experiences():
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
+            experience_name = exp.experience_name.strip() if exp.experience_name else ''
             
             result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
                 'creator_name': creator.name if creator else 'Unknown',
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
@@ -463,11 +472,13 @@ def get_my_experiences(current_user_id=None):
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
+            experience_name = exp.experience_name.strip() if exp.experience_name else ''
             
             result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
@@ -553,9 +564,15 @@ def update_experience(experience_id, current_user_id=None):
             if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
                 return jsonify({'error': 'Coordinates out of valid range'}), 400
             
+        # Set experience_name to location if empty
+        experience_name = data.get('experience_name')
+        if not experience_name or experience_name.strip() == '':
+            experience_name = data.get('location')
+            
         # Update fields
         experience.experience_type = data.get('experience_type')
         experience.location = data.get('location')
+        experience.experience_name = experience_name
         experience.description = data.get('description', '')
         experience.latitude = data.get('latitude')
         experience.longitude = data.get('longitude')
@@ -571,6 +588,7 @@ def update_experience(experience_id, current_user_id=None):
             'experience': {
                 'id': experience.id,
                 'experience_type': experience.experience_type,
+                'experience_name': experience.experience_name,
                 'location': experience.location,
                 'description': experience.description,
                 'latitude': experience.latitude,
@@ -748,6 +766,7 @@ def get_matches(user_id):
                 'experience': {
                     'id': experience.id,
                     'experience_type': experience.experience_type,
+                    'experience_name': experience.experience_name,
                     'location': experience.location,
                     'description': experience.description,
                     'latitude': experience.latitude,
