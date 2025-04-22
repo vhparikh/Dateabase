@@ -78,24 +78,16 @@ const CreateExperience = () => {
     lng: -74.6551, // Default to Princeton's longitude
   });
   
-  // Map configuration
+  // Map configuration - simplify to default styling
   const mapContainerStyle = {
     width: '100%',
-    height: '250px', // Increased height for better visibility
-    borderRadius: '12px',
-    marginTop: '12px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    border: '1px solid rgba(249, 115, 22, 0.2)' // Light orange border
+    height: '250px',
+    marginTop: '10px',
   };
   
   const mapOptions = {
     disableDefaultUI: false,
     zoomControl: true,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: true,
-    scrollwheel: false,
-    gestureHandling: 'cooperative',
   };
   
   // Fetch user profile image when component mounts
@@ -170,20 +162,30 @@ const CreateExperience = () => {
     if (place && place.geometry && place.geometry.location) {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
-      const formattedAddress = place.formatted_address || '';
-      const placeName = place.name || formattedAddress.split(',')[0].trim();
       
-      // Setup initial form data with location info
+      // Get place name and address
+      const placeName = place.name || '';
+      const formattedAddress = place.formatted_address || '';
+      
+      console.log("Selected place:", {
+        name: placeName,
+        address: formattedAddress,
+        lat,
+        lng,
+        place_id: place.place_id
+      });
+      
+      // Setup form data with better place information
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
-        experience_name: placeName,
+        experience_name: placeName, // Store the actual place name
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
       };
       
-      // Try to get a better location image from Google Maps if available
+      // Try to get a better location image
       if (place.photos && place.photos.length > 0) {
         try {
           const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
@@ -191,13 +193,11 @@ const CreateExperience = () => {
           setBackgroundImage(photoUrl);
         } catch (error) {
           console.error('Error getting place photo:', error);
-          // Fallback to Unsplash with a more targeted search
           const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
           updatedFormData.location_image = imageUrl;
           setBackgroundImage(imageUrl);
         }
       } else {
-        // Fallback to Unsplash with a more targeted search term
         const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
         updatedFormData.location_image = imageUrl;
         setBackgroundImage(imageUrl);
@@ -507,21 +507,14 @@ const CreateExperience = () => {
                   
                   {/* Map display when location is selected */}
                   {formData.latitude && formData.longitude && (
-                    <div className="mt-3 relative overflow-hidden">
-                      <div className="absolute top-3 left-3 z-10 bg-white px-3 py-1 rounded-full shadow-md text-sm font-medium text-orange-500 border border-orange-200">
-                        {formData.experience_name || "Selected Location"}
-                      </div>
+                    <div className="mt-3">
                       <GoogleMap
                         mapContainerStyle={mapContainerStyle}
                         center={mapCenter}
-                        zoom={15}
+                        zoom={14}
                         options={mapOptions}
                       >
-                        <Marker 
-                          position={mapCenter} 
-                          icon={customMarker}
-                          animation={window.google?.maps?.Animation?.DROP}
-                        />
+                        <Marker position={mapCenter} />
                       </GoogleMap>
                     </div>
                   )}

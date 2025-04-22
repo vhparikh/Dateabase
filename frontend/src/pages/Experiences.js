@@ -6,17 +6,6 @@ import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
-// Custom marker icon
-const customMarker = {
-  path: "M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z",
-  fillColor: "#F97316", // Orange color to match app theme
-  fillOpacity: 1,
-  strokeWeight: 0,
-  rotation: 0,
-  scale: 2,
-  anchor: { x: 12, y: 22 },
-};
-
 // Experience card component with orange gradient theme
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   const cardVariants = {
@@ -58,7 +47,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   
   // Generate a static map URL with default styling
   const staticMapUrl = experience.latitude && experience.longitude
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=15&size=600x300&scale=2&maptype=roadmap&markers=icon:https://i.imgur.com/SYzII5i.png|${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=15&size=600x300&scale=2&maptype=roadmap&markers=${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`
     : null;
 
   return (
@@ -190,21 +179,13 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   // Map configuration
   const mapContainerStyle = {
     width: '100%',
-    height: '250px', // Increased height for better visibility
-    borderRadius: '12px',
-    marginTop: '12px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    border: '1px solid rgba(249, 115, 22, 0.2)' // Light orange border
+    height: '250px',
+    marginTop: '10px',
   };
   
   const mapOptions = {
     disableDefaultUI: false,
     zoomControl: true,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: true,
-    scrollwheel: false,
-    gestureHandling: 'cooperative',
   };
   
   // Experience types dropdown options
@@ -274,14 +255,24 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     if (place && place.geometry && place.geometry.location) {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
-      const formattedAddress = place.formatted_address || '';
-      const placeName = place.name || formattedAddress.split(',')[0].trim();
       
-      // Create updated form data
+      // Get place name and address
+      const placeName = place.name || '';
+      const formattedAddress = place.formatted_address || '';
+      
+      console.log("Selected place:", {
+        name: placeName,
+        address: formattedAddress,
+        lat,
+        lng,
+        place_id: place.place_id
+      });
+      
+      // Create updated form data with better place info
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
-        experience_name: placeName,
+        experience_name: placeName, // Store the actual place name
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -294,12 +285,10 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
           updatedFormData.location_image = photoUrl;
         } catch (error) {
           console.error('Error getting place photo:', error);
-          // Fallback to Unsplash
           const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
           updatedFormData.location_image = imageUrl;
         }
       } else {
-        // Fallback to Unsplash for image
         const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
         updatedFormData.location_image = imageUrl;
       }
@@ -466,21 +455,14 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               
               {/* Map preview */}
               {mapCenter && (
-                <div className="mt-3 relative overflow-hidden">
-                  <div className="absolute top-3 left-3 z-10 bg-white px-3 py-1 rounded-full shadow-md text-sm font-medium text-orange-500 border border-orange-200">
-                    {formData.experience_name || formData.location}
-                  </div>
+                <div className="mt-3">
                   <GoogleMap
                     mapContainerStyle={mapContainerStyle}
                     center={mapCenter}
                     zoom={15}
                     options={mapOptions}
                   >
-                    <Marker 
-                      position={mapCenter}
-                      icon={customMarker}
-                      animation={window.google?.maps?.Animation?.DROP}
-                    />
+                    <Marker position={mapCenter} />
                   </GoogleMap>
                 </div>
               )}
