@@ -37,145 +37,6 @@ const suggestedLocations = [
   'Institute Woods'
 ];
 
-// Custom map styles to make it more visually appealing
-const mapStyles = [
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e9e9e9"
-      },
-      {
-        "lightness": 17
-      }
-    ]
-  },
-  {
-    "featureType": "landscape",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      },
-      {
-        "lightness": 20
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      },
-      {
-        "lightness": 17
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.stroke",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      },
-      {
-        "lightness": 29
-      },
-      {
-        "weight": 0.2
-      }
-    ]
-  },
-  {
-    "featureType": "road.arterial",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      },
-      {
-        "lightness": 18
-      }
-    ]
-  },
-  {
-    "featureType": "road.local",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      },
-      {
-        "lightness": 16
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      },
-      {
-        "lightness": 21
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#dedede"
-      },
-      {
-        "lightness": 21
-      }
-    ]
-  },
-  {
-    "featureType": "administrative",
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      },
-      {
-        "lightness": 16
-      },
-      {
-        "weight": 2
-      }
-    ]
-  },
-  {
-    "featureType": "administrative",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#444444"
-      }
-    ]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#f2f2f2"
-      },
-      {
-        "lightness": 19
-      }
-    ]
-  }
-];
-
 // Custom marker icon
 const customMarker = {
   path: "M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z",
@@ -204,7 +65,6 @@ const CreateExperience = () => {
     longitude: null,
     place_id: null,
     location_image: '',
-    experience_name: '', // Added field for the place name
   });
   const [customType, setCustomType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -221,8 +81,11 @@ const CreateExperience = () => {
   // Map configuration
   const mapContainerStyle = {
     width: '100%',
-    height: '250px',
+    height: '250px', // Increased height for better visibility
+    borderRadius: '12px',
     marginTop: '12px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    border: '1px solid rgba(249, 115, 22, 0.2)' // Light orange border
   };
   
   const mapOptions = {
@@ -231,7 +94,6 @@ const CreateExperience = () => {
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: true,
-    styles: mapStyles,
     scrollwheel: false,
     gestureHandling: 'cooperative',
   };
@@ -270,26 +132,26 @@ const CreateExperience = () => {
         try {
           // Since we can't directly call the Google API from the frontend due to CORS,
           // we'll use Unsplash as a fallback for images
+          setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
           
           // Set the location image in form data too for submission
           setFormData(prevData => ({
             ...prevData,
-            location_image: `https://source.unsplash.com/random/800x600/?${formData.experience_name.replace(/\s+/g, '+')}`
+            location_image: `https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`
           }));
         } catch (err) {
           console.error('Error fetching place photo:', err);
+          // Fallback to Unsplash
+          setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
         }
       };
       
       fetchPlacePhoto();
     } else if (formData.location && formData.location.length > 3) {
       // Fallback to Unsplash if we don't have a place_id
-      setFormData(prevData => ({
-        ...prevData,
-        location_image: `https://source.unsplash.com/random/800x600/?${formData.experience_name.replace(/\s+/g, '+')}`
-      }));
+      setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
     }
-  }, [formData.location, formData.place_id, formData.experience_name]);
+  }, [formData.location, formData.place_id]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -309,15 +171,13 @@ const CreateExperience = () => {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || '';
-      
-      // Extract place name - prioritize the name field
       const placeName = place.name || formattedAddress.split(',')[0].trim();
       
       // Setup initial form data with location info
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
-        experience_name: placeName, // Set the place name as the experience name
+        experience_name: placeName,
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -328,16 +188,19 @@ const CreateExperience = () => {
         try {
           const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
           updatedFormData.location_image = photoUrl;
+          setBackgroundImage(photoUrl);
         } catch (error) {
           console.error('Error getting place photo:', error);
           // Fallback to Unsplash with a more targeted search
           const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
           updatedFormData.location_image = imageUrl;
+          setBackgroundImage(imageUrl);
         }
       } else {
         // Fallback to Unsplash with a more targeted search term
         const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
         updatedFormData.location_image = imageUrl;
+        setBackgroundImage(imageUrl);
       }
       
       setFormData(updatedFormData);
@@ -372,8 +235,7 @@ const CreateExperience = () => {
   const selectSuggestedLocation = (location) => {
     setFormData({
       ...formData,
-      location,
-      experience_name: location // Set the suggested location as experience_name too
+      location
     });
     setShowLocationSuggestions(false);
   };
@@ -642,13 +504,6 @@ const CreateExperience = () => {
                       required
                     />
                   </Autocomplete>
-                  
-                  {/* Display selected place name */}
-                  {formData.experience_name && (
-                    <div className="mt-2 text-sm text-gray-600">
-                      <strong>Place Name:</strong> {formData.experience_name}
-                    </div>
-                  )}
                   
                   {/* Map display when location is selected */}
                   {formData.latitude && formData.longitude && (
