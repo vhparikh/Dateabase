@@ -37,17 +37,6 @@ const suggestedLocations = [
   'Institute Woods'
 ];
 
-// Custom marker icon
-const customMarker = {
-  path: "M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z",
-  fillColor: "#F97316", // Orange color to match app theme
-  fillOpacity: 1,
-  strokeWeight: 0,
-  rotation: 0,
-  scale: 2,
-  anchor: { x: 12, y: 22 },
-};
-
 const CreateExperience = () => {
   // Check if user is authenticated
   const { user } = useContext(AuthContext);
@@ -65,6 +54,7 @@ const CreateExperience = () => {
     longitude: null,
     place_id: null,
     location_image: '',
+    experience_name: '',
   });
   const [customType, setCustomType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -78,7 +68,7 @@ const CreateExperience = () => {
     lng: -74.6551, // Default to Princeton's longitude
   });
   
-  // Map configuration - simplify to default styling
+  // Map configuration - simplify to basic map with minimal controls
   const mapContainerStyle = {
     width: '100%',
     height: '250px',
@@ -86,8 +76,12 @@ const CreateExperience = () => {
   };
   
   const mapOptions = {
-    disableDefaultUI: false,
-    zoomControl: true,
+    disableDefaultUI: true, // Remove all controls
+    zoomControl: false,     // Remove zoom buttons
+    streetViewControl: false,
+    mapTypeControl: false,
+    fullscreenControl: false,
+    scrollwheel: true       // Allow scrolling to zoom
   };
   
   // Fetch user profile image when component mounts
@@ -175,15 +169,19 @@ const CreateExperience = () => {
         place_id: place.place_id
       });
       
-      // Setup form data with better place information
+      // Setup form data with location info but don't override any existing title
       const updatedFormData = {
         ...formData,
-        location: formattedAddress,
-        experience_name: placeName, // Store the actual place name
+        location: formattedAddress, // Just use address for location field
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
       };
+      
+      // Only set experience_name if it's empty or user hasn't manually entered anything
+      if (!formData.experience_name || formData.experience_name === '') {
+        updatedFormData.experience_name = placeName;
+      }
       
       // Try to get a better location image
       if (place.photos && place.photos.length > 0) {
@@ -470,9 +468,26 @@ const CreateExperience = () => {
                 </div>
               )}
               
+              {/* Add title/name field */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-2" htmlFor="experience_name">
+                  Experience Title/Name
+                </label>
+                <input
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                  type="text"
+                  id="experience_name"
+                  name="experience_name"
+                  value={formData.experience_name || ''}
+                  onChange={handleChange}
+                  placeholder="Enter a title for this experience"
+                />
+                <p className="text-xs text-gray-500 mt-1">Leave empty to use the location name</p>
+              </div>
+              
               <div className="relative">
                 <label className="block text-gray-700 text-sm font-semibold mb-2" htmlFor="location">
-                  Location
+                  Location Address
                 </label>
                 
                 <LoadScript 
@@ -488,10 +503,6 @@ const CreateExperience = () => {
                         onPlaceSelected(autocompleteRef.current.getPlace());
                       }
                     }}
-                    options={{
-                      types: ["establishment", "geocode"],
-                      fields: ["place_id", "formatted_address", "geometry", "name", "photos"]
-                    }}
                   >
                     <input
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
@@ -500,7 +511,7 @@ const CreateExperience = () => {
                       name="location"
                       value={formData.location}
                       onChange={handleChange}
-                      placeholder="Search for a location..."
+                      placeholder="Search for a location"
                       required
                     />
                   </Autocomplete>

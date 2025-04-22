@@ -45,7 +45,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
     }
   };
   
-  // Generate a static map URL with default styling
+  // Generate a static map URL with default styling - simplified without markers
   const staticMapUrl = experience.latitude && experience.longitude
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=15&size=600x300&scale=2&maptype=roadmap&markers=${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`
     : null;
@@ -73,19 +73,19 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           </div>
         )}
         
-        {/* Overlay with location and type */}
+        {/* Overlay with experience type and title */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white p-4">
           <span className="bg-orange-500/80 text-white text-xs px-2 py-1 rounded-full uppercase tracking-wide font-semibold backdrop-blur-sm">
             {experience.experience_type}
           </span>
-          <h3 className="text-xl font-bold mt-2">{experience.experience_name || experience.location}</h3>
+          <h3 className="text-xl font-bold mt-2">{experience.experience_name || 'Unnamed Experience'}</h3>
         </div>
       </div>
       
       {/* Content section */}
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-bold text-gray-800">{experience.experience_name || experience.location}</h3>
+          <h3 className="text-lg font-bold text-gray-800">{experience.experience_name || 'Unnamed Experience'}</h3>
           
           {!readOnly && (
             <div className="flex items-center space-x-1">
@@ -112,14 +112,14 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           )}
         </div>
         
-        {/* Location with directions button */}
+        {/* Address with directions button */}
         <div className="text-sm text-gray-600 mb-3 flex items-center justify-between">
           <div className="flex items-center">
             <svg className="h-4 w-4 text-orange-500 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>{experience.location}</span>
+            <span className="text-gray-600">{experience.location}</span>
           </div>
           <button 
             onClick={openDirections}
@@ -163,6 +163,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const [formData, setFormData] = useState({
     experience_type: '',
     location: '',
+    experience_name: '',
     description: '',
     latitude: null,
     longitude: null,
@@ -176,7 +177,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const autocompleteRef = useRef(null);
   const [mapCenter, setMapCenter] = useState(null);
   
-  // Map configuration
+  // Map configuration - simplify for basic view
   const mapContainerStyle = {
     width: '100%',
     height: '250px',
@@ -184,8 +185,12 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   };
   
   const mapOptions = {
-    disableDefaultUI: false,
-    zoomControl: true,
+    disableDefaultUI: true, // Remove all controls
+    zoomControl: false,     // Remove zoom buttons
+    streetViewControl: false,
+    mapTypeControl: false,
+    fullscreenControl: false,
+    scrollwheel: true       // Allow scrolling to zoom
   };
   
   // Experience types dropdown options
@@ -201,6 +206,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         id: experience.id,
         experience_type: experience.experience_type || '',
         location: experience.location || '',
+        experience_name: experience.experience_name || '',
         description: experience.description || '',
         latitude: experience.latitude || null,
         longitude: experience.longitude || null,
@@ -223,6 +229,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       setFormData({
         experience_type: '',
         location: '',
+        experience_name: '',
         description: '',
         latitude: null,
         longitude: null,
@@ -272,11 +279,15 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
-        experience_name: placeName, // Store the actual place name
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
       };
+      
+      // Only set experience_name if it's empty or user hasn't manually entered anything
+      if (!formData.experience_name || formData.experience_name === '') {
+        updatedFormData.experience_name = placeName;
+      }
       
       // Try to get a location image from Google Maps if available
       if (place.photos && place.photos.length > 0) {
@@ -415,10 +426,26 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
             )}
           </div>
           
+          {/* Experience Title/Name */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Experience Title/Name
+            </label>
+            <input
+              type="text"
+              name="experience_name"
+              value={formData.experience_name || ''}
+              onChange={handleChange}
+              placeholder="Enter a title for this experience"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Leave empty to use the location name</p>
+          </div>
+          
           {/* Location with Google Places Autocomplete */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location*
+              Location Address*
             </label>
             <LoadScript 
               googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
@@ -434,17 +461,13 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
                       onPlaceSelected(autocompleteRef.current.getPlace());
                     }
                   }}
-                  options={{
-                    types: ["establishment", "geocode"],
-                    fields: ["place_id", "formatted_address", "geometry", "name", "photos"]
-                  }}
                 >
                   <input
                     type="text"
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    placeholder="Search for a location..."
+                    placeholder="Search for a location"
                     className={`w-full px-3 py-2 border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
                   />
                 </Autocomplete>
