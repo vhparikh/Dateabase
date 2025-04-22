@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getCSRFToken, fetchCSRFToken } from './csrf';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
@@ -10,29 +9,9 @@ const api = axios.create({
   }
 });
 
-// Add CSRF token to all state-changing requests
-api.interceptors.request.use(async (config) => {
-  const method = config.method && config.method.toUpperCase();
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-    // Ensure CSRF token is fetched at least once
-    if (!getCSRFToken()) {
-      await fetchCSRFToken();
-    }
-    const token = getCSRFToken();
-    if (token) {
-      config.headers['X-CSRFToken'] = token;
-    }
-    config.withCredentials = true;
-  }
-  return config;
-}, (error) => Promise.reject(error));
-
-// Fetch CSRF token at startup
-fetchCSRFToken();
-
 // User endpoints
 export const registerUser = (userData) => {
-  return api.post('/users', userData, { withCredentials: true });
+  return api.post('/users', userData);
 };
 
 export const getUser = (userId) => {

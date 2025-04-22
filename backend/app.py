@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, send_from_directory, redirect, session, url_for
-from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import os
@@ -25,9 +24,6 @@ app = Flask(__name__,
            static_folder='../frontend/build',  # Path to the React build directory
            static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
-
-# Initialize CSRF protection
-csrf = CSRFProtect(app)
 
 # Print current directory and check if static folder exists
 print(f"Current working directory: {os.getcwd()}")
@@ -129,13 +125,6 @@ def get_current_user_id():
         return None
     
     return user.id
-
-@app.route('/api/csrf-token', methods=['GET'])
-def get_csrf_token():
-    token = generate_csrf()
-    response = jsonify({'csrf_token': token})
-    response.set_cookie('csrf_token', token)
-    return response
 
 # Auth Routes
 @app.route('/api/register', methods=['POST'])
@@ -273,7 +262,6 @@ def create_user():
     db.session.commit()
     return jsonify({'id': new_user.id, 'message': 'User created successfully'}), 201
 
-@csrf.exempt
 @app.route('/api/users/<int:user_id>', methods=['GET'])
 def get_user(user_id):
     user = User.query.get_or_404(user_id)
@@ -430,7 +418,6 @@ def create_experience(current_user_id=None):
         print(f"Error creating experience: {str(e)}")
         return jsonify({'error': f"Failed to create experience: {str(e)}"}), 500
 
-@csrf.exempt
 @app.route('/api/experiences', methods=['GET'])
 @login_required()
 def get_experiences():
@@ -464,7 +451,6 @@ def get_experiences():
         print(f"Error fetching experiences: {e}")
         return jsonify({'detail': str(e)}), 500
 
-@csrf.exempt
 @app.route('/api/my-experiences', methods=['GET'])
 @login_required()
 def get_my_experiences(current_user_id=None):
@@ -729,7 +715,6 @@ def record_swipe(current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
-@csrf.exempt
 @app.route('/api/matches/<int:user_id>', methods=['GET'])
 def get_matches(user_id):
     try:
@@ -796,7 +781,6 @@ def get_matches(user_id):
         print(f"Error fetching matches: {e}")
         return jsonify({'error': str(e)}), 500
 
-@csrf.exempt
 @app.route('/api/recommendations/<int:user_id>', methods=['GET'])
 def get_recommendations(user_id):
     try:
@@ -861,7 +845,6 @@ def get_recommendations(user_id):
         print(f"Error fetching recommendations: {e}")
         return jsonify({'error': str(e)}), 500
 
-@csrf.exempt
 @app.route('/api/swipe-experiences', methods=['GET'])
 @login_required()
 def get_swipe_experiences(current_user_id=None):
@@ -901,7 +884,6 @@ def get_swipe_experiences(current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 # CAS Authentication routes
-@csrf.exempt
 @app.route('/api/cas/login', methods=['GET'])
 def cas_login():
     """Initiate CAS login process and return login URL"""
@@ -912,7 +894,6 @@ def cas_login():
     except Exception as e:
         return jsonify({'detail': f'Error: {str(e)}'}), 500
 
-@csrf.exempt
 @app.route('/api/cas/callback', methods=['GET'])
 def cas_callback():
     """Process CAS authentication callback"""
@@ -1043,7 +1024,6 @@ def cas_callback():
         print(f"CAS callback error: {str(e)}")
         return jsonify({'detail': f'Error: {str(e)}'}), 500
 
-@csrf.exempt
 @app.route('/api/cas/logout', methods=['GET'])
 def cas_logout():
     """Log out user from CAS"""
@@ -1252,7 +1232,6 @@ def get_or_update_current_user():
         return jsonify({'detail': f'Error: {str(e)}'}), 500
 
 # Legacy endpoint - redirects to the new /api/me endpoint
-@csrf.exempt
 @app.route('/api/users/me', methods=['GET'])
 def get_current_user():
     """Legacy endpoint that redirects to the new /api/me endpoint"""
@@ -1519,7 +1498,6 @@ def check_inappropriate():
         return jsonify({'is_inappropriate': False, 'error': str(e)}), 500
 
 # Catch-all routes to handle React Router paths
-@csrf.exempt
 @app.route('/<path:path>')
 def catch_all(path):
     print(f"Catch-all route for path: {path}")
@@ -1541,7 +1519,6 @@ def catch_all(path):
         return app.send_static_file('index.html')
 
 # Serve React frontend at root URL in production
-@csrf.exempt
 @app.route('/')
 def serve_frontend():
     print("Serving frontend at root URL")
@@ -1555,17 +1532,14 @@ def serve_frontend():
         return jsonify({'error': 'Failed to serve frontend'}), 500
 
 # Add specific routes for top-level client-side routes
-@csrf.exempt
 @app.route('/swipe')
 def serve_swipe():
     return app.send_static_file('index.html')
 
-@csrf.exempt
 @app.route('/login')
 def serve_login():
     return app.send_static_file('index.html')
 
-@csrf.exempt
 @app.route('/profile')
 def serve_profile():
     return app.send_static_file('index.html')
@@ -1574,7 +1548,6 @@ def serve_profile():
 def serve_experiences():
     return app.send_static_file('index.html')
 
-@csrf.exempt
 @app.route('/matches')
 def serve_matches():
     return app.send_static_file('index.html')
@@ -1675,7 +1648,6 @@ def upload_user_image(current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
         
-@csrf.exempt
 @app.route('/api/users/images', methods=['GET'])
 @login_required()
 def get_user_images(current_user_id=None):
@@ -1797,7 +1769,6 @@ def update_image_position(image_id, current_user_id=None):
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
-@csrf.exempt
 @app.route('/api/users/<int:user_id>/profile', methods=['GET'])
 def get_user_full_profile(user_id):
     """Get a user's full profile data including images for match details."""
@@ -1866,5 +1837,5 @@ if __name__ == '__main__':
         db.create_all()
         # Removed demo data seeding
     # Use PORT environment variable for Heroku compatibility
-    port = int(os.environ.get('PORT', 5001)) 
+    port = int(os.environ.get('PORT', 5001))
     app.run(debug=False, host='0.0.0.0', port=port)
