@@ -64,6 +64,7 @@ class Experience(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     experience_type = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(200), nullable=False)
+    experience_name = db.Column(db.String(200), nullable=False)  # Make it NOT nullable
     description = db.Column(db.Text, nullable=True)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
@@ -234,6 +235,37 @@ def drop_unused_columns(app):
         except Exception as e:
             print(f"Error: {e}")
             db.session.rollback()
+            return False
+
+def add_experience_name_column(app):
+    """Add experience_name column to Experience table if it doesn't exist"""
+    print("Starting migration to add experience_name column...")
+    with app.app_context():
+        # Check if we're using SQLite or PostgreSQL
+        dialect = db.engine.dialect.name
+        print(f"Using {dialect} database")
+        
+        try:
+            with db.engine.connect() as connection:
+                if dialect == "sqlite":
+                    # For SQLite
+                    connection.execute(text('ALTER TABLE experience ADD COLUMN experience_name VARCHAR(200)'))
+                    connection.commit()
+                elif dialect == "postgresql":
+                    # For PostgreSQL
+                    connection.execute(text('ALTER TABLE experience ADD COLUMN IF NOT EXISTS experience_name VARCHAR(200)'))
+                    connection.commit()
+                else:
+                    print(f"Unsupported database dialect: {dialect}")
+                    return False
+                
+                print("Column added successfully!")
+                return True
+        except Exception as e:
+            print(f"Error: {e}")
+            if "duplicate column name" in str(e):
+                print("Column already exists. This is fine.")
+                return True
             return False
 
 # Function to initialize the database with the Flask app
