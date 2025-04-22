@@ -16,6 +16,7 @@ const Swipe = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
   const [imageLoading, setImageLoading] = useState(true); // New state for image loading
+  const [imageLoadError, setImageLoadError] = useState(false); // State to track image load errors
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -398,9 +399,9 @@ const Swipe = () => {
                 alt={currentExperience.location}
                 className="w-full h-full object-cover"
                 onLoad={() => setImageLoading(false)}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = `https://source.unsplash.com/featured/?${encodeURIComponent(currentExperience.location || 'restaurant')}`;
+                onError={() => {
+                  setImageLoadError(true);
+                  setImageLoading(false);
                 }}
               />
             ) : (
