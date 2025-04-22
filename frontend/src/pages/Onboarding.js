@@ -339,7 +339,7 @@ const Onboarding = () => {
         
         // Use window.location for a hard redirect to avoid routing issues
         // This is more reliable than using navigate() from react-router
-        window.location.href = '/swipe';
+        window.location.href = '/';
         return true;
       } else {
         console.error('Failed to refresh token after onboarding');
