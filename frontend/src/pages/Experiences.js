@@ -85,9 +85,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
       {/* Content section */}
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-bold text-gray-800">{experience.experience_name || 'Unnamed Experience'}</h3>
-          
-          {!readOnly && (
+          {!readOnly ? (
             <div className="flex items-center space-x-1">
               <button 
                 onClick={() => onEdit(experience)}
@@ -109,7 +107,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
                 </svg>
               </button>
             </div>
-          )}
+          ) : <div></div>}
         </div>
         
         {/* Address with directions button */}
