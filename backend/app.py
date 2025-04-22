@@ -196,6 +196,7 @@ def index_experience(experience, creator=None):
         # Create the Pinecone vector record using text
         record = {
             'id': f"exp_{experience.id}",
+            'values': [],  # Empty array - Pinecone will generate embeddings from text
             'metadata': metadata,
             'text': text_description  # The text field will be embedded by Pinecone using llama-text-embed-v2
         }
@@ -215,6 +216,7 @@ def index_experience(experience, creator=None):
                 # Create a simple test vector
                 test_vector = {
                     "id": f"test_vector_{experience.id}",
+                    "values": [],  # Empty array - Pinecone will generate embeddings from text
                     "text": "This is a test vector to verify Pinecone connectivity"
                 }
                 test_result = pinecone_index.upsert(vectors=[test_vector])

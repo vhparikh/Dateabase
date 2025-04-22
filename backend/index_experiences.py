@@ -7,7 +7,7 @@ New experiences will be automatically indexed when created.
 import os
 import pinecone
 import json
-from app import app, index_experience
+from app import app, get_experience_text
 from database import db, Experience, User
 
 def index_all_experiences():
@@ -53,14 +53,42 @@ def index_all_experiences():
                     # Get the creator of the experience
                     creator = User.query.get(exp.user_id)
                     
-                    # Index the experience in Pinecone
-                    print(f"Indexing experience {exp.id} - {exp.experience_type} at {exp.location}")
-                    result = index_experience(exp, creator)
+                    # Generate text description
+                    text_description = get_experience_text(exp, creator)
                     
-                    if result:
-                        success_count += 1
-                    else:
-                        error_count += 1
+                    # Create metadata
+                    metadata = {
+                        'id': exp.id,
+                        'user_id': exp.user_id,
+                        'experience_type': exp.experience_type,
+                        'location': exp.location,
+                        'description': exp.description if exp.description else "",
+                        'created_at': exp.created_at.isoformat() if exp.created_at else "",
+                    }
+                    
+                    # Add creator info to metadata if available
+                    if creator:
+                        metadata.update({
+                            'creator_name': creator.name if creator.name else "",
+                            'creator_gender': creator.gender if creator.gender else "",
+                            'creator_class_year': creator.class_year if creator.class_year else 0, 
+                            'creator_major': creator.major if creator.major else "",
+                        })
+                    
+                    # Create vector record with required 'values' field for SDK v3
+                    vector = {
+                        'id': f"exp_{exp.id}",
+                        'values': [],  # Empty array - Pinecone will generate embeddings from text
+                        'metadata': metadata,
+                        'text': text_description
+                    }
+                    
+                    # Upsert to Pinecone
+                    print(f"Indexing experience {exp.id} - {exp.experience_type} at {exp.location}")
+                    result = index.upsert(vectors=[vector])
+                    
+                    print(f"Result: {result}")
+                    success_count += 1
                         
                 except Exception as e:
                     print(f"Error indexing experience {exp.id}: {e}")
