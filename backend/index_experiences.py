@@ -35,11 +35,12 @@ def index_all_experiences():
         
         # Test connection with a simple query to verify index is accessible
         try:
-            # Generate a simple embedding for testing
+            # Generate a simple test embedding for connectivity check
             test_text = "Test connection to Pinecone index"
             test_embedding = get_embedding(test_text)
             print(f"Generated test embedding with dimension {len(test_embedding)}")
             
+            # Test query with the embedding
             test_result = index.query(top_k=1, vector=test_embedding)
             print(f"Connection test successful: {test_result}")
         except Exception as test_e:

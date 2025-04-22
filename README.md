@@ -109,27 +109,29 @@ The app now integrates Google Maps API for enhanced location features:
 
 ## Personalized Recommendations
 
-The app supports personalized experience recommendations using Pinecone vector search with llama-text-embed-v2 embeddings:
+The app supports personalized experience recommendations using Pinecone vector search with Cohere embeddings:
 
 ### Setup
 
-1. Create a Pinecone account and create an index with llama-text-embed-v2 model integration
-2. Set the required environment variables:
+1. Create a Pinecone account and create an index with dimension 1024
+2. Create a Cohere account and get an API key from [Cohere Dashboard](https://dashboard.cohere.com/api-keys)
+3. Set the required environment variables:
    
    **Local Development:**
    ```
    PINECONE_API_KEY=your_pinecone_api_key
    PINECONE_INDEX=your_pinecone_index_name
+   COHERE_API_KEY=your_cohere_api_key
    ```
 
    **Heroku Deployment:**
    ```
    heroku config:set PINECONE_API_KEY=your_pinecone_api_key
    heroku config:set PINECONE_INDEX_NAME=your_pinecone_index_name
-   heroku config:set PINECONE_ENV=your_pinecone_environment
+   heroku config:set COHERE_API_KEY=your_cohere_api_key
    ```
 
-3. Run the indexing script to populate Pinecone with existing experiences:
+4. Run the indexing script to populate Pinecone with existing experiences:
    
    **Local:**
    ```

@@ -5,27 +5,49 @@ Run this script to check if your Pinecone setup is working correctly.
 
 import os
 import pinecone
+import cohere
 
-# Simple embedding helper for testing
+# Generate embeddings using Cohere API
 def get_test_embedding(text):
-    """Generate a simple test embedding for the given text.
-    This is just for testing - not for real usage"""
-    # Create a deterministic but somewhat varied vector based on the text
-    # This is NOT a real embedding, just a test vector
-    import hashlib
-    
-    # Use a hash of the text to seed the vector values
-    hash_obj = hashlib.md5(text.encode())
-    hash_val = int(hash_obj.hexdigest(), 16)
-    
-    # Create a 1024-dimensional vector with values between -1 and 1
-    vector = []
-    for i in range(1024):
-        # Use the hash and position to generate a value
-        val = ((hash_val + i) % 1000) / 500.0 - 1.0
-        vector.append(val)
-    
-    return vector
+    """Generate an embedding using Cohere's API"""
+    try:
+        # Get API key from environment variable
+        api_key = os.environ.get("COHERE_API_KEY")
+        if not api_key:
+            print("ERROR: COHERE_API_KEY environment variable not set")
+            # Return dummy vector as fallback
+            print("Using fallback dummy vector of 1024 dimensions")
+            return [0.1] * 1024
+            
+        # Initialize Cohere client
+        co = cohere.Client(api_key)
+        
+        # Generate embedding using Cohere's API
+        print(f"Generating embedding via Cohere API for text: {text[:50]}...")
+        response = co.embed(
+            texts=[text],
+            model="embed-english-v3.0",
+            input_type="search_document"
+        )
+        
+        # Extract the embedding from the response
+        embedding = response.embeddings[0]
+        
+        # Verify embedding dimension
+        embedding_dim = len(embedding)
+        print(f"Generated embedding with dimension {embedding_dim}")
+        
+        # Cohere's embed-english-v3.0 model produces 1024-dimensional vectors,
+        # which matches our Pinecone index perfectly
+        assert embedding_dim == 1024, f"Embedding dimension mismatch: {embedding_dim} != 1024"
+        
+        return embedding
+        
+    except Exception as e:
+        print(f"Error generating embedding with Cohere API: {e}")
+        # Return dummy vector as fallback
+        print("Using fallback dummy vector of 1024 dimensions")
+        return [0.1] * 1024
 
 def test_pinecone_connection():
     """Test Pinecone connectivity and basic operations"""

@@ -12,67 +12,48 @@ from urllib.parse import quote_plus, urlencode, quote
 import pinecone
 import numpy as np
 import json
-try:
-    # Try to import sentence transformers for embeddings
-    from sentence_transformers import SentenceTransformer
-    import torch
-    
-    # Configure PyTorch to be memory-efficient
-    torch.set_grad_enabled(False)  # Disable gradient tracking
-    
-    # Global variable for embedding model (lazy-loaded)
-    embedding_model = None
-    
-    def get_embedding(text):
-        """Generate embeddings using sentence-transformers"""
-        global embedding_model
-        
-        try:
-            # Lazy-load the model only when needed
-            if embedding_model is None:
-                print("Loading embedding model...")
-                # Use CPU explicitly
-                device = "cpu"
-                # Load with minimal memory footprint
-                embedding_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
-                print("Embedding model loaded successfully on CPU")
-            
-            # Make sure we're using CPU
-            if hasattr(embedding_model, 'to'):
-                embedding_model.to('cpu')
-            
-            # Generate embedding (produces 384-dim vectors)
-            embedding = embedding_model.encode(text, convert_to_numpy=True).tolist()
-            
-            # The model produces 384-dim vectors, but Pinecone expects 1024-dim
-            # Pad with zeros to match the expected dimension
-            embedding_dim = len(embedding)
-            if embedding_dim < 1024:
-                # Zero-padding to match Pinecone's dimension
-                print(f"Padding embedding from {embedding_dim} to 1024 dimensions")
-                embedding = embedding + [0.0] * (1024 - embedding_dim)
-            
-            # Truncate if longer (shouldn't happen with this model)
-            if len(embedding) > 1024:
-                print(f"Truncating embedding from {len(embedding)} to 1024 dimensions")
-                embedding = embedding[:1024]
-            
-            # Ensure we have exactly 1024 dimensions
-            assert len(embedding) == 1024, f"Embedding dimension mismatch: {len(embedding)} != 1024"
-                
-            return embedding
-            
-        except Exception as e:
-            print(f"Error generating embedding: {e}")
+import cohere  # Import Cohere client
+
+# Embedding function using Cohere API
+def get_embedding(text):
+    """Generate embeddings using Cohere's embedding API"""
+    try:
+        # Get API key from environment variable
+        api_key = os.environ.get("COHERE_API_KEY")
+        if not api_key:
+            print("ERROR: COHERE_API_KEY environment variable not set")
             # Return dummy vector as fallback
             print("Using fallback dummy vector of 1024 dimensions")
             return [0.1] * 1024
             
-except ImportError:
-    print("Warning: sentence-transformers not available. Using dummy vectors for embeddings.")
-    def get_embedding(text):
-        """Return dummy embedding when sentence-transformers is not available"""
-        print(f"Using dummy embedding for text: {text[:50]}...")
+        # Initialize Cohere client
+        co = cohere.Client(api_key)
+        
+        # Generate embedding using Cohere's API
+        print(f"Generating embedding via Cohere API for text: {text[:50]}...")
+        response = co.embed(
+            texts=[text],
+            model="embed-english-v3.0",
+            input_type="search_document"
+        )
+        
+        # Extract the embedding from the response
+        embedding = response.embeddings[0]
+        
+        # Verify embedding dimension
+        embedding_dim = len(embedding)
+        print(f"Generated embedding with dimension {embedding_dim}")
+        
+        # Cohere's embed-english-v3.0 model produces 1024-dimensional vectors,
+        # which matches our Pinecone index perfectly
+        assert embedding_dim == 1024, f"Embedding dimension mismatch: {embedding_dim} != 1024"
+        
+        return embedding
+        
+    except Exception as e:
+        print(f"Error generating embedding with Cohere API: {e}")
+        # Return dummy vector as fallback
+        print("Using fallback dummy vector of 1024 dimensions")
         return [0.1] * 1024
 
 try:
