@@ -37,6 +37,156 @@ const suggestedLocations = [
   'Institute Woods'
 ];
 
+// Custom map styles to make it more visually appealing
+const mapStyles = [
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#e9e9e9"
+      },
+      {
+        "lightness": 17
+      }
+    ]
+  },
+  {
+    "featureType": "landscape",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#f5f5f5"
+      },
+      {
+        "lightness": 20
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.fill",
+    "stylers": [
+      {
+        "color": "#ffffff"
+      },
+      {
+        "lightness": 17
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#ffffff"
+      },
+      {
+        "lightness": 29
+      },
+      {
+        "weight": 0.2
+      }
+    ]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#ffffff"
+      },
+      {
+        "lightness": 18
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#ffffff"
+      },
+      {
+        "lightness": 16
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#f5f5f5"
+      },
+      {
+        "lightness": 21
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#dedede"
+      },
+      {
+        "lightness": 21
+      }
+    ]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#ffffff"
+      },
+      {
+        "lightness": 16
+      },
+      {
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#444444"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#f2f2f2"
+      },
+      {
+        "lightness": 19
+      }
+    ]
+  }
+];
+
+// Custom marker icon
+const customMarker = {
+  path: "M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z",
+  fillColor: "#F97316", // Orange color to match app theme
+  fillOpacity: 1,
+  strokeWeight: 0,
+  rotation: 0,
+  scale: 2,
+  anchor: { x: 12, y: 22 },
+};
+
 const CreateExperience = () => {
   // Check if user is authenticated
   const { user } = useContext(AuthContext);
@@ -70,14 +220,22 @@ const CreateExperience = () => {
   // Map configuration
   const mapContainerStyle = {
     width: '100%',
-    height: '200px',
-    borderRadius: '8px',
-    marginTop: '10px',
+    height: '250px', // Increased height for better visibility
+    borderRadius: '12px',
+    marginTop: '12px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    border: '1px solid rgba(249, 115, 22, 0.2)' // Light orange border
   };
   
   const mapOptions = {
-    disableDefaultUI: true,
+    disableDefaultUI: false,
     zoomControl: true,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true,
+    styles: mapStyles,
+    scrollwheel: false,
+    gestureHandling: 'cooperative',
   };
   
   // Fetch user profile image when component mounts
@@ -152,12 +310,14 @@ const CreateExperience = () => {
     if (place && place.geometry && place.geometry.location) {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
-      const formattedAddress = place.formatted_address || place.name || '';
+      const formattedAddress = place.formatted_address || '';
+      const placeName = place.name || formattedAddress.split(',')[0].trim();
       
       // Setup initial form data with location info
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
+        experience_name: placeName,
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -172,15 +332,13 @@ const CreateExperience = () => {
         } catch (error) {
           console.error('Error getting place photo:', error);
           // Fallback to Unsplash with a more targeted search
-          const locationForImage = formattedAddress.split(',')[0].trim();
-          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
           updatedFormData.location_image = imageUrl;
           setBackgroundImage(imageUrl);
         }
       } else {
         // Fallback to Unsplash with a more targeted search term
-        const locationForImage = formattedAddress.split(',')[0].trim();
-        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+        const imageUrl = `https://source.unsplash.com/random/800x600/?${placeName.replace(/\s+/g, '+')}`;
         updatedFormData.location_image = imageUrl;
         setBackgroundImage(imageUrl);
       }
@@ -489,20 +647,22 @@ const CreateExperience = () => {
                   
                   {/* Map display when location is selected */}
                   {formData.latitude && formData.longitude && (
-                    <div className="mt-3">
+                    <div className="mt-3 relative overflow-hidden">
+                      <div className="absolute top-3 left-3 z-10 bg-white px-3 py-1 rounded-full shadow-md text-sm font-medium text-orange-500 border border-orange-200">
+                        {formData.experience_name || "Selected Location"}
+                      </div>
                       <GoogleMap
                         mapContainerStyle={mapContainerStyle}
                         center={mapCenter}
                         zoom={15}
                         options={mapOptions}
                       >
-                        <Marker position={mapCenter} />
+                        <Marker 
+                          position={mapCenter} 
+                          icon={customMarker}
+                          animation={window.google?.maps?.Animation?.DROP}
+                        />
                       </GoogleMap>
-                      {formData.place_id && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Selected location: {formData.location}
-                        </p>
-                      )}
                     </div>
                   )}
                 </LoadScript>
