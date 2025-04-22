@@ -9,6 +9,9 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from urllib.parse import quote_plus, urlencode, quote
+import pinecone
+import numpy as np
+import json
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
@@ -25,13 +28,6 @@ app = Flask(__name__,
            static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
 
-# Print current directory and check if static folder exists
-print(f"Current working directory: {os.getcwd()}")
-print(f"Static folder path: {app.static_folder}")
-print(f"Static folder exists: {os.path.exists(app.static_folder)}")
-if os.path.exists(app.static_folder):
-    print(f"Static folder contents: {os.listdir(app.static_folder)}")
-    
 # Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 # Set session type for CAS auth
@@ -42,6 +38,26 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+
+# Configure Pinecone
+PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY', '')
+PINECONE_ENV = os.environ.get('PINECONE_ENV', '')
+PINECONE_INDEX = os.environ.get('PINECONE_INDEX', '')
+
+# Initialize Pinecone if we have the required environment variables
+pinecone_initialized = False
+pinecone_index = None
+
+if PINECONE_API_KEY and PINECONE_ENV and PINECONE_INDEX:
+    try:
+        pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+        pinecone_index = pinecone.Index(PINECONE_INDEX)
+        pinecone_initialized = True
+        print(f"Pinecone initialized with index: {PINECONE_INDEX}")
+    except Exception as e:
+        print(f"Error initializing Pinecone: {e}")
+else:
+    print("Pinecone environment variables not set. Vector search functionality unavailable.")
 
 # Configure Cloudinary
 CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
@@ -58,6 +74,179 @@ add_new_columns(app)
 
 # Drop bio and dietary_restrictions columns
 drop_unused_columns(app)
+
+# Helper function to convert user preferences to a text description for embedding
+def get_user_preference_text(user):
+    """Convert user preferences to a text description for embedding"""
+    preference_parts = []
+    
+    # Add gender preference
+    if user.gender_pref:
+        preference_parts.append(f"Gender preference: {user.gender_pref}")
+    
+    # Add experience type preferences
+    if user.experience_type_prefs:
+        try:
+            exp_prefs = json.loads(user.experience_type_prefs)
+            exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
+            if exp_types:
+                preference_parts.append(f"Experience types: {', '.join(exp_types)}")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
+    # Add class year preferences
+    if user.class_year_min_pref and user.class_year_max_pref:
+        preference_parts.append(f"Class years: {user.class_year_min_pref} to {user.class_year_max_pref}")
+    
+    # Add interest preferences
+    if user.interests_prefs:
+        try:
+            interest_prefs = json.loads(user.interests_prefs)
+            interests = [interest for interest, is_selected in interest_prefs.items() if is_selected]
+            if interests:
+                preference_parts.append(f"Interests: {', '.join(interests)}")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
+    # Add other user attributes that might be relevant for matching
+    if user.major:
+        preference_parts.append(f"Major: {user.major}")
+    
+    # Join all parts into a single text description
+    if preference_parts:
+        return " ".join(preference_parts)
+    else:
+        return "No specific preferences"
+
+# Helper function to get experience text description for embedding
+def get_experience_text(experience, creator=None):
+    """Convert an experience to a text description for embedding"""
+    exp_parts = []
+    
+    # Basic experience info
+    if experience.experience_type:
+        exp_parts.append(f"Experience type: {experience.experience_type}")
+    
+    if experience.location:
+        exp_parts.append(f"Location: {experience.location}")
+    
+    if experience.description:
+        exp_parts.append(f"Description: {experience.description}")
+    
+    # Add creator info if available
+    if creator:
+        if creator.name:
+            exp_parts.append(f"Creator name: {creator.name}")
+        
+        if creator.gender:
+            exp_parts.append(f"Creator gender: {creator.gender}")
+        
+        if creator.class_year:
+            exp_parts.append(f"Creator class year: {creator.class_year}")
+        
+        if creator.major:
+            exp_parts.append(f"Creator major: {creator.major}")
+        
+        if creator.interests:
+            exp_parts.append(f"Creator interests: {creator.interests}")
+    
+    # Join all parts into a single text description
+    if exp_parts:
+        return " ".join(exp_parts)
+    else:
+        return "No specific experience details"
+
+# Helper function to index an experience in Pinecone
+def index_experience(experience, creator=None):
+    """Index an experience in Pinecone for vector search"""
+    if not pinecone_initialized or not pinecone_index:
+        print("Pinecone not initialized. Cannot index experience.")
+        return False
+    
+    try:
+        # Generate text description of the experience
+        text_description = get_experience_text(experience, creator)
+        
+        # The embedding is assumed to be handled by Pinecone's index configuration
+        # using the specified llama-text-embed-v2 model
+        
+        # Create metadata for the experience
+        metadata = {
+            'id': experience.id,
+            'user_id': experience.user_id,
+            'experience_type': experience.experience_type,
+            'location': experience.location,
+            'description': experience.description if experience.description else "",
+            'created_at': experience.created_at.isoformat() if experience.created_at else "",
+        }
+        
+        # Add creator metadata if available
+        if creator:
+            metadata.update({
+                'creator_name': creator.name if creator.name else "",
+                'creator_gender': creator.gender if creator.gender else "",
+                'creator_class_year': creator.class_year if creator.class_year else 0,
+                'creator_major': creator.major if creator.major else "",
+            })
+        
+        # Create the Pinecone vector record
+        record = {
+            'id': f"exp_{experience.id}",
+            'metadata': metadata,
+            'values': None,  # Not directly providing embeddings as llama-text-embed-v2 is configured in Pinecone
+            'text': text_description  # The text field will be embedded by Pinecone using llama-text-embed-v2
+        }
+        
+        # Upsert the record into Pinecone
+        pinecone_index.upsert(
+            vectors=[record],
+        )
+        
+        print(f"Successfully indexed experience {experience.id} in Pinecone")
+        return True
+    except Exception as e:
+        print(f"Error indexing experience in Pinecone: {e}")
+        return False
+
+# Helper function to query Pinecone with user preferences
+def get_personalized_experiences(user, top_k=20):
+    """Query Pinecone with user preferences to get personalized experience recommendations"""
+    if not pinecone_initialized or not pinecone_index:
+        print("Pinecone not initialized. Cannot query for personalized experiences.")
+        return None
+    
+    try:
+        # Generate text description of user preferences
+        preference_text = get_user_preference_text(user)
+        
+        # Query Pinecone for similar vectors
+        query_results = pinecone_index.query(
+            top_k=top_k,
+            text=preference_text,
+            filter={
+                # Filter out experiences created by the user
+                "user_id": {"$ne": user.id}
+            },
+            include_metadata=True
+        )
+        
+        # Extract and return the matching experiences
+        matches = []
+        for match in query_results.get('matches', []):
+            exp_id = int(match['id'].split('_')[1]) if match['id'].startswith('exp_') else None
+            if exp_id:
+                # Format the match with ID and score
+                matches.append({
+                    'id': exp_id,
+                    'score': match['score'],
+                    'metadata': match['metadata']
+                })
+        
+        print(f"Found {len(matches)} personalized experiences for user {user.id}")
+        return matches
+    except Exception as e:
+        print(f"Error querying Pinecone for personalized experiences: {e}")
+        return None
 
 # Auth Helper Functions
 def generate_token(user_id):
@@ -361,47 +550,73 @@ def update_user(user_id):
 @app.route('/api/experiences', methods=['POST'])
 @login_required()
 def create_experience(current_user_id=None):
-    """Create a new experience"""
     try:
-        data = request.get_json()
+        print(f"Creating experience for user ID: {current_user_id}")
         
-        # Validate required fields
-        if not data.get('experience_type'):
-            return jsonify({'error': 'Experience type is required'}), 400
+        # Check if we received JSON data
+        if not request.is_json:
+            print("Error: Request does not contain JSON data")
+            return jsonify({'detail': 'Request must be JSON'}), 400
             
-        if not data.get('location'):
-            return jsonify({'error': 'Location is required'}), 400
-            
-        # Create new experience
+        data = request.json
+        print(f"Received data: {data}")
+        
+        if not data:
+            return jsonify({'detail': 'No data provided'}), 400
+        
+        required_fields = ['experience_type', 'location']
+        for field in required_fields:
+            if field not in data:
+                print(f"Missing required field: {field}")
+                return jsonify({'detail': f'Missing required field: {field}'}), 400
+                
+        # Use authenticated user's ID instead of passing it in the request
+        user = User.query.get(current_user_id)
+        if not user:
+            print(f"User not found with ID: {current_user_id}")
+            return jsonify({'detail': 'User not found'}), 404
+        
+        print(f"Creating experience for user: {user.username}")
+        
+        # Clean up input data to prevent duplication
+        experience_type = data['experience_type'].strip() if data['experience_type'] else ''
+        location = data['location'].strip() if data['location'] else ''
+        description = data.get('description', '').strip()
+        
+        # Handle new fields
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        place_id = data.get('place_id', '').strip() if data.get('place_id') else None
+        location_image = data.get('location_image', '').strip() if data.get('location_image') else None
+        
+        print(f"Creating experience with type: {experience_type}, location: {location}")
+        
         new_experience = Experience(
             user_id=current_user_id,
-            experience_type=data.get('experience_type'),
-            location=data.get('location'),
-            description=data.get('description', ''),
-            latitude=data.get('latitude'),
-            longitude=data.get('longitude'),
-            place_id=data.get('place_id'),
-            location_image=data.get('location_image', '')
+            experience_type=experience_type,
+            location=location,
+            description=description,
+            latitude=latitude,
+            longitude=longitude,
+            place_id=place_id,
+            location_image=location_image
         )
-        
-        # Validate location data from Google Maps API
-        if data.get('latitude') and data.get('longitude'):
-            if not isinstance(data.get('latitude'), (int, float)) or not isinstance(data.get('longitude'), (int, float)):
-                return jsonify({'error': 'Invalid coordinates format'}), 400
-                
-            # Basic coordinate range validation
-            if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
-                return jsonify({'error': 'Coordinates out of valid range'}), 400
-        
-        # Add to database
         db.session.add(new_experience)
         db.session.commit()
         
-        # Return the created experience
+        print(f"Experience created successfully with ID: {new_experience.id}")
+        
+        # Index the new experience in Pinecone for vector search
+        if pinecone_initialized:
+            index_experience(new_experience, user)
+            print(f"Experience indexed in Pinecone for vector search")
+        
         return jsonify({
+            'id': new_experience.id, 
             'message': 'Experience created successfully',
             'experience': {
                 'id': new_experience.id,
+                'user_id': new_experience.user_id,
                 'experience_type': new_experience.experience_type,
                 'location': new_experience.location,
                 'description': new_experience.description,
@@ -409,18 +624,17 @@ def create_experience(current_user_id=None):
                 'longitude': new_experience.longitude,
                 'place_id': new_experience.place_id,
                 'location_image': new_experience.location_image,
-                'created_at': new_experience.created_at.isoformat(),
-                'is_active': True
+                'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
             }
-        }), 201
+        })
     except Exception as e:
+        print(f"Error creating experience: {e}")
         db.session.rollback()
-        print(f"Error creating experience: {str(e)}")
-        return jsonify({'error': f"Failed to create experience: {str(e)}"}), 500
+        return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/experiences', methods=['GET'])
 @login_required()
-def get_experiences():
+def get_experiences(current_user_id=None):
     try:
         experiences = Experience.query.order_by(Experience.created_at.desc()).all()
         result = []
@@ -495,7 +709,17 @@ def delete_experience(experience_id, current_user_id=None):
         if experience.user_id != current_user_id:
             return jsonify({'detail': 'You can only delete your own experiences'}), 403
         
-        # First, delete any matches related to this experience
+        # First, delete the experience from Pinecone if it's initialized
+        if pinecone_initialized and pinecone_index:
+            try:
+                # Delete the experience from Pinecone index
+                pinecone_index.delete(ids=[f"exp_{experience_id}"])
+                print(f"Deleted experience {experience_id} from Pinecone index")
+            except Exception as e:
+                print(f"Error deleting from Pinecone: {e}")
+                # Continue with deletion even if Pinecone fails
+        
+        # Delete any matches related to this experience
         matches = Match.query.filter_by(experience_id=experience_id).all()
         for match in matches:
             print(f"Deleting match {match.id} for experience {experience_id}")
@@ -523,53 +747,50 @@ def delete_experience(experience_id, current_user_id=None):
 @app.route('/api/experiences/<int:experience_id>', methods=['PUT'])
 @login_required()
 def update_experience(experience_id, current_user_id=None):
-    """Update an existing experience"""
     try:
-        data = request.get_json()
-        
-        # Find the experience
-        experience = Experience.query.get(experience_id)
-        
+        # Get the experience
+        experience = db.session.get(Experience, experience_id)
         if not experience:
-            return jsonify({'error': 'Experience not found'}), 404
+            return jsonify({'detail': 'Experience not found'}), 404
             
-        # Check if the experience belongs to the current user
+        # Check if the user owns this experience
         if experience.user_id != current_user_id:
-            return jsonify({'error': 'Unauthorized to update this experience'}), 403
+            return jsonify({'detail': 'You can only update your own experiences'}), 403
             
-        # Validate required fields
-        if not data.get('experience_type'):
-            return jsonify({'error': 'Experience type is required'}), 400
-            
-        if not data.get('location'):
-            return jsonify({'error': 'Location is required'}), 400
+        # Update the experience
+        data = request.json
         
-        # Validate location data from Google Maps API
-        if data.get('latitude') and data.get('longitude'):
-            if not isinstance(data.get('latitude'), (int, float)) or not isinstance(data.get('longitude'), (int, float)):
-                return jsonify({'error': 'Invalid coordinates format'}), 400
-                
-            # Basic coordinate range validation
-            if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
-                return jsonify({'error': 'Coordinates out of valid range'}), 400
+        # Update fields if they exist in the request
+        if 'experience_type' in data:
+            experience.experience_type = data['experience_type'].strip()
+        if 'location' in data:
+            experience.location = data['location'].strip()
+        if 'description' in data:
+            experience.description = data['description'].strip()
+        if 'latitude' in data:
+            experience.latitude = data['latitude']
+        if 'longitude' in data:
+            experience.longitude = data['longitude']
+        if 'place_id' in data:
+            experience.place_id = data['place_id']
+        if 'location_image' in data:
+            experience.location_image = data['location_image']
             
-        # Update fields
-        experience.experience_type = data.get('experience_type')
-        experience.location = data.get('location')
-        experience.description = data.get('description', '')
-        experience.latitude = data.get('latitude')
-        experience.longitude = data.get('longitude')
-        experience.place_id = data.get('place_id')
-        experience.location_image = data.get('location_image', '')
-        
-        # Save changes
         db.session.commit()
         
-        # Return the updated experience
+        # Get the user (creator) to update the experience in Pinecone
+        user = User.query.get(current_user_id)
+        
+        # Update the experience in Pinecone for vector search
+        if pinecone_initialized:
+            index_experience(experience, user)
+            print(f"Experience {experience.id} updated in Pinecone index")
+        
         return jsonify({
             'message': 'Experience updated successfully',
             'experience': {
                 'id': experience.id,
+                'user_id': experience.user_id,
                 'experience_type': experience.experience_type,
                 'location': experience.location,
                 'description': experience.description,
@@ -577,14 +798,13 @@ def update_experience(experience_id, current_user_id=None):
                 'longitude': experience.longitude,
                 'place_id': experience.place_id,
                 'location_image': experience.location_image,
-                'created_at': experience.created_at.isoformat(),
-                'is_active': True
+                'created_at': experience.created_at.isoformat() if experience.created_at else None
             }
         }), 200
     except Exception as e:
+        print(f"Error updating experience: {e}")
         db.session.rollback()
-        print(f"Error updating experience: {str(e)}")
-        return jsonify({'error': f"Failed to update experience: {str(e)}"}), 500
+        return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/swipes', methods=['POST'])
 @login_required()
@@ -849,15 +1069,65 @@ def get_recommendations(user_id):
 @login_required()
 def get_swipe_experiences(current_user_id=None):
     try:
-        # Get experiences that are not created by the current user
-        experiences = Experience.query.filter(Experience.user_id != current_user_id).order_by(Experience.created_at.desc()).all()
+        # Get the current user
+        user = User.query.get(current_user_id)
+        if not user:
+            return jsonify({'detail': 'User not found'}), 404
+        
+        # Use Pinecone for personalized recommendations if available
+        if pinecone_initialized and (user.gender_pref or user.experience_type_prefs or user.interests_prefs):
+            print(f"Using Pinecone for personalized recommendations for user {current_user_id}")
+            
+            # Get personalized experiences from Pinecone based on user preferences
+            personalized_matches = get_personalized_experiences(user)
+            
+            if personalized_matches and len(personalized_matches) > 0:
+                print(f"Found {len(personalized_matches)} personalized matches from Pinecone")
+                
+                # Extract experience IDs from the matches
+                experience_ids = [match['id'] for match in personalized_matches]
+                
+                # Get experience details from the database
+                experiences = Experience.query.filter(
+                    Experience.id.in_(experience_ids),
+                    Experience.user_id != current_user_id  # Ensure we don't include user's own experiences
+                ).all()
+                
+                # Create a mapping for quick lookup of score
+                score_map = {match['id']: match['score'] for match in personalized_matches}
+                
+                # Sort experiences by their match score (highest first)
+                experiences.sort(key=lambda exp: score_map.get(exp.id, 0), reverse=True)
+                
+                print(f"Retrieved {len(experiences)} personalized experiences from database")
+            else:
+                print("No personalized matches found in Pinecone, falling back to regular experience list")
+                # Fallback to regular ordering if no personalized matches
+                experiences = Experience.query.filter(
+                    Experience.user_id != current_user_id
+                ).order_by(Experience.created_at.desc()).all()
+        else:
+            # Use regular experience listing if Pinecone is not available
+            print(f"Using regular experience listing for user {current_user_id}")
+            experiences = Experience.query.filter(
+                Experience.user_id != current_user_id
+            ).order_by(Experience.created_at.desc()).all()
+        
+        # Get already swiped experience IDs to filter them out
+        swiped_experience_ids = [
+            swipe.experience_id for swipe in 
+            UserSwipe.query.filter_by(user_id=current_user_id).all()
+        ]
+        
+        # Filter out experiences the user has already swiped on
+        experiences = [exp for exp in experiences if exp.id not in swiped_experience_ids]
         
         result = []
         for exp in experiences:
             # Get the creator of the experience
             creator = User.query.get(exp.user_id)
             
-            # Clean strings to prevent any duplication
+            # Clean up text data
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
@@ -1192,7 +1462,24 @@ def get_or_update_current_user():
             if 'preferred_email' in data:
                 user.preferred_email = data['preferred_email']
             
+            # Save all changes to the database
             db.session.commit()
+            
+            # Check if any preference fields were updated, and if so, log that personalized recommendations will be refreshed
+            preference_fields_updated = any(field in data for field in ['gender_pref', 'experience_type_prefs', 'class_year_min_pref', 'class_year_max_pref', 'interests_prefs'])
+            
+            if preference_fields_updated:
+                print(f"User {user.id} updated their preferences. Personalized recommendations will be refreshed.")
+                
+                # Pre-warm the personalized recommendations by querying Pinecone
+                if pinecone_initialized:
+                    try:
+                        # This won't be stored but will help with performance when the user goes to swipe
+                        personalized_matches = get_personalized_experiences(user, top_k=50)
+                        match_count = len(personalized_matches) if personalized_matches else 0
+                        print(f"Pre-warmed {match_count} personalized matches for user {user.id}")
+                    except Exception as e:
+                        print(f"Error pre-warming personalized matches: {e}")
             
             # Return updated user profile
             return jsonify({
@@ -1500,36 +1787,12 @@ def check_inappropriate():
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
 def catch_all(path):
-    print(f"Catch-all route for path: {path}")
-    # First check if it's a known API route to avoid conflicts
-    if path.startswith('api/'):
-        return jsonify({'error': 'Not found'}), 404
-        
-    # Then try to serve as a static file from the static directory
+    # First try to serve as a static file (CSS, JS, etc.)
     try:
-        print(f"Trying to serve static file: {path}")
-        static_file_path = os.path.join(app.static_folder, path)
-        print(f"Full static file path: {static_file_path}")
-        print(f"File exists: {os.path.exists(static_file_path)}")
-        
         return app.send_static_file(path)
-    except Exception as e:
-        print(f"Error serving static file: {e}")
-        # If not a static file or error occurs, serve the index.html for client-side routing
+    except:
+        # If not a static file, serve the index.html for client-side routing
         return app.send_static_file('index.html')
-
-# Serve React frontend at root URL in production
-@app.route('/')
-def serve_frontend():
-    print("Serving frontend at root URL")
-    try:
-        index_path = os.path.join(app.static_folder, 'index.html')
-        print(f"Index path: {index_path}")
-        print(f"Index exists: {os.path.exists(index_path)}")
-        return app.send_static_file('index.html')
-    except Exception as e:
-        print(f"Error serving index.html: {e}")
-        return jsonify({'error': 'Failed to serve frontend'}), 500
 
 # Add specific routes for top-level client-side routes
 @app.route('/swipe')
@@ -1831,6 +2094,11 @@ with app.app_context():
         print("Tables created successfully")
     except Exception as e:
         print(f"Error initializing database: {e}")
+
+# Serve React frontend at root URL in production
+@app.route('/')
+def serve_frontend():
+    return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():
