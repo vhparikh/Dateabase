@@ -15,18 +15,30 @@ def index_all_experiences():
     
     # Initialize Pinecone
     pinecone_api_key = os.environ.get('PINECONE_API_KEY')
-    pinecone_env = os.environ.get('PINECONE_ENV')
-    pinecone_index = os.environ.get('PINECONE_INDEX')
+    # Check both variable names
+    pinecone_index_name = os.environ.get('PINECONE_INDEX') or os.environ.get('PINECONE_INDEX_NAME')
     
-    if not all([pinecone_api_key, pinecone_env, pinecone_index]):
+    if not all([pinecone_api_key, pinecone_index_name]):
         print("Error: Pinecone environment variables not set.")
-        print("Make sure PINECONE_API_KEY, PINECONE_ENV, and PINECONE_INDEX are set.")
+        if not pinecone_api_key:
+            print("PINECONE_API_KEY is missing")
+        if not pinecone_index_name:
+            print("Both PINECONE_INDEX and PINECONE_INDEX_NAME are missing")
+        print("Make sure PINECONE_API_KEY and either PINECONE_INDEX or PINECONE_INDEX_NAME are set.")
         return False
     
     try:
-        print(f"Initializing Pinecone with index: {pinecone_index}")
-        pinecone.init(api_key=pinecone_api_key, environment=pinecone_env)
-        index = pinecone.Index(pinecone_index)
+        print(f"Initializing Pinecone with index: {pinecone_index_name}")
+        # Updated initialization pattern
+        pc = pinecone.Pinecone(api_key=pinecone_api_key)
+        index = pc.Index(pinecone_index_name)
+        
+        # Test connection with a simple query to verify index is accessible
+        try:
+            test_result = index.query(top_k=1, text="test connection")
+            print(f"Connection test successful: {test_result}")
+        except Exception as test_e:
+            print(f"Warning: Could not perform test query: {test_e}")
         
         with app.app_context():
             # Get all experiences
