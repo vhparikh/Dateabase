@@ -3,17 +3,18 @@ import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Swipe.css'; // Import the CSS file
+import { Link } from 'react-router-dom';
 
 const Swipe = () => {
   const [experiences, setExperiences] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [matchFound, setMatchFound] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
-  const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
-  const [isSwiping, setIsSwiping] = useState(false);
+  const [animationStep, setAnimationStep] = useState(0); // Track animation progress
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
+  const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -38,13 +39,22 @@ const Swipe = () => {
       }
       
       const data = await response.json();
-      setExperiences(data);
-      setCurrentIndex(0);
+      
+      if (data && data.length > 0) {
+        setExperiences(data);
+        setCurrentIndex(0);
+      } else {
+        // If no experiences are returned, just set an empty array
+        // This will trigger the "No more experiences" UI
+        setExperiences([]);
+      }
     } catch (err) {
       console.error('Error fetching experiences:', err);
       setError('Failed to load experiences. Please try again.');
     } finally {
       setLoading(false);
+      // After initial data load, mark as no longer the initial page load
+      setIsInitialLoad(false);
     }
   };
 
@@ -52,155 +62,144 @@ const Swipe = () => {
     fetchExperiences();
   }, [user.id, authTokens]);
   
-  const handleTouchStart = (e) => {
-    const pageX = e.touches ? e.touches[0].pageX : e.pageX;
-    const pageY = e.touches ? e.touches[0].pageY : e.pageY;
-    
-    setStartPosition({ x: pageX, y: pageY });
-    setIsSwiping(true);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isSwiping) return;
-    
-    const pageX = e.touches ? e.touches[0].pageX : e.pageX;
-    const pageY = e.touches ? e.touches[0].pageY : e.pageY;
-    
-    // Make the card precisely follow the mouse with no resistance
-    const deltaX = pageX - startPosition.x;
-    const deltaY = Math.min(Math.max(pageY - startPosition.y, -30), 30); // Limit vertical movement
-    
-    setCurrentPosition({
-      x: deltaX,
-      y: deltaY * 0.2 // Slight vertical movement for natural feel
-    });
-    
-    // Show direction indicators with minimal threshold
-    if (deltaX > 10) {
-      setSwipeDirection('right');
-    } else if (deltaX < -10) {
-      setSwipeDirection('left');
-    } else {
-      setSwipeDirection(null);
-    }
-  };
-
-  const handleTouchEnd = async () => {
-    if (!isSwiping) return;
-    
-    // Very low threshold for triggering swipe - makes it feel responsive
-    const swipedRight = currentPosition.x > 30;
-    const swipedLeft = currentPosition.x < -30;
-    
-    if (swipedRight || swipedLeft) {
-      // Let the handleSwipe function take care of setting the swipe direction
-      // and handling the animation timing
-      handleSwipe(swipedRight);
-    } else {
-      // For small movements, animate back to center smoothly instead of snapping
-      const element = document.querySelector('.hinge-card');
-      if (element) {
-        element.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        element.style.transform = 'translateX(0px) translateY(0px) rotate(0deg)';
-        
-        // Reset the position after the animation completes
-        setTimeout(() => {
-          setCurrentPosition({ x: 0, y: 0 });
-          setSwipeDirection(null);
-          element.style.transition = '';
-          element.style.transform = '';
-        }, 300);
-      } else {
-        // Fallback if element not found
-        setCurrentPosition({ x: 0, y: 0 });
-        setSwipeDirection(null);
-      }
-    }
-    
-    // Reset the swiping state
-    setIsSwiping(false);
-  };
+  // Make sure swipeDirection is properly initialized as null
+  useEffect(() => {
+    // Reset swipe direction when loading experiences
+    setSwipeDirection(null);
+  }, [experiences]);
 
   const handleSwipe = async (isLike) => {
+    // Prevent multiple animations from running simultaneously
+    if (isAnimating) return;
+    
     try {
       const currentExperience = experiences[currentIndex];
       if (!currentExperience) return;
 
-      // Keep a reference to the current experience for the match modal
-      const swipedExperience = {...currentExperience};
-
+      // Set animation in progress
+      setIsAnimating(true);
+      
       // Set animation direction for swipe-out
       setSwipeDirection(isLike ? 'right' : 'left');
-
-      // Wait for the animation to complete (matches the CSS transition time)
-      // then proceed with the API call and state updates
-      setTimeout(async () => {
-        try {
-          // Send swipe to backend
-          const response = await fetch(`${API_URL}/api/swipes`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              user_id: user.id,
-              experience_id: swipedExperience.id,
-              is_like: isLike
-            })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to record swipe');
-          }
-
-          // Get the response data which should tell us if this specific swipe created a match
-          const swipeData = await response.json();
-          console.log('Swipe response:', swipeData);
-          
-          // Only show match modal for right swipes that create a match
-          if (isLike && swipeData.match) {
-            // Store the swiped experience details to show in match modal
-            console.log('Match found with experience:', swipedExperience);
-            
-            // Set the current swiped experience for the match modal to use
-            window.lastMatchedExperience = swipedExperience;
-            
-            // Show match modal
-            setMatchFound(true);
-            setTimeout(() => setMatchFound(false), 3000);
-          }
-
-          // Move to next experience
-          setCurrentIndex(prev => prev + 1);
-          
-          // Reset the position and swipe direction 
-          setCurrentPosition({ x: 0, y: 0 });
-          setSwipeDirection(null);
-          
-          // If we're about to run out of experiences, fetch new ones
-          if (currentIndex >= experiences.length - 2) {
-            fetchExperiences();
-          }
-        } catch (err) {
-          console.error('Error in swipe handling:', err);
-          // Even if there's an error, we should still move to the next card
-          setCurrentIndex(prev => prev + 1);
-          setCurrentPosition({ x: 0, y: 0 });
-          setSwipeDirection(null);
-        }
-      }, 650); // This matches our CSS transition duration for swipe-exit (600ms) plus a small buffer
       
+      // Start multi-step animation
+      animateSwipe(isLike);
+
     } catch (err) {
       console.error('Error handling swipe:', err);
       // Ensure we still reset state on error
       setCurrentPosition({ x: 0, y: 0 });
       setSwipeDirection(null);
+      setAnimationStep(0);
+      setIsAnimating(false); // Reset animation state on error
+    }
+  };
+  
+  const animateSwipe = (isLike) => {
+    // Define the total animation steps
+    const totalSteps = 16;
+    // Define the max distance the card should move
+    const maxDistance = isLike ? 500 : -500;
+    // Define the max rotation
+    const maxRotation = isLike ? 30 : -30;
+    
+    // Set initial animation step
+    setAnimationStep(1);
+    
+    // Create an animation sequence
+    const animationInterval = setInterval(() => {
+      setAnimationStep(prevStep => {
+        const nextStep = prevStep + 1;
+        
+        // Calculate progress ratio (0 to 1)
+        const progress = nextStep / totalSteps;
+        
+        // Apply easing function for more natural movement
+        // Using cubic-bezier like easing for smooth acceleration and deceleration
+        const easedProgress = progress < 0.5 
+          ? 4 * progress * progress * progress 
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+          
+        // Calculate new position and rotation with easing
+        const newX = maxDistance * easedProgress;
+        const newRotation = maxRotation * easedProgress;
+        
+        // Update card position with easing
+        setCurrentPosition({ 
+          x: newX, 
+          y: 0 
+        });
+        
+        // If we've completed all steps, clear the interval and finish the swipe
+        if (nextStep >= totalSteps) {
+          clearInterval(animationInterval);
+          finishSwipe(isLike);
+          return 0; // Reset step counter
+        }
+        
+        return nextStep;
+      });
+    }, 15); // Run even faster at 15ms for quicker animation
+  };
+  
+  const finishSwipe = async (isLike) => {
+    try {
+      const currentExperience = experiences[currentIndex];
+      if (!currentExperience) return;
+      
+      // Send swipe to backend
+      const response = await fetch(`${API_URL}/api/swipes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          user_id: user.id,
+          experience_id: currentExperience.id,
+          is_like: isLike
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to record swipe');
+      }
+
+      // Give more time for the animation to complete visually before transitioning
+      setTimeout(() => {
+        // Move to next experience
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
+        
+        // Reset the position and swipe direction
+        setCurrentPosition({ x: 0, y: 0 });
+        setSwipeDirection(null);
+        setIsAnimating(false); // Reset animation state when complete
+        
+        // Only try to fetch more experiences if we're not already at the end
+        // and if we're getting close to the end of the list
+        if (nextIndex < experiences.length && nextIndex >= experiences.length - 2) {
+          fetchExperiences();
+        }
+      }, 350); // Reduced from 450ms to 350ms for faster transition
+      
+    } catch (err) {
+      console.error('Error in swipe handling:', err);
+      // Even if there's an error, we should still move to the next card
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setCurrentPosition({ x: 0, y: 0 });
+        setSwipeDirection(null);
+        setIsAnimating(false); // Reset animation state on error
+      }, 350); // Reduced from 450ms to 350ms for faster transition
     }
   };
 
   const handleRetry = () => {
+    // Reset current index to 0 to avoid any out-of-bounds issues
+    setCurrentIndex(0);
+    // Fetch fresh experiences
     fetchExperiences();
   };
 
@@ -262,7 +261,7 @@ const Swipe = () => {
   const currentExperience = experiences[currentIndex];
   
   // Calculate rotation and opacity based on swipe position
-  const cardRotation = currentPosition.x * 0.1;
+  const cardRotation = currentPosition.x * 0.06;
   const cardOpacity = Math.max(0.5, 1 - Math.abs(currentPosition.x) / 500);
 
   // Get classes for the like/pass indicators
@@ -280,9 +279,9 @@ const Swipe = () => {
 
   return (
     <div className="pt-6 pb-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[90vh]">
-      {/* Match modal */}
+      {/* Match modal - Commented out but preserved for future use
       <AnimatePresence>
-        {matchFound && (
+        {false && (
           <motion.div 
             className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -312,57 +311,65 @@ const Swipe = () => {
                   </div>
                   
                   <div className="w-16 h-16 rounded-full bg-gradient-to-r from-orange-end to-orange-start flex items-center justify-center text-white text-2xl font-bold">
-                    {currentExperience.creator?.username?.charAt(0).toUpperCase() || 'M'}
+                    M
                   </div>
                 </div>
                 
-                <p className="text-gray-700 mb-6">You both want to try {window.lastMatchedExperience?.experience_type || 'an experience'} at {window.lastMatchedExperience?.location || 'a location'}!</p>
+                <p className="text-gray-700 mb-6">You both want to try an experience at a location!</p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => setMatchFound(false)}
                     className="py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                   >
                     Keep Swiping
                   </button>
                   
-                  <button 
-                    onClick={() => setMatchFound(false)}
-                    className="py-3 px-4 bg-gradient-to-r from-orange-start to-orange-end rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all"
+                  <Link 
+                    to="/matches"
+                    className="py-3 px-4 bg-gradient-to-r from-orange-start to-orange-end rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all text-center"
                   >
                     View Matches
-                  </button>
+                  </Link>
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+      */}
       
       <div className="max-w-md mx-auto px-4">
         {/* Swipe indicators - Like */}
-        <div 
-          className={`absolute top-32 right-6 transform rotate-12 bg-green-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getLikeIndicatorClass()}`}
-          style={{ 
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-            transformOrigin: 'center',
-            zIndex: 20
-          }}
-        >
-          LIKE
-        </div>
-        
-        {/* Swipe indicators - Pass */}
-        <div 
-          className={`absolute top-32 left-6 transform -rotate-12 bg-red-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getPassIndicatorClass()}`}
-          style={{ 
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-            transformOrigin: 'center',
-            zIndex: 20
-          }}
-        >
-          PASS
-        </div>
+        {!isInitialLoad && (
+          <>
+            <div 
+              className={`absolute top-32 right-6 transform rotate-12 bg-green-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getLikeIndicatorClass()}`}
+              style={{ 
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                transformOrigin: 'center',
+                zIndex: 20,
+                opacity: swipeDirection === 'right' ? 1 : 0, // Ensure it's only visible during swipe
+                display: swipeDirection === 'right' ? 'block' : 'none' // Completely hide it when not needed
+              }}
+            >
+              LIKE
+            </div>
+            
+            {/* Swipe indicators - Pass */}
+            <div 
+              className={`absolute top-32 left-6 transform -rotate-12 bg-red-500/90 text-white py-2 px-6 rounded-lg font-bold tracking-wider z-30 text-xl border-2 border-white transition-all ${getPassIndicatorClass()}`}
+              style={{ 
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                transformOrigin: 'center',
+                zIndex: 20,
+                opacity: swipeDirection === 'left' ? 1 : 0, // Ensure it's only visible during swipe
+                display: swipeDirection === 'left' ? 'block' : 'none' // Completely hide it when not needed
+              }}
+            >
+              PASS
+            </div>
+          </>
+        )}
         
         {/* Experience Card - Hinge Style */}
         <motion.div 
@@ -372,26 +379,14 @@ const Swipe = () => {
             y: currentPosition.y,
             rotate: cardRotation,
             opacity: cardOpacity,
-            touchAction: 'none',
             zIndex: 10
           }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseDown={handleTouchStart}
-          onMouseMove={handleTouchMove}
-          onMouseUp={handleTouchEnd}
-          onMouseLeave={handleTouchEnd}
           whileHover={{ scale: 1.02 }}
-          drag={false}
-          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-          dragElastic={0.2}
           transition={{ 
             type: "spring",
-            stiffness: 1000,
-            damping: 100,
-            mass: 3,
-            velocity: 0
+            stiffness: 300,
+            damping: 30,
+            mass: 2
           }}
         >
           {/* Card Background Image */}
@@ -432,11 +427,21 @@ const Swipe = () => {
               
               <div className="creator-info mb-3">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
-                    <span className="text-white font-bold">
-                      {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
-                    </span>
-                  </div>
+                  {currentExperience.creator_profile_image ? (
+                    <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-md">
+                      <img
+                        src={currentExperience.creator_profile_image}
+                        alt={currentExperience.creator_name || 'User'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center mr-3 border-2 border-white shadow-md">
+                      <span className="text-white font-bold">
+                        {currentExperience.creator_name?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <p className="text-white font-bold text-lg">
                       {currentExperience.creator_name || 'Anonymous'}
@@ -463,11 +468,11 @@ const Swipe = () => {
         <div className="flex justify-center items-center space-x-6 mt-8">
           <button 
             onClick={() => {
-              // Show visual indicator before triggering swipe
-              setCurrentPosition({ x: -30, y: 0 });
+              // Trigger the full multi-step animation
               handleSwipe(false);
             }}
-            className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-red-400 transition-colors action-button"
+            disabled={isAnimating}
+            className={`w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-red-400 transition-colors action-button ${isAnimating ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label="Pass"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -477,7 +482,8 @@ const Swipe = () => {
           
           <button
             onClick={handleRetry}
-            className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-blue-400 transition-colors action-button"
+            disabled={isAnimating}
+            className={`w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-blue-400 transition-colors action-button ${isAnimating ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label="Refresh"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -487,11 +493,11 @@ const Swipe = () => {
           
           <button 
             onClick={() => {
-              // Show visual indicator before triggering swipe
-              setCurrentPosition({ x: 30, y: 0 });
+              // Trigger the full multi-step animation
               handleSwipe(true);
             }}
-            className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-green-400 transition-colors action-button"
+            disabled={isAnimating}
+            className={`w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 hover:border-green-400 transition-colors action-button ${isAnimating ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label="Like"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -503,7 +509,7 @@ const Swipe = () => {
       
       <div className="max-w-md mx-auto mt-6 text-center px-4">
         <p className="text-sm text-orange-800">
-          Swipe right to like, left to pass, or use the buttons below
+          Click the buttons to like or pass
         </p>
       </div>
     </div>

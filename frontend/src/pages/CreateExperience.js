@@ -152,15 +152,40 @@ const CreateExperience = () => {
     if (place && place.geometry && place.geometry.location) {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
+      const formattedAddress = place.formatted_address || place.name || '';
       
-      setFormData({
+      // Setup initial form data with location info
+      const updatedFormData = {
         ...formData,
-        location: place.formatted_address || place.name || '',
+        location: formattedAddress,
         latitude: lat,
         longitude: lng,
-        place_id: place.place_id
-      });
+        place_id: place.place_id || null
+      };
       
+      // Try to get a better location image from Google Maps if available
+      if (place.photos && place.photos.length > 0) {
+        try {
+          const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+          updatedFormData.location_image = photoUrl;
+          setBackgroundImage(photoUrl);
+        } catch (error) {
+          console.error('Error getting place photo:', error);
+          // Fallback to Unsplash with a more targeted search
+          const locationForImage = formattedAddress.split(',')[0].trim();
+          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          updatedFormData.location_image = imageUrl;
+          setBackgroundImage(imageUrl);
+        }
+      } else {
+        // Fallback to Unsplash with a more targeted search term
+        const locationForImage = formattedAddress.split(',')[0].trim();
+        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+        updatedFormData.location_image = imageUrl;
+        setBackgroundImage(imageUrl);
+      }
+      
+      setFormData(updatedFormData);
       setMapCenter({
         lat,
         lng
@@ -445,6 +470,10 @@ const CreateExperience = () => {
                         onPlaceSelected(autocompleteRef.current.getPlace());
                       }
                     }}
+                    options={{
+                      types: ["establishment", "geocode"],
+                      fields: ["place_id", "formatted_address", "geometry", "name", "photos"]
+                    }}
                   >
                     <input
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
@@ -453,7 +482,7 @@ const CreateExperience = () => {
                       name="location"
                       value={formData.location}
                       onChange={handleChange}
-                      placeholder="Enter location"
+                      placeholder="Search for a location..."
                       required
                     />
                   </Autocomplete>
@@ -464,11 +493,16 @@ const CreateExperience = () => {
                       <GoogleMap
                         mapContainerStyle={mapContainerStyle}
                         center={mapCenter}
-                        zoom={14}
+                        zoom={15}
                         options={mapOptions}
                       >
                         <Marker position={mapCenter} />
                       </GoogleMap>
+                      {formData.place_id && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Selected location: {formData.location}
+                        </p>
+                      )}
                     </div>
                   )}
                 </LoadScript>

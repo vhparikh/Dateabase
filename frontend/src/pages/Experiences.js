@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { getExperiences } from '../services/api';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-
-// Initialize the AI client
-const ai = new GoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY });
+import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
 // Experience card component with orange gradient theme
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
@@ -30,6 +27,28 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   };
 
   const [gradient] = useState(randomGradient());
+  
+  // Open Google Maps directions in a new tab
+  const openDirections = () => {
+    if (experience.place_id) {
+      // Use place_id if available for better directions
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}&query_place_id=${experience.place_id}`;
+      window.open(url, '_blank');
+    } else if (experience.latitude && experience.longitude) {
+      // Fall back to coordinates if place_id is not available
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`;
+      window.open(url, '_blank');
+    } else {
+      // Fall back to location name
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(experience.location)}`;
+      window.open(url, '_blank');
+    }
+  };
+  
+  // Generate a static map URL if coordinates are available
+  const staticMapUrl = experience.latitude && experience.longitude
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=14&size=400x200&markers=color:red%7C${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`
+    : null;
 
   return (
     <motion.div 
@@ -93,13 +112,36 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           )}
         </div>
         
-        <div className="text-sm text-gray-600 mb-3 flex items-center">
-          <svg className="h-4 w-4 text-orange-500 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>{experience.location}</span>
+        {/* Location with directions button */}
+        <div className="text-sm text-gray-600 mb-3 flex items-center justify-between">
+          <div className="flex items-center">
+            <svg className="h-4 w-4 text-orange-500 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>{experience.location}</span>
+          </div>
+          <button 
+            onClick={openDirections}
+            className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1 rounded-md flex items-center transition-colors"
+          >
+            <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            Directions
+          </button>
         </div>
+        
+        {/* Static map if coordinates available */}
+        {staticMapUrl && (
+          <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
+            <img 
+              src={staticMapUrl} 
+              alt={`Map of ${experience.location}`}
+              className="w-full h-36 object-cover"
+            />
+          </div>
+        )}
         
         <p className="text-gray-700 text-sm mb-3">
           {experience.description || "No description provided."}
@@ -131,6 +173,21 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   
   const [errors, setErrors] = useState({});
   const [tagInput, setTagInput] = useState('');
+  const autocompleteRef = useRef(null);
+  const [mapCenter, setMapCenter] = useState(null);
+  
+  // Map configuration
+  const mapContainerStyle = {
+    width: '100%',
+    height: '200px',
+    borderRadius: '8px',
+    marginTop: '10px',
+  };
+  
+  const mapOptions = {
+    disableDefaultUI: true,
+    zoomControl: true,
+  };
   
   // Experience types dropdown options
   const experienceTypes = [
@@ -152,6 +209,16 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         location_image: experience.location_image || '',
         is_active: experience.is_active !== undefined ? experience.is_active : true
       });
+      
+      // Set map center if coordinates are available
+      if (experience.latitude && experience.longitude) {
+        setMapCenter({
+          lat: experience.latitude,
+          lng: experience.longitude
+        });
+      } else {
+        setMapCenter(null);
+      }
     } else {
       // Reset form for new experience
       setFormData({
@@ -164,6 +231,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         location_image: '',
         is_active: true
       });
+      setMapCenter(null);
     }
     
     setErrors({});
@@ -180,6 +248,53 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     // Clear error for this field if it exists
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+  
+  // Handle place selection from Google Places Autocomplete
+  const onPlaceSelected = (place) => {
+    if (place && place.geometry && place.geometry.location) {
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const formattedAddress = place.formatted_address || place.name || '';
+      
+      // Create updated form data
+      const updatedFormData = {
+        ...formData,
+        location: formattedAddress,
+        latitude: lat,
+        longitude: lng,
+        place_id: place.place_id || null
+      };
+      
+      // Try to get a location image from Google Maps if available
+      if (place.photos && place.photos.length > 0) {
+        try {
+          const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+          updatedFormData.location_image = photoUrl;
+        } catch (error) {
+          console.error('Error getting place photo:', error);
+          // Fallback to Unsplash
+          const locationForImage = formattedAddress.split(',')[0].trim();
+          updatedFormData.location_image = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+        }
+      } else {
+        // Fallback to Unsplash for image
+        const locationForImage = formattedAddress.split(',')[0].trim();
+        updatedFormData.location_image = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+      }
+      
+      setFormData(updatedFormData);
+      
+      setMapCenter({
+        lat,
+        lng
+      });
+      
+      // Clear location error if it exists
+      if (errors.location) {
+        setErrors(prev => ({ ...prev, location: '' }));
+      }
     }
   };
   
@@ -217,15 +332,23 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const isInappropriate = async (text) => {
     console.log('Checking for inappropriate content:', text);
     try {
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with "true" or "false".\n\nText: "${text}"`;
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const output = await response.text();
-      // Expecting "true" or "false" as a string in the output
-      return output.trim().toLowerCase() === "true";
+      const response = await fetch(`${API_URL}/api/check-inappropriate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.is_inappropriate;
     } catch (error) {
-      console.error("GenAI error:", error);
+      console.error("Error checking inappropriate content:", error);
       // Fallback: if error, assume not inappropriate
       return false;
     }
@@ -283,22 +406,58 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
             )}
           </div>
           
-          {/* Location */}
+          {/* Location with Google Places Autocomplete */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Location*
             </label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g., Central Park, New York"
-              className={`w-full px-3 py-2 border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
-            />
-            {errors.location && (
-              <p className="text-red-500 text-xs mt-1">{errors.location}</p>
-            )}
+            <LoadScript 
+              googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
+              libraries={["places"]}
+            >
+              <div className="relative">
+                <Autocomplete
+                  onLoad={autocomplete => {
+                    autocompleteRef.current = autocomplete;
+                  }}
+                  onPlaceChanged={() => {
+                    if (autocompleteRef.current) {
+                      onPlaceSelected(autocompleteRef.current.getPlace());
+                    }
+                  }}
+                  options={{
+                    types: ["establishment", "geocode"],
+                    fields: ["place_id", "formatted_address", "geometry", "name", "photos"]
+                  }}
+                >
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder="Search for a location..."
+                    className={`w-full px-3 py-2 border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                  />
+                </Autocomplete>
+                {errors.location && (
+                  <p className="text-red-500 text-xs mt-1">{errors.location}</p>
+                )}
+              </div>
+              
+              {/* Map preview */}
+              {mapCenter && (
+                <div className="mt-3">
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={15}
+                    options={mapOptions}
+                  >
+                    <Marker position={mapCenter} />
+                  </GoogleMap>
+                </div>
+              )}
+            </LoadScript>
           </div>
           
           {/* Description */}
@@ -312,8 +471,11 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               onChange={handleChange}
               placeholder="Describe this experience..."
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
             ></textarea>
+            {errors.description && (
+              <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+            )}
           </div>
           
           {/* Location Image */}
@@ -599,84 +761,41 @@ const Experiences = () => {
     }
   };
 
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Your Experiences</h1>
-          </div>
-          <p className="text-gray-600 mt-2">Share your favorite places and activities</p>
-        </div>
-        
-        {/* Add Experience button */}
-        <div className="flex justify-end mb-6">
-          <button
-            onClick={handleAddExperience}
-            className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Experience
-          </button>
-        </div>
-        
-        {/* Content */}
-        {loading && experiences.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your experiences...</p>
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center max-w-md mx-auto">
-            <p className="text-red-600 mb-2">{error}</p>
-            <button 
-              onClick={() => {
-                const fetchExperiences = async () => {
-                  try {
-                    setLoading(true);
-                    const response = await fetch(`${API_URL}/api/my-experiences`, {
-                      credentials: 'include'
-                    });
-                    if (!response.ok) {
-                      throw new Error('Failed to fetch experiences');
-                    }
-                    const data = await response.json();
-                    setExperiences(data);
-                    setError('');
-                  } catch (err) {
-                    console.error('Error fetching experiences:', err);
-                    setError('Failed to fetch experiences. Please try again later.');
-                  } finally {
-                    setLoading(false);
-                  }
-                };
-                fetchExperiences();
-              }}
-              className="px-4 py-2 bg-white border border-red-300 rounded-md text-red-600 text-sm hover:bg-red-50"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : experiences.length === 0 ? (
-          <EmptyState onAddClick={handleAddExperience} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {experiences.map(experience => (
-              <ExperienceCard 
-                key={experience.id} 
-                experience={experience}
-                onEdit={handleEditExperience}
-                onDelete={openDeleteConfirmation}
-              />
-            ))}
-          </div>
-        )}
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Experiences</h1>
+
+      {/* Add Experience button */}
+      <div className="flex justify-end mb-6">
+        <button
+          onClick={handleAddExperience}
+          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Experience
+        </button>
       </div>
-      
+
+      {experiences.length === 0 ? (
+        <EmptyState onAddClick={handleAddExperience} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {experiences.map(experience => (
+            <ExperienceCard
+              key={experience.id}
+              experience={experience}
+              onEdit={handleEditExperience}
+              onDelete={handleDeleteExperience}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Modals */}
       <ExperienceModal 
         isOpen={isModalOpen}

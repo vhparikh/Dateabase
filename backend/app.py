@@ -4,15 +4,19 @@ from datetime import datetime, timedelta, timezone
 import os
 import jwt
 import secrets
+import google.generativeai as genai
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 from urllib.parse import quote_plus, urlencode, quote
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from database import db, init_db, User, Experience, Match, UserSwipe
+    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from backend.database import db, init_db, User, Experience, Match, UserSwipe
+    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
 from functools import wraps
 
 # Setup Flask app with proper static folder configuration for production deployment
@@ -21,14 +25,39 @@ app = Flask(__name__,
            static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
 
+# Print current directory and check if static folder exists
+print(f"Current working directory: {os.getcwd()}")
+print(f"Static folder path: {app.static_folder}")
+print(f"Static folder exists: {os.path.exists(app.static_folder)}")
+if os.path.exists(app.static_folder):
+    print(f"Static folder contents: {os.listdir(app.static_folder)}")
+    
 # Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 # Set session type for CAS auth
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
+# Configure Gemini API key
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# Configure Cloudinary
+CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
+if CLOUDINARY_URL:
+    cloudinary.config(secure=True)
+else:
+    print("Warning: CLOUDINARY_URL not set. Image uploads will not work.")
+
 # Initialize the database with our app
 init_db(app)
+
+# Add phone_number and preferred_email columns if they don't exist
+add_new_columns(app)
+
+# Drop bio and dietary_restrictions columns
+drop_unused_columns(app)
 
 # Auth Helper Functions
 def generate_token(user_id):
@@ -332,68 +361,47 @@ def update_user(user_id):
 @app.route('/api/experiences', methods=['POST'])
 @login_required()
 def create_experience(current_user_id=None):
+    """Create a new experience"""
     try:
-        print(f"Creating experience for user ID: {current_user_id}")
+        data = request.get_json()
         
-        # Check if we received JSON data
-        if not request.is_json:
-            print("Error: Request does not contain JSON data")
-            return jsonify({'detail': 'Request must be JSON'}), 400
+        # Validate required fields
+        if not data.get('experience_type'):
+            return jsonify({'error': 'Experience type is required'}), 400
             
-        data = request.json
-        print(f"Received data: {data}")
-        
-        if not data:
-            return jsonify({'detail': 'No data provided'}), 400
-        
-        required_fields = ['experience_type', 'location']
-        for field in required_fields:
-            if field not in data:
-                print(f"Missing required field: {field}")
-                return jsonify({'detail': f'Missing required field: {field}'}), 400
-                
-        # Use authenticated user's ID instead of passing it in the request
-        user = User.query.get(current_user_id)
-        if not user:
-            print(f"User not found with ID: {current_user_id}")
-            return jsonify({'detail': 'User not found'}), 404
-        
-        print(f"Creating experience for user: {user.username}")
-        
-        # Clean up input data to prevent duplication
-        experience_type = data['experience_type'].strip() if data['experience_type'] else ''
-        location = data['location'].strip() if data['location'] else ''
-        description = data.get('description', '').strip()
-        
-        # Handle new fields
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
-        place_id = data.get('place_id', '').strip() if data.get('place_id') else None
-        location_image = data.get('location_image', '').strip() if data.get('location_image') else None
-        
-        print(f"Creating experience with type: {experience_type}, location: {location}")
-        
+        if not data.get('location'):
+            return jsonify({'error': 'Location is required'}), 400
+            
+        # Create new experience
         new_experience = Experience(
             user_id=current_user_id,
-            experience_type=experience_type,
-            location=location,
-            description=description,
-            latitude=latitude,
-            longitude=longitude,
-            place_id=place_id,
-            location_image=location_image
+            experience_type=data.get('experience_type'),
+            location=data.get('location'),
+            description=data.get('description', ''),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            place_id=data.get('place_id'),
+            location_image=data.get('location_image', '')
         )
+        
+        # Validate location data from Google Maps API
+        if data.get('latitude') and data.get('longitude'):
+            if not isinstance(data.get('latitude'), (int, float)) or not isinstance(data.get('longitude'), (int, float)):
+                return jsonify({'error': 'Invalid coordinates format'}), 400
+                
+            # Basic coordinate range validation
+            if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
+                return jsonify({'error': 'Coordinates out of valid range'}), 400
+        
+        # Add to database
         db.session.add(new_experience)
         db.session.commit()
         
-        print(f"Experience created successfully with ID: {new_experience.id}")
-        
+        # Return the created experience
         return jsonify({
-            'id': new_experience.id, 
             'message': 'Experience created successfully',
             'experience': {
                 'id': new_experience.id,
-                'user_id': new_experience.user_id,
                 'experience_type': new_experience.experience_type,
                 'location': new_experience.location,
                 'description': new_experience.description,
@@ -401,19 +409,18 @@ def create_experience(current_user_id=None):
                 'longitude': new_experience.longitude,
                 'place_id': new_experience.place_id,
                 'location_image': new_experience.location_image,
-                'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
+                'created_at': new_experience.created_at.isoformat(),
+                'is_active': True
             }
         }), 201
     except Exception as e:
-        print(f"Error creating experience: {e}")
-        import traceback
-        traceback.print_exc()
         db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
+        print(f"Error creating experience: {str(e)}")
+        return jsonify({'error': f"Failed to create experience: {str(e)}"}), 500
 
 @app.route('/api/experiences', methods=['GET'])
 @login_required()
-def get_experiences(current_user_id=None):
+def get_experiences():
     try:
         experiences = Experience.query.order_by(Experience.created_at.desc()).all()
         result = []
@@ -516,42 +523,53 @@ def delete_experience(experience_id, current_user_id=None):
 @app.route('/api/experiences/<int:experience_id>', methods=['PUT'])
 @login_required()
 def update_experience(experience_id, current_user_id=None):
+    """Update an existing experience"""
     try:
-        # Get the experience
-        experience = db.session.get(Experience, experience_id)
-        if not experience:
-            return jsonify({'detail': 'Experience not found'}), 404
-            
-        # Check if the user owns this experience
-        if experience.user_id != current_user_id:
-            return jsonify({'detail': 'You can only update your own experiences'}), 403
-            
-        # Update the experience
-        data = request.json
+        data = request.get_json()
         
-        # Update fields if they exist in the request
-        if 'experience_type' in data:
-            experience.experience_type = data['experience_type'].strip()
-        if 'location' in data:
-            experience.location = data['location'].strip()
-        if 'description' in data:
-            experience.description = data['description'].strip()
-        if 'latitude' in data:
-            experience.latitude = data['latitude']
-        if 'longitude' in data:
-            experience.longitude = data['longitude']
-        if 'place_id' in data:
-            experience.place_id = data['place_id']
-        if 'location_image' in data:
-            experience.location_image = data['location_image']
+        # Find the experience
+        experience = Experience.query.get(experience_id)
+        
+        if not experience:
+            return jsonify({'error': 'Experience not found'}), 404
             
+        # Check if the experience belongs to the current user
+        if experience.user_id != current_user_id:
+            return jsonify({'error': 'Unauthorized to update this experience'}), 403
+            
+        # Validate required fields
+        if not data.get('experience_type'):
+            return jsonify({'error': 'Experience type is required'}), 400
+            
+        if not data.get('location'):
+            return jsonify({'error': 'Location is required'}), 400
+        
+        # Validate location data from Google Maps API
+        if data.get('latitude') and data.get('longitude'):
+            if not isinstance(data.get('latitude'), (int, float)) or not isinstance(data.get('longitude'), (int, float)):
+                return jsonify({'error': 'Invalid coordinates format'}), 400
+                
+            # Basic coordinate range validation
+            if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
+                return jsonify({'error': 'Coordinates out of valid range'}), 400
+            
+        # Update fields
+        experience.experience_type = data.get('experience_type')
+        experience.location = data.get('location')
+        experience.description = data.get('description', '')
+        experience.latitude = data.get('latitude')
+        experience.longitude = data.get('longitude')
+        experience.place_id = data.get('place_id')
+        experience.location_image = data.get('location_image', '')
+        
+        # Save changes
         db.session.commit()
         
+        # Return the updated experience
         return jsonify({
             'message': 'Experience updated successfully',
             'experience': {
                 'id': experience.id,
-                'user_id': experience.user_id,
                 'experience_type': experience.experience_type,
                 'location': experience.location,
                 'description': experience.description,
@@ -559,13 +577,14 @@ def update_experience(experience_id, current_user_id=None):
                 'longitude': experience.longitude,
                 'place_id': experience.place_id,
                 'location_image': experience.location_image,
-                'created_at': experience.created_at.isoformat() if experience.created_at else None
+                'created_at': experience.created_at.isoformat(),
+                'is_active': True
             }
         }), 200
     except Exception as e:
-        print(f"Error updating experience: {e}")
         db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
+        print(f"Error updating experience: {str(e)}")
+        return jsonify({'error': f"Failed to update experience: {str(e)}"}), 500
 
 @app.route('/api/swipes', methods=['POST'])
 @login_required()
@@ -848,6 +867,7 @@ def get_swipe_experiences(current_user_id=None):
                 'user_id': exp.user_id,
                 'creator_name': creator.name if creator else 'Unknown',
                 'creator_netid': creator.netid if creator else '',
+                'creator_profile_image': creator.profile_image if creator else None,
                 'experience_type': experience_type,
                 'location': location,
                 'description': description,
@@ -933,7 +953,9 @@ def cas_callback():
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
                 password_hash=secrets.token_hex(16),
-                onboarding_completed=False  # Explicitly set onboarding as not completed for new users
+                onboarding_completed=False,  # Explicitly set onboarding as not completed for new users
+                phone_number=attributes.get('phoneNumber', ''),
+                preferred_email=attributes.get('email', '')
             )
             db.session.add(new_user)
             db.session.commit()
@@ -1081,7 +1103,15 @@ def get_or_update_current_user():
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
                 'onboarding_completed': user.onboarding_completed,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                # Add preference fields
+                'gender_pref': user.gender_pref,
+                'experience_type_prefs': user.experience_type_prefs,
+                'class_year_min_pref': user.class_year_min_pref,
+                'class_year_max_pref': user.class_year_max_pref,
+                'interests_prefs': user.interests_prefs,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email,
             })
         
         elif request.method == 'PUT':
@@ -1128,6 +1158,39 @@ def get_or_update_current_user():
                 user.prompt3 = data['prompt3']
             if 'answer3' in data:
                 user.answer3 = data['answer3']
+                
+            # Handle preference fields
+            if 'gender_pref' in data:
+                user.gender_pref = data['gender_pref']
+            if 'experience_type_prefs' in data:
+                user.experience_type_prefs = data['experience_type_prefs']
+            if 'class_year_min_pref' in data:
+                # Validate class year is within reasonable bounds
+                try:
+                    if data['class_year_min_pref'] is not None:
+                        year_val = int(data['class_year_min_pref'])
+                        if year_val < 2000 or year_val > 2100:
+                            return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
+                    user.class_year_min_pref = data['class_year_min_pref']
+                except (ValueError, TypeError):
+                    return jsonify({'detail': 'Invalid class year value'}), 400
+            if 'class_year_max_pref' in data:
+                # Validate class year is within reasonable bounds
+                try:
+                    if data['class_year_max_pref'] is not None:
+                        year_val = int(data['class_year_max_pref'])
+                        if year_val < 2000 or year_val > 2100:
+                            return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
+                    user.class_year_max_pref = data['class_year_max_pref']
+                except (ValueError, TypeError):
+                    return jsonify({'detail': 'Invalid class year value'}), 400
+            if 'interests_prefs' in data:
+                user.interests_prefs = data['interests_prefs']
+            # Add handling for phone_number and preferred_email fields
+            if 'phone_number' in data:
+                user.phone_number = data['phone_number']
+            if 'preferred_email' in data:
+                user.preferred_email = data['preferred_email']
             
             db.session.commit()
             
@@ -1153,7 +1216,15 @@ def get_or_update_current_user():
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
                 'onboarding_completed': user.onboarding_completed,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                # Add preference fields to response
+                'gender_pref': user.gender_pref,
+                'experience_type_prefs': user.experience_type_prefs,
+                'class_year_min_pref': user.class_year_min_pref,
+                'class_year_max_pref': user.class_year_max_pref,
+                'interests_prefs': user.interests_prefs,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email,
             })
             
     except Exception as e:
@@ -1278,6 +1349,14 @@ def complete_onboarding():
             if 'answer3' in data:
                 print(f"Setting answer3 to: {data['answer3']}")
                 user.answer3 = data['answer3']
+                
+            if 'phone_number' in data:
+                print(f"Setting phone_number to: {data['phone_number']}")
+                user.phone_number = data['phone_number']
+                
+            if 'preferred_email' in data:
+                print(f"Setting preferred_email to: {data['preferred_email']}")
+                user.preferred_email = data['preferred_email']
         
         # ALWAYS mark onboarding as completed, even if no data was provided
         user.onboarding_completed = True
@@ -1307,7 +1386,9 @@ def complete_onboarding():
                 'answer2': user.answer2,
                 'prompt3': user.prompt3,
                 'answer3': user.answer3,
-                'onboarding_completed': user.onboarding_completed
+                'onboarding_completed': user.onboarding_completed,
+                'phone_number': user.phone_number,
+                'preferred_email': user.preferred_email
             }
         })
     except Exception as e:
@@ -1382,16 +1463,73 @@ def reject_match(match_id, current_user_id=None):
         print(f"Error rejecting match: {e}")
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
+    
+# API endpoint to check for inappropriate content using Gemini
+@app.route('/api/check-inappropriate', methods=['POST'])
+def check_inappropriate():
+    # Get the text content from the request
+    data = request.json
+    text = data.get('text', '')
+    
+    if not text:
+        return jsonify({'is_inappropriate': False, 'error': 'No text provided'}), 400
+    
+    try:
+        # Check if Gemini API is configured
+        if not GEMINI_API_KEY:
+            return jsonify({'is_inappropriate': False, 'error': 'Gemini API not configured'}), 500
+        
+        # Use Gemini to check for inappropriate content
+        model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+        prompt = f"Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with \"true\" or \"false\".\n\nText: \"{text}\""
+        
+        result = model.generate_content(prompt)
+        output = result.text.strip().lower()
+        
+        # Log the result for debugging
+        print(f"Gemini check result for text: '{text[:30]}...' => {output}")
+        
+        # Return the result
+        return jsonify({'is_inappropriate': output == 'true'})
+    
+    except Exception as e:
+        print(f"Error checking inappropriate content: {str(e)}")
+        # Fallback: if error, assume not inappropriate
+        return jsonify({'is_inappropriate': False, 'error': str(e)}), 500
 
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
 def catch_all(path):
-    # First try to serve as a static file (CSS, JS, etc.)
+    print(f"Catch-all route for path: {path}")
+    # First check if it's a known API route to avoid conflicts
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
+        
+    # Then try to serve as a static file from the static directory
     try:
+        print(f"Trying to serve static file: {path}")
+        static_file_path = os.path.join(app.static_folder, path)
+        print(f"Full static file path: {static_file_path}")
+        print(f"File exists: {os.path.exists(static_file_path)}")
+        
         return app.send_static_file(path)
-    except:
-        # If not a static file, serve the index.html for client-side routing
+    except Exception as e:
+        print(f"Error serving static file: {e}")
+        # If not a static file or error occurs, serve the index.html for client-side routing
         return app.send_static_file('index.html')
+
+# Serve React frontend at root URL in production
+@app.route('/')
+def serve_frontend():
+    print("Serving frontend at root URL")
+    try:
+        index_path = os.path.join(app.static_folder, 'index.html')
+        print(f"Index path: {index_path}")
+        print(f"Index exists: {os.path.exists(index_path)}")
+        return app.send_static_file('index.html')
+    except Exception as e:
+        print(f"Error serving index.html: {e}")
+        return jsonify({'error': 'Failed to serve frontend'}), 500
 
 # Add specific routes for top-level client-side routes
 @app.route('/swipe')
@@ -1414,26 +1552,269 @@ def serve_experiences():
 def serve_matches():
     return app.send_static_file('index.html')
 
-# Function to check if profile_image column exists in the user table
-def check_profile_image_column():
+# Profile Image Management API Endpoints
+@app.route('/api/users/images', methods=['POST'])
+@login_required()
+def upload_user_image(current_user_id=None):
+    """
+    Upload a user profile image to Cloudinary and save the URL to the database.
+    Users can have up to 4 images. If a user already has 4 images, the oldest one will be replaced.
+    """
     try:
-        conn = sqlite3.connect('dateabase.db')
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(user)")
-        columns = cursor.fetchall()
-        column_names = [column[1] for column in columns]
-        
-        if 'profile_image' not in column_names:
-            print("Adding profile_image column to user table...")
-            cursor.execute("ALTER TABLE user ADD COLUMN profile_image TEXT;")
-            conn.commit()
-            print("profile_image column added successfully")
-        else:
-            print("profile_image column already exists")
+        # Check if the request contains a file
+        if 'image' not in request.files:
+            return jsonify({'detail': 'No image file provided'}), 400
             
-        conn.close()
+        image_file = request.files['image']
+        
+        # Check if the file is valid
+        if image_file.filename == '':
+            return jsonify({'detail': 'No image file selected'}), 400
+            
+        # Check if the content type is an image
+        if not image_file.content_type.startswith('image/'):
+            return jsonify({'detail': 'File must be an image'}), 400
+            
+        # Get user's existing images
+        user_images = UserImage.query.filter_by(user_id=current_user_id).order_by(UserImage.created_at).all()
+        
+        # Calculate position for the new image
+        position = request.form.get('position')
+        if position is not None:
+            try:
+                position = int(position)
+                if position < 0 or position > 3:
+                    return jsonify({'detail': 'Position must be between 0 and 3'}), 400
+            except ValueError:
+                return jsonify({'detail': 'Position must be a number between 0 and 3'}), 400
+        else:
+            # If no position provided, use the next available position
+            existing_positions = [img.position for img in user_images]
+            for pos in range(4):  # Try positions 0-3
+                if pos not in existing_positions:
+                    position = pos
+                    break
+            else:
+                # If all positions are taken, replace the oldest image
+                position = user_images[0].position
+                # Delete the oldest image
+                old_image = user_images[0]
+                
+                # Delete from Cloudinary
+                try:
+                    cloudinary.uploader.destroy(old_image.public_id)
+                except Exception as e:
+                    print(f"Error deleting image from Cloudinary: {e}")
+                
+                # Delete from database
+                db.session.delete(old_image)
+                db.session.commit()
+        
+        # Upload the file to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            image_file,
+            folder=f"dateabase/users/{current_user_id}",
+            public_id=f"profile_{position}_{datetime.utcnow().timestamp()}"
+        )
+        
+        # Create a new UserImage
+        new_image = UserImage(
+            user_id=current_user_id,
+            image_url=upload_result['secure_url'],
+            public_id=upload_result['public_id'],
+            position=position
+        )
+        
+        # If this is the first image or position is 0, also set it as the user's primary profile image
+        if position == 0 or len(user_images) == 0:
+            user = User.query.get(current_user_id)
+            user.profile_image = upload_result['secure_url']
+        
+        db.session.add(new_image)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Image uploaded successfully',
+            'image': {
+                'id': new_image.id,
+                'url': new_image.image_url,
+                'position': new_image.position,
+                'created_at': new_image.created_at.isoformat()
+            }
+        }), 201
+        
     except Exception as e:
-        print(f"Error checking profile_image column: {e}")
+        print(f"Error uploading image: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+        
+@app.route('/api/users/images', methods=['GET'])
+@login_required()
+def get_user_images(current_user_id=None):
+    """Get all images for the current user."""
+    try:
+        user_images = UserImage.query.filter_by(user_id=current_user_id).order_by(UserImage.position).all()
+        
+        images = []
+        for img in user_images:
+            images.append({
+                'id': img.id,
+                'url': img.image_url,
+                'position': img.position,
+                'created_at': img.created_at.isoformat()
+            })
+            
+        return jsonify(images)
+    except Exception as e:
+        print(f"Error getting user images: {e}")
+        return jsonify({'detail': str(e)}), 500
+        
+@app.route('/api/users/images/<int:image_id>', methods=['DELETE'])
+@login_required()
+def delete_user_image(image_id, current_user_id=None):
+    """Delete a user image."""
+    try:
+        # Get the image
+        image = UserImage.query.get(image_id)
+        if not image:
+            return jsonify({'detail': 'Image not found'}), 404
+            
+        # Check if the user owns the image
+        if image.user_id != current_user_id:
+            return jsonify({'detail': 'You can only delete your own images'}), 403
+            
+        # Delete from Cloudinary
+        try:
+            cloudinary.uploader.destroy(image.public_id)
+        except Exception as e:
+            print(f"Error deleting image from Cloudinary: {e}")
+            
+        # If this is the primary profile image, clear it
+        user = User.query.get(current_user_id)
+        if user.profile_image == image.image_url:
+            # Find another image to use as the profile image
+            other_image = UserImage.query.filter(
+                UserImage.user_id == current_user_id,
+                UserImage.id != image_id
+            ).first()
+            
+            if other_image:
+                user.profile_image = other_image.image_url
+            else:
+                user.profile_image = None
+        
+        # Delete from database
+        db.session.delete(image)
+        db.session.commit()
+        
+        return jsonify({'message': 'Image deleted successfully'}), 200
+    except Exception as e:
+        print(f"Error deleting image: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/users/images/<int:image_id>/set-position', methods=['PUT'])
+@login_required()
+def update_image_position(image_id, current_user_id=None):
+    """Update the position of a user image."""
+    try:
+        # Get the position from the request
+        data = request.json
+        if 'position' not in data:
+            return jsonify({'detail': 'Position is required'}), 400
+            
+        position = data['position']
+        if not isinstance(position, int) or position < 0 or position > 3:
+            return jsonify({'detail': 'Position must be a number between 0 and 3'}), 400
+            
+        # Get the image
+        image = UserImage.query.get(image_id)
+        if not image:
+            return jsonify({'detail': 'Image not found'}), 404
+            
+        # Check if the user owns the image
+        if image.user_id != current_user_id:
+            return jsonify({'detail': 'You can only update your own images'}), 403
+            
+        # If there's already an image at the requested position, swap positions
+        existing_image = UserImage.query.filter(
+            UserImage.user_id == current_user_id,
+            UserImage.position == position,
+            UserImage.id != image_id
+        ).first()
+        
+        if existing_image:
+            existing_image.position = image.position
+            
+        # Update the position
+        image.position = position
+        
+        # If this is position 0, also set it as the primary profile image
+        if position == 0:
+            user = User.query.get(current_user_id)
+            user.profile_image = image.image_url
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Image position updated',
+            'image': {
+                'id': image.id,
+                'url': image.image_url,
+                'position': image.position
+            }
+        })
+    except Exception as e:
+        print(f"Error updating image position: {e}")
+        db.session.rollback()
+        return jsonify({'detail': str(e)}), 500
+
+@app.route('/api/users/<int:user_id>/profile', methods=['GET'])
+def get_user_full_profile(user_id):
+    """Get a user's full profile data including images for match details."""
+    try:
+        # Get the user
+        user = User.query.get_or_404(user_id)
+        
+        # Get user's images
+        user_images = UserImage.query.filter_by(user_id=user_id).order_by(UserImage.position).all()
+        
+        images = []
+        for img in user_images:
+            images.append({
+                'id': img.id,
+                'url': img.image_url,
+                'position': img.position,
+                'created_at': img.created_at.isoformat()
+            })
+        
+        # Return complete user profile data
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'netid': user.netid,
+            'name': user.name,
+            'gender': user.gender,
+            'sexuality': user.sexuality,
+            'height': user.height,
+            'location': user.location,
+            'hometown': user.hometown,
+            'major': user.major,
+            'class_year': user.class_year,
+            'interests': user.interests,
+            'profile_image': user.profile_image,
+            'prompt1': user.prompt1,
+            'answer1': user.answer1,
+            'prompt2': user.prompt2,
+            'answer2': user.answer2,
+            'prompt3': user.prompt3,
+            'answer3': user.answer3,
+            'images': images,
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        })
+    except Exception as e:
+        print(f"Error getting user profile: {e}")
+        return jsonify({'detail': str(e)}), 500
 
 # Create database tables (moved from before_first_request decorator)
 def create_tables():
@@ -1450,11 +1831,6 @@ with app.app_context():
         print("Tables created successfully")
     except Exception as e:
         print(f"Error initializing database: {e}")
-
-# Serve React frontend at root URL in production
-@app.route('/')
-def serve_frontend():
-    return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():

@@ -5,299 +5,389 @@ import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-// Updated Match Card with orange gradient theme
-const MatchCard = ({ match }) => {
-  const [showMap, setShowMap] = useState(false);
-  const [locationImage, setLocationImage] = useState(null);
-  const [currentSection, setCurrentSection] = useState(0);
-  
-  // Create profile sections for Hinge-style UI
-  const profileSections = [
-    {
-      type: 'profile',
-      title: 'Basic Info',
-      content: {
-        name: match.other_user.name,
-        avatar: match.other_user.profile_image || `https://ui-avatars.com/api/?name=${match.other_user.name}&background=orange&color=fff`,
-        classYear: match.other_user.class_year || 'N/A'
-      }
-    },
-    {
-      type: 'bio',
-      title: 'About me',
-      content: match.other_user.bio || `I'm interested in ${match.experience.experience_type}.`
-    },
-    {
-      type: 'education',
-      title: 'Education',
-      content: 'Princeton University'
-    },
-    {
-      type: 'location',
-      title: match.experience.experience_type,
-      subtitle: 'Experience Location',
-      content: match.experience.location,
-      description: match.experience.description || 'No description provided',
-      image: locationImage
-    }
-  ];
-  
-  // Google Maps configuration
-  const mapContainerStyle = {
-    width: '100%',
-    height: '200px',
-    borderRadius: '8px',
-  };
-  
-  const mapCenter = {
-    lat: match.experience.latitude || 40.3431, // Default to Princeton's latitude
-    lng: match.experience.longitude || -74.6551, // Default to Princeton's longitude
-  };
-  
-  const mapOptions = {
-    disableDefaultUI: true,
-    zoomControl: true,
-  };
-  
-  // Load location image on component mount
+// UserProfileModal component for displaying a user's full profile
+const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('photos');
+
   useEffect(() => {
-    if (match.experience.location_image) {
-      setLocationImage(match.experience.location_image);
-    } else if (match.experience.location) {
-      // Fallback to Unsplash if no location image is provided
-      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
+    if (isOpen && userId) {
+      fetchUserProfile();
     }
-  }, [match.experience.location, match.experience.location_image]);
-  
-  const navigateSections = (direction) => {
-    if (direction === 'next') {
-      setCurrentSection((prev) => 
-        prev === profileSections.length - 1 ? 0 : prev + 1
-      );
-    } else {
-      setCurrentSection((prev) => 
-        prev === 0 ? profileSections.length - 1 : prev - 1
-      );
+  }, [isOpen, userId]);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/api/users/${userId}/profile`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      
+      const data = await response.json();
+      setUserProfile(data);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      setError('Failed to load profile. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const openGoogleMaps = () => {
-    if (match.experience.latitude && match.experience.longitude) {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${match.experience.latitude},${match.experience.longitude}`, '_blank');
-    } else {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.experience.location)}`, '_blank');
+
+  // Format the interests from JSON string to an array of selected interests
+  const renderInterests = () => {
+    if (!userProfile?.interests) return null;
+    
+    let interestsObj = {};
+    try {
+      // Try to parse if it's a JSON string
+      interestsObj = typeof userProfile.interests === 'string' ? 
+        JSON.parse(userProfile.interests) : userProfile.interests;
+    } catch (e) {
+      // If it's not valid JSON, try a different approach
+      try {
+        // Try to parse as comma-separated values
+        const interests = userProfile.interests.split(',').map(item => item.trim());
+        interests.forEach(interest => {
+          interestsObj[interest] = true;
+        });
+      } catch (err) {
+        return null;
+      }
     }
+    
+    // Convert to array of interest names - only ones that are true
+    const interestNames = Object.keys(interestsObj).filter(key => interestsObj[key] === true);
+    
+    if (interestNames.length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {interestNames.map(interest => (
+          <span 
+            key={interest} 
+            className="px-3 py-1 bg-orange-50 text-orange-800 rounded-full text-sm font-medium"
+          >
+            {interest.charAt(0).toUpperCase() + interest.slice(1)}
+          </span>
+        ))}
+      </div>
+    );
   };
-  
-  const renderSection = (section) => {
-    switch (section.type) {
-      case 'profile':
-        return (
-          <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
-            {/* Header with avatar and name */}
-            <div className="relative">
-              <div className="aspect-square bg-orange-50">
-                <img 
-                  src={section.content.avatar} 
-                  alt={section.content.name} 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
-                <h3 className="text-2xl font-bold text-white">{section.content.name}</h3>
-                <p className="text-sm text-white/80">Class of {section.content.classYear}</p>
-              </div>
-            </div>
-            
-            {/* Basic info panels */}
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm text-gray-500">{section.title}</span>
-                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">Match!</span>
-              </div>
-              
-              <div className="flex justify-between mt-2">
-                <button className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all">Message</button>
-                <button 
-                  onClick={() => navigateSections('next')}
-                  className="text-orange-600 text-sm flex items-center"
-                >
-                  View more info
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
+          <h2 className="text-xl font-bold text-gray-800">User Profile</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading profile...</p>
           </div>
-        );
-      
-      case 'bio':
-      case 'education':
-        return (
-          <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
-            <div className="p-4 border-b border-orange-100">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-800">{section.title}</h3>
-                <span className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
-                  {section.type === 'bio' ? (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998a12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                    </svg>
-                  )}
-                </span>
-              </div>
-            </div>
-            <div className="p-4">
-              <p className="text-gray-700">{section.content}</p>
-              
-              <div className="flex justify-between mt-4">
-                <button 
-                  onClick={() => navigateSections('prev')}
-                  className="text-orange-600 text-sm flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Previous
-                </button>
-                <button 
-                  onClick={() => navigateSections('next')}
-                  className="text-orange-600 text-sm flex items-center"
-                >
-                  Next
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+        ) : error ? (
+          <div className="p-8 text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button 
+              onClick={fetchUserProfile} 
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg"
+            >
+              Try Again
+            </button>
           </div>
-        );
-      
-      case 'location':
-        return (
-          <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
-            <div className="p-4 border-b border-orange-100">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">{section.title}</h3>
-                  <p className="text-sm text-gray-500">{section.subtitle}</p>
-                </div>
-                <span className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </span>
-              </div>
-            </div>
-            
-            {/* Location image */}
+        ) : userProfile ? (
+          <div>
+            {/* Profile Header */}
             <div className="relative">
-              <div className="aspect-video bg-gray-200">
-                {section.image ? (
-                  <img 
-                    src={section.image} 
-                    alt={section.content} 
+              {backgroundImage ? (
+                <div className="h-40 overflow-hidden">
+                  <img
+                    src={backgroundImage}
+                    alt="Experience background"
                     className="w-full h-full object-cover"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white">
-                    {section.content}
+                </div>
+              ) : (
+                <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+              )}
+              <div className="absolute -bottom-16 left-6">
+                <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden">
+                  <img 
+                    src={userProfile.profile_image || `https://ui-avatars.com/api/?name=${userProfile.name}&background=orange&color=fff`} 
+                    alt={userProfile.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Profile Basic Info */}
+            <div className="pt-20 px-6 pb-6">
+              <h3 className="text-2xl font-bold text-gray-800">{userProfile.name}</h3>
+              <p className="text-gray-600">
+                {userProfile.gender && `${userProfile.gender}`}
+                {userProfile.class_year && ` • Class of ${userProfile.class_year}`}
+                {userProfile.major && ` • ${userProfile.major}`}
+              </p>
+              
+              {/* Tabs */}
+              <div className="mt-6 border-b border-gray-200">
+                <div className="flex">
+                  <button 
+                    onClick={() => setActiveTab('photos')} 
+                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
+                      activeTab === 'photos' 
+                        ? 'border-orange-500 text-orange-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Photos
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('about')} 
+                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
+                      activeTab === 'about' 
+                        ? 'border-orange-500 text-orange-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    About
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('interests')} 
+                    className={`pb-2 px-4 text-sm font-medium border-b-2 ${
+                      activeTab === 'interests' 
+                        ? 'border-orange-500 text-orange-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Interests
+                  </button>
+                </div>
+              </div>
+              
+              {/* Tab Content */}
+              <div className="mt-6">
+                {activeTab === 'photos' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-4">Photos</h4>
+                    
+                    {userProfile.images && userProfile.images.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {userProfile.images.map(image => (
+                          <div key={image.id} className="aspect-square rounded-lg overflow-hidden">
+                            <img 
+                              src={image.url} 
+                              alt={`${userProfile.name}'s photo`} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">No photos available</p>
+                    )}
+                  </div>
+                )}
+                
+                {activeTab === 'about' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-4">About</h4>
+                    
+                    <div className="space-y-6">
+                      {userProfile.prompt1 && userProfile.answer1 && (
+                        <div className="bg-orange-50 rounded-lg p-4">
+                          <p className="font-medium text-orange-800 mb-2">{userProfile.prompt1}</p>
+                          <p className="text-gray-700">{userProfile.answer1}</p>
+                        </div>
+                      )}
+                      
+                      {userProfile.prompt2 && userProfile.answer2 && (
+                        <div className="bg-orange-50 rounded-lg p-4">
+                          <p className="font-medium text-orange-800 mb-2">{userProfile.prompt2}</p>
+                          <p className="text-gray-700">{userProfile.answer2}</p>
+                        </div>
+                      )}
+                      
+                      {userProfile.prompt3 && userProfile.answer3 && (
+                        <div className="bg-orange-50 rounded-lg p-4">
+                          <p className="font-medium text-orange-800 mb-2">{userProfile.prompt3}</p>
+                          <p className="text-gray-700">{userProfile.answer3}</p>
+                        </div>
+                      )}
+                      
+                      {!userProfile.prompt1 && !userProfile.prompt2 && !userProfile.prompt3 && (
+                        <p className="text-gray-500">No prompts answered yet</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {activeTab === 'interests' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-4">Interests</h4>
+                    
+                    {renderInterests() || (
+                      <p className="text-gray-500">No interests specified</p>
+                    )}
                   </div>
                 )}
               </div>
-              
-              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
-                <div className="text-white text-lg font-bold truncate">{section.content}</div>
-                <button 
-                  onClick={openGoogleMaps}
-                  className="mt-1 flex items-center text-xs font-medium bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full px-2 py-1 transition-colors"
-                >
-                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                  </svg>
-                  Maps
-                </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <p className="text-gray-500">User not found</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ContactInfoModal component for displaying a user's contact information
+const ContactInfoModal = ({ user, isOpen, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="border-b border-gray-200 p-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800">Contact Information</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="p-6">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 rounded-full overflow-hidden mr-4">
+              <img 
+                src={user.profile_image || `https://ui-avatars.com/api/?name=${user.name}&background=orange&color=fff`} 
+                alt={user.name} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-gray-800">{user.name}</h3>
+              <p className="text-gray-600">Class of {user.class_year || 'N/A'}</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Email */}
+            <div className="bg-orange-50 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <h4 className="font-medium text-gray-800">Email</h4>
               </div>
+              
+              {/* Render Princeton email if no preferred email is available */}
+              {(() => {
+                if (user.preferred_email && user.preferred_email.trim() !== '') {
+                  return (
+                    <p className="text-gray-700 font-medium">
+                      {user.preferred_email.trim()}
+                    </p>
+                  );
+                } else if (user.netid && user.netid.trim() !== '') {
+                  const princetonEmail = `${user.netid.trim()}@princeton.edu`;
+                  return (
+                    <p className="text-gray-700 font-medium">
+                      {princetonEmail}
+                      <span className="block text-xs text-gray-500 mt-1">
+                        Princeton email address
+                      </span>
+                    </p>
+                  );
+                } else {
+                  return (
+                    <p className="text-gray-700">
+                      Not available
+                    </p>
+                  );
+                }
+              })()}
+              
+              {/* Open email app button */}
+              {(() => {
+                let emailAddress = null;
+                
+                if (user.preferred_email && user.preferred_email.trim() !== '') {
+                  emailAddress = user.preferred_email.trim();
+                } else if (user.netid && user.netid.trim() !== '') {
+                  emailAddress = `${user.netid.trim()}@princeton.edu`;
+                }
+                
+                if (emailAddress) {
+                  return (
+                    <a 
+                      href={`mailto:${emailAddress}`}
+                      className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Open in mail app
+                    </a>
+                  );
+                }
+                return null;
+              })()}
             </div>
             
-            {/* Description */}
-            <div className="p-4">
-              <div className="text-sm text-gray-500 mb-1">Description</div>
-              <p className="text-gray-700 mb-4">{section.description}</p>
-              
-              <div className="flex justify-between">
-                <button 
-                  onClick={() => navigateSections('prev')}
-                  className="text-orange-600 text-sm flex items-center"
+            {/* Phone Number */}
+            <div className="bg-orange-50 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <h4 className="font-medium text-gray-800">Phone Number</h4>
+              </div>
+              <p className="text-gray-700">
+                {user.phone_number || 'Not provided'}
+              </p>
+              {user.phone_number && (
+                <a 
+                  href={`tel:${user.phone_number.replace(/\D/g, '')}`}
+                  className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
-                  Previous
-                </button>
-                <button 
-                  onClick={() => setShowMap(!showMap)}
-                  className="text-orange-600 text-sm flex items-center"
-                >
-                  {showMap ? 'Hide Map' : 'Show Map'}
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Google Maps */}
-              {showMap && (
-                <div className="mt-4">
-                  <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""}>
-                    <GoogleMap
-                      mapContainerStyle={mapContainerStyle}
-                      center={mapCenter}
-                      zoom={14}
-                      options={mapOptions}
-                    >
-                      <Marker position={mapCenter} />
-                    </GoogleMap>
-                  </LoadScript>
-                </div>
+                  Call
+                </a>
               )}
             </div>
           </div>
-        );
-        
-      default:
-        return null;
-    }
-  };
-  
-  // Render dots for navigation
-  const renderDots = () => (
-    <div className="flex justify-center space-x-1 mt-2">
-      {profileSections.map((_, index) => (
-        <button 
-          key={index} 
-          onClick={() => setCurrentSection(index)}
-          className={`w-2 h-2 rounded-full transition-colors ${index === currentSection ? 'bg-orange-500' : 'bg-gray-300'}`}
-          aria-label={`Go to section ${index + 1}`}
-        />
-      ))}
-    </div>
-  );
-  
-  return (
-    <div className="w-full mb-6 mx-auto max-w-sm">
-      {renderSection(profileSections[currentSection])}
-      {renderDots()}
+        </div>
+      </div>
     </div>
   );
 };
@@ -321,19 +411,232 @@ const EmptyState = () => (
   </div>
 );
 
-// Potential Match Card component
-const PotentialMatchCard = ({ match, onAccept, onReject }) => {
-  const [locationImage, setLocationImage] = useState(null);
+// Updated Match Card with orange gradient theme - Grouped by user
+const GroupedMatchCard = ({ user, experiences }) => {
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [activeExperience, setActiveExperience] = useState(experiences[0]);
+  const [showMap, setShowMap] = useState(false);
+
+  // Google Maps configuration
+  const mapContainerStyle = {
+    width: '100%',
+    height: '200px',
+    borderRadius: '8px',
+  };
   
-  // Load location image on component mount
-  useEffect(() => {
-    if (match.experience.location_image) {
-      setLocationImage(match.experience.location_image);
-    } else if (match.experience.location) {
-      // Fallback to Unsplash if no location image is provided
-      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
+  const mapCenter = {
+    lat: activeExperience.experience.latitude || 40.3431, // Default to Princeton's latitude
+    lng: activeExperience.experience.longitude || -74.6551, // Default to Princeton's longitude
+  };
+  
+  const mapOptions = {
+    disableDefaultUI: true,
+    zoomControl: true,
+  };
+
+  const openGoogleMaps = () => {
+    if (activeExperience.experience.latitude && activeExperience.experience.longitude) {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${activeExperience.experience.latitude},${activeExperience.experience.longitude}`, '_blank');
+    } else {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeExperience.experience.location)}`, '_blank');
     }
-  }, [match.experience.location, match.experience.location_image]);
+  };
+
+  return (
+    <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
+      {/* User Profile Header */}
+      <div className="relative">
+        {activeExperience.experience.location_image ? (
+          <div className="h-40 overflow-hidden">
+            <img
+              src={activeExperience.experience.location_image}
+              alt={activeExperience.experience.location}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="h-40 bg-gradient-to-r from-orange-start to-orange-end"></div>
+        )}
+        <div className="absolute -bottom-16 left-6">
+          <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden">
+            <img 
+              src={user.profile_image || `https://ui-avatars.com/api/?name=${user.name}&background=orange&color=fff`} 
+              alt={user.name} 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* User Profile Info */}
+      <div className="pt-20 px-6 pb-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-800">{user.name}</h3>
+            <p className="text-gray-600">
+              {user.gender && `${user.gender}`}
+              {user.class_year && ` • Class of ${user.class_year}`}
+            </p>
+          </div>
+          <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm rounded-full">
+            {experiences.length} {experiences.length === 1 ? 'match' : 'matches'}
+          </span>
+        </div>
+        
+        <div className="flex mt-4">
+          <button 
+            onClick={() => setShowProfileModal(true)} 
+            className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
+          >
+            View Profile
+          </button>
+        </div>
+      </div>
+      
+      {/* Experiences List */}
+      <div className="px-6 pb-6">
+        <h4 className="text-lg font-semibold text-gray-800 mb-3">Matched Experiences</h4>
+        
+        {/* Experience Selector */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {experiences.map((exp, index) => (
+            <button
+              key={exp.experience.id}
+              onClick={() => setActiveExperience(exp)}
+              className={`px-3 py-1 rounded-full text-sm ${
+                activeExperience.experience.id === exp.experience.id
+                  ? 'bg-gradient-to-r from-orange-start to-orange-end text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {exp.experience.location}
+            </button>
+          ))}
+        </div>
+        
+        {/* Selected Experience Details */}
+        <div className="bg-orange-50 rounded-lg p-4 mb-4">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h5 className="font-medium text-gray-800">{activeExperience.experience.location}</h5>
+              <p className="text-sm text-gray-600">{activeExperience.experience.experience_type}</p>
+            </div>
+            <button
+              onClick={() => setShowMap(!showMap)}
+              className="p-2 bg-white rounded-full text-orange-600 hover:bg-orange-100 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+            </button>
+          </div>
+          
+          <p className="text-gray-700 text-sm mb-4">
+            {activeExperience.experience.description || "No description provided."}
+          </p>
+          
+          {/* Conditionally show Google Map */}
+          {showMap && (
+            <div className="mb-4">
+              {activeExperience.experience.latitude && activeExperience.experience.longitude ? (
+                <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""}>
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={15}
+                    options={mapOptions}
+                  >
+                    <Marker position={mapCenter} />
+                  </GoogleMap>
+                </LoadScript>
+              ) : (
+                <iframe
+                  width="100%"
+                  height="200px"
+                  className="rounded-lg"
+                  loading="lazy"
+                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(activeExperience.experience.location)}`}
+                ></iframe>
+              )}
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={openGoogleMaps}
+                  className="text-sm text-blue-600 flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Open in Google Maps
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-between">
+            <button
+              onClick={() => setShowContactModal(true)}
+              className="px-3 py-1.5 border border-orange-300 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition-colors"
+            >
+              Contact Info
+            </button>
+            
+            <button
+              onClick={openGoogleMaps}
+              className="px-3 py-1.5 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-md text-sm"
+            >
+              Get Directions
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* User Profile Modal */}
+      {showProfileModal && (
+        <UserProfileModal 
+          userId={user.id}
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          backgroundImage={activeExperience.experience.location_image}
+        />
+      )}
+      
+      {/* Contact Info Modal */}
+      {showContactModal && (
+        <ContactInfoModal 
+          user={user}
+          isOpen={showContactModal}
+          onClose={() => setShowContactModal(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Updated Potential Match Card - Remove contact info button for potential matches
+const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) => {
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [expandedExperience, setExpandedExperience] = useState(null);
+  const [locationImages, setLocationImages] = useState({});
+  
+  // Load location images on component mount
+  useEffect(() => {
+    const images = {};
+    experiences.forEach(exp => {
+      if (exp.experience.location_image) {
+        images[exp.experience.id] = exp.experience.location_image;
+      } else if (exp.experience.location) {
+        // Fallback to Unsplash if no location image is provided
+        images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${exp.experience.location.replace(/\s+/g, '+')}`;
+      }
+    });
+    setLocationImages(images);
+    
+    // Set the first experience as expanded by default
+    if (experiences.length > 0 && !expandedExperience) {
+      setExpandedExperience(experiences[0].experience.id);
+    }
+  }, [experiences]);
   
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
@@ -341,8 +644,8 @@ const PotentialMatchCard = ({ match, onAccept, onReject }) => {
       <div className="relative">
         <div className="h-32 bg-orange-50">
           <img 
-            src={locationImage || `https://source.unsplash.com/random/800x600/?experience`} 
-            alt={match.experience.location} 
+            src={locationImages[expandedExperience] || `https://source.unsplash.com/random/800x600/?experience`} 
+            alt="Experience"
             className="w-full h-full object-cover"
           />
         </div>
@@ -350,8 +653,8 @@ const PotentialMatchCard = ({ match, onAccept, onReject }) => {
         <div className="absolute -bottom-12 left-4">
           <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden bg-gradient-to-r from-orange-start to-orange-end">
             <img 
-              src={match.other_user.profile_image || `https://ui-avatars.com/api/?name=${match.other_user.name}&background=orange&color=fff`} 
-              alt={match.other_user.name} 
+              src={user.profile_image || `https://ui-avatars.com/api/?name=${user.name}&background=orange&color=fff`} 
+              alt={user.name} 
               className="w-full h-full object-cover"
             />
           </div>
@@ -360,58 +663,140 @@ const PotentialMatchCard = ({ match, onAccept, onReject }) => {
       
       {/* Content */}
       <div className="pt-14 px-4 pb-4">
-        <h3 className="text-lg font-bold text-gray-800">{match.other_user.name}</h3>
-        <p className="text-sm text-gray-500 mb-2">Class of {match.other_user.class_year || 'N/A'}</p>
-        
-        <div className="p-3 bg-orange-50 rounded-lg mb-3">
-          <div className="text-sm font-medium text-orange-800">Interested in your experience:</div>
-          <div className="flex items-center mt-1">
-            <svg className="w-4 h-4 text-orange-700 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="text-gray-700 font-medium">{match.experience.location}</span>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">{user.name}</h3>
+            <p className="text-sm text-gray-500 mb-2">Class of {user.class_year || 'N/A'}</p>
           </div>
-          <div className="mt-2 text-gray-600 text-sm">
-            {match.experience.description ? (
-              <div className="line-clamp-2">{match.experience.description}</div>
-            ) : (
-              <div>{match.experience.experience_type}</div>
-            )}
-          </div>
+          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+            {experiences.length} {experiences.length === 1 ? 'request' : 'requests'}
+          </span>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex mt-2 mb-4">
           <button 
-            onClick={() => onReject(match.match_id)}
-            className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            onClick={() => setShowProfileModal(true)} 
+            className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-md text-sm hover:bg-orange-200 transition-colors"
           >
-            Decline
+            View Profile
           </button>
-          <button 
-            onClick={() => onAccept(match.match_id)}
-            className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium hover:shadow-md transition-all"
-          >
-            Accept
-          </button>
+        </div>
+        
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Potential Experiences</h4>
+        
+        {/* Experience Cards - Each with individual accept/reject buttons */}
+        <div className="space-y-3">
+          {experiences.map((exp) => (
+            <div 
+              key={exp.match_id} 
+              className="border border-gray-200 rounded-lg overflow-hidden"
+            >
+              <div className="flex border-b border-gray-100">
+                <div 
+                  className="w-20 h-20 flex-shrink-0 bg-orange-50"
+                  style={{
+                    backgroundImage: `url(${locationImages[exp.experience.id] || ''})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                ></div>
+                
+                <div className="p-3 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-medium text-gray-800 text-sm">{exp.experience.experience_type}</h5>
+                    {/* Expand/collapse button */}
+                    <button 
+                      onClick={() => setExpandedExperience(
+                        expandedExperience === exp.experience.id ? null : exp.experience.id
+                      )}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {expandedExperience === exp.experience.id ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-gray-600 mt-1">
+                    <svg className="w-3.5 h-3.5 text-gray-500 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{exp.experience.location}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Expanded content */}
+              {expandedExperience === exp.experience.id && (
+                <div className="p-3 bg-gray-50 border-t border-gray-100">
+                  <p className="text-sm text-gray-700 mb-3">
+                    {exp.experience.description || "No description provided."}
+                  </p>
+                  
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={() => onReject(exp.match_id)}
+                      className="flex-1 py-1.5 px-3 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      Decline
+                    </button>
+                    <button 
+                      onClick={() => onAccept(exp.match_id)}
+                      className="flex-1 py-1.5 px-3 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg text-sm font-medium hover:shadow-md transition-all"
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
+      
+      {/* User Profile Modal */}
+      {showProfileModal && (
+        <UserProfileModal 
+          userId={user.id}
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </div>
   );
 };
 
-// Pending Match Card (matches you've sent that are waiting for response)
-const PendingSentMatchCard = ({ match }) => {
-  const [locationImage, setLocationImage] = useState(null);
+// Updated Pending Sent Match Card - Remove contact info button for pending sent matches
+const GroupedPendingSentMatchCard = ({ user, experiences }) => {
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [expandedExperience, setExpandedExperience] = useState(null);
+  const [locationImages, setLocationImages] = useState({});
   
-  // Load location image on component mount
+  // Load location images on component mount
   useEffect(() => {
-    if (match.experience.location_image) {
-      setLocationImage(match.experience.location_image);
-    } else if (match.experience.location) {
-      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
+    const images = {};
+    experiences.forEach(exp => {
+      if (exp.experience.location_image) {
+        images[exp.experience.id] = exp.experience.location_image;
+      } else if (exp.experience.location) {
+        // Fallback to Unsplash if no location image is provided
+        images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${exp.experience.location.replace(/\s+/g, '+')}`;
+      }
+    });
+    setLocationImages(images);
+    
+    // Set the first experience as expanded by default
+    if (experiences.length > 0 && !expandedExperience) {
+      setExpandedExperience(experiences[0].experience.id);
     }
-  }, [match.experience.location, match.experience.location_image]);
+  }, [experiences]);
   
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
@@ -426,34 +811,125 @@ const PendingSentMatchCard = ({ match }) => {
         </div>
       </div>
       
-      <div className="p-4 flex items-center">
-        <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
-          <img 
-            src={match.other_user.profile_image || `https://ui-avatars.com/api/?name=${match.other_user.name}&background=orange&color=fff`}
-            alt={match.other_user.name}
-            className="w-full h-full object-cover"
-          />
+      <div className="p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
+            <img 
+              src={user.profile_image || `https://ui-avatars.com/api/?name=${user.name}&background=orange&color=fff`}
+              alt={user.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          
+          <div>
+            <h3 className="font-medium text-gray-800">{user.name}</h3>
+            <p className="text-sm text-gray-500">Class of {user.class_year || 'N/A'}</p>
+          </div>
         </div>
         
-        <div>
-          <h3 className="font-medium text-gray-800">{match.other_user.name}</h3>
-          <p className="text-sm text-gray-500">Class of {match.other_user.class_year || 'N/A'}</p>
-        </div>
+        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+          {experiences.length} {experiences.length === 1 ? 'request' : 'requests'}
+        </span>
       </div>
       
       <div className="px-4 pb-4">
-        <div className="flex items-center mb-2">
-          <svg className="w-4 h-4 text-gray-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="text-sm text-gray-700">{match.experience.location}</span>
+        <div className="flex mb-3">
+          <button 
+            onClick={() => setShowProfileModal(true)} 
+            className="text-sm text-orange-600 hover:text-orange-800 transition-colors inline-flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            View Profile
+          </button>
         </div>
         
-        <div className="text-xs text-gray-500">
-          Sent on {new Date(match.created_at).toLocaleDateString()}
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Experiences</h4>
+        
+        {/* Pending Experience Cards */}
+        <div className="space-y-2">
+          {experiences.map((exp) => (
+            <div 
+              key={exp.match_id} 
+              className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
+            >
+              <div 
+                className="flex items-center p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => setExpandedExperience(
+                  expandedExperience === exp.experience.id ? null : exp.experience.id
+                )}
+              >
+                <div 
+                  className="w-10 h-10 rounded-lg flex-shrink-0 bg-amber-100 mr-3 overflow-hidden"
+                  style={{
+                    backgroundImage: `url(${locationImages[exp.experience.id] || ''})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                ></div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-medium text-gray-800 text-sm truncate">
+                      {exp.experience.experience_type}
+                    </h5>
+                    <div className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+                      {new Date(exp.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center text-xs text-gray-600 mt-1">
+                    <svg className="w-3 h-3 text-gray-500 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{exp.experience.location}</span>
+                  </div>
+                </div>
+                
+                <div className="ml-2">
+                  {expandedExperience === exp.experience.id ? (
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              
+              {/* Expanded details */}
+              {expandedExperience === exp.experience.id && (
+                <div className="px-3 pb-3 pt-0">
+                  <div className="text-sm text-gray-700 mb-2 mt-1">
+                    {exp.experience.description || "No description provided."}
+                  </div>
+                  
+                  <div className="text-xs text-amber-600 flex items-center">
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Waiting for {user.name} to respond
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
+      
+      {/* User Profile Modal */}
+      {showProfileModal && (
+        <UserProfileModal 
+          userId={user.id}
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </div>
   );
 };
@@ -462,11 +938,34 @@ const Matches = () => {
   const [confirmedMatches, setConfirmedMatches] = useState([]);
   const [pendingReceivedMatches, setPendingReceivedMatches] = useState([]);
   const [pendingSentMatches, setPendingSentMatches] = useState([]);
+  const [groupedConfirmedMatches, setGroupedConfirmedMatches] = useState({});
+  const [groupedPendingReceivedMatches, setGroupedPendingReceivedMatches] = useState({});
+  const [groupedPendingSentMatches, setGroupedPendingSentMatches] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('confirmed');
   
   const { user } = useContext(AuthContext);
+  
+  // Helper function to group matches by user
+  const groupMatchesByUser = (matches) => {
+    const grouped = {};
+    
+    matches.forEach(match => {
+      const userId = match.other_user.id;
+      
+      if (!grouped[userId]) {
+        grouped[userId] = {
+          user: match.other_user,
+          experiences: []
+        };
+      }
+      
+      grouped[userId].experiences.push(match);
+    });
+    
+    return grouped;
+  };
   
   const fetchMatches = async () => {
     try {
@@ -495,6 +994,11 @@ const Matches = () => {
       setConfirmedMatches(data.confirmed || []);
       setPendingReceivedMatches(data.pending_received || []);
       setPendingSentMatches(data.pending_sent || []);
+      
+      // Group matches by user
+      setGroupedConfirmedMatches(groupMatchesByUser(data.confirmed || []));
+      setGroupedPendingReceivedMatches(groupMatchesByUser(data.pending_received || []));
+      setGroupedPendingSentMatches(groupMatchesByUser(data.pending_sent || []));
       
     } catch (err) {
       console.error('Error fetching matches:', err);
@@ -623,18 +1127,22 @@ const Matches = () => {
             </button>
           </div>
         ) : activeTab === 'confirmed' ? (
-          confirmedMatches.length === 0 ? (
+          Object.keys(groupedConfirmedMatches).length === 0 ? (
             <EmptyState />
           ) : (
             <div className="grid gap-4">
-              {confirmedMatches.map(match => (
-                <MatchCard key={match.match_id} match={match} />
+              {Object.values(groupedConfirmedMatches).map(groupedMatch => (
+                <GroupedMatchCard 
+                  key={groupedMatch.user.id} 
+                  user={groupedMatch.user} 
+                  experiences={groupedMatch.experiences} 
+                />
               ))}
             </div>
           )
         ) : (
           <div>
-            {pendingReceivedMatches.length === 0 && pendingSentMatches.length === 0 ? (
+            {Object.keys(groupedPendingReceivedMatches).length === 0 && Object.keys(groupedPendingSentMatches).length === 0 ? (
               <div className="text-center py-10 bg-white rounded-xl shadow-sm">
                 <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
                   <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -649,28 +1157,33 @@ const Matches = () => {
               </div>
             ) : (
               <div>
-                {pendingReceivedMatches.length > 0 && (
+                {Object.keys(groupedPendingReceivedMatches).length > 0 && (
                   <div className="mb-6">
                     <h2 className="text-lg font-bold text-gray-800 mb-3">People interested in your experiences</h2>
                     <div className="grid gap-4">
-                      {pendingReceivedMatches.map(match => (
-                        <PotentialMatchCard 
-                          key={match.match_id} 
-                          match={match} 
-                          onAccept={handleAcceptMatch} 
-                          onReject={handleRejectMatch} 
+                      {Object.values(groupedPendingReceivedMatches).map(groupedMatch => (
+                        <GroupedPotentialMatchCard 
+                          key={groupedMatch.user.id}
+                          user={groupedMatch.user}
+                          experiences={groupedMatch.experiences}
+                          onAccept={handleAcceptMatch}
+                          onReject={handleRejectMatch}
                         />
                       ))}
                     </div>
                   </div>
                 )}
                 
-                {pendingSentMatches.length > 0 && (
+                {Object.keys(groupedPendingSentMatches).length > 0 && (
                   <div>
-                    <h2 className="text-lg font-bold text-gray-800 mb-3">Your pending requests</h2>
+                    <h2 className="text-lg font-bold text-gray-800 mb-3">Experiences you're interested in</h2>
                     <div className="grid gap-4">
-                      {pendingSentMatches.map(match => (
-                        <PendingSentMatchCard key={match.match_id} match={match} />
+                      {Object.values(groupedPendingSentMatches).map(groupedMatch => (
+                        <GroupedPendingSentMatchCard 
+                          key={groupedMatch.user.id} 
+                          user={groupedMatch.user} 
+                          experiences={groupedMatch.experiences}
+                        />
                       ))}
                     </div>
                   </div>

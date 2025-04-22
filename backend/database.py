@@ -23,22 +23,41 @@ class User(db.Model):
     major = db.Column(db.String(100), nullable=True)  # Major
     class_year = db.Column(db.Integer, nullable=True)  # Made nullable for initial CAS login
     interests = db.Column(db.Text, nullable=True)  # Made nullable for initial CAS login
-    profile_image = db.Column(db.Text, nullable=True)  # URL to profile image
+    profile_image = db.Column(db.Text, nullable=True)  # URL to primary profile image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     onboarding_completed = db.Column(db.Boolean, default=False)  # Track if user has completed onboarding
+    phone_number = db.Column(db.String(50), nullable=True)  # User's phone number for contact
+    preferred_email = db.Column(db.String(100), nullable=True)  # User's preferred email if different from netid
     # Hinge-like prompt responses
     prompt1 = db.Column(db.String(200), nullable=True)  # The prompt question
     answer1 = db.Column(db.Text, nullable=True)  # The answer to prompt 1
     prompt2 = db.Column(db.String(200), nullable=True)  # The prompt question
     answer2 = db.Column(db.Text, nullable=True)  # The answer to prompt 2
-    prompt3 = db.Column(db.String(200), nullable=True)  # The prompt question
+    prompt3 = db.Column(db.String(200), nullable=True)
     answer3 = db.Column(db.Text, nullable=True)  # The answer to prompt 3
+    
+    # Preference fields for recommendation engine
+    gender_pref = db.Column(db.String(100), nullable=True)  # Gender preference (can be multiple, stored as JSON string)
+    experience_type_prefs = db.Column(db.Text, nullable=True)  # Experience type preferences (JSON string)
+    class_year_min_pref = db.Column(db.Integer, nullable=True)  # Minimum class year preference
+    class_year_max_pref = db.Column(db.Integer, nullable=True)  # Maximum class year preference
+    interests_prefs = db.Column(db.Text, nullable=True)  # Interest preferences (JSON string)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class UserImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    image_url = db.Column(db.Text, nullable=False)  # Cloudinary URL
+    public_id = db.Column(db.String(255), nullable=False)  # Cloudinary public ID for deletion
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    position = db.Column(db.Integer, nullable=False, default=0)  # Position in the gallery (0-3)
+    
+    user = db.relationship('User', backref=db.backref('images', lazy=True))
 
 class Experience(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -105,6 +124,116 @@ def add_onboarding_column(app):
             if "duplicate column name" in str(e):
                 print("Column already exists. This is fine.")
                 return True
+            return False
+
+def add_new_columns(app):
+    """Add phone_number and preferred_email columns to User table if they don't exist"""
+    print("Starting migration to add contact info columns...")
+    with app.app_context():
+        # Check if we're using SQLite or PostgreSQL
+        dialect = db.engine.dialect.name
+        print(f"Using {dialect} database")
+        
+        try:
+            with db.engine.connect() as connection:
+                if dialect == "sqlite":
+                    # For SQLite
+                    connection.execute(text('ALTER TABLE user ADD COLUMN phone_number VARCHAR(50)'))
+                    connection.execute(text('ALTER TABLE user ADD COLUMN preferred_email VARCHAR(100)'))
+                    connection.commit()
+                elif dialect == "postgresql":
+                    # For PostgreSQL
+                    connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50)'))
+                    connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS preferred_email VARCHAR(100)'))
+                    connection.commit()
+                else:
+                    print(f"Unsupported database dialect: {dialect}")
+                    return False
+                
+                print("Columns added successfully!")
+                return True
+        except Exception as e:
+            print(f"Error: {e}")
+            if "duplicate column name" in str(e):
+                print("Column already exists. This is fine.")
+                return True
+            return False
+
+def drop_unused_columns(app):
+    """Drop the bio and dietary_restrictions columns from the User table"""
+    print("Starting migration to drop unused columns...")
+    with app.app_context():
+        # Check if we're using SQLite or PostgreSQL
+        dialect = db.engine.dialect.name
+        print(f"Using {dialect} database")
+        
+        try:
+            with db.engine.connect() as connection:
+                if dialect == "sqlite":
+                    # SQLite doesn't support dropping columns directly
+                    print("SQLite doesn't support DROP COLUMN. Creating a migration workaround...")
+                    # Create a new table without the columns
+                    connection.execute(text('''
+                        CREATE TABLE user_new (
+                            id INTEGER PRIMARY KEY,
+                            username VARCHAR(50) NOT NULL UNIQUE,
+                            password_hash VARCHAR(255),
+                            cas_id VARCHAR(50) UNIQUE,
+                            netid VARCHAR(50) UNIQUE,
+                            name VARCHAR(100) NOT NULL,
+                            gender VARCHAR(20),
+                            sexuality VARCHAR(30),
+                            height INTEGER,
+                            location VARCHAR(100),
+                            hometown VARCHAR(100),
+                            major VARCHAR(100),
+                            class_year INTEGER,
+                            interests TEXT,
+                            profile_image TEXT,
+                            created_at DATETIME,
+                            onboarding_completed BOOLEAN,
+                            phone_number VARCHAR(50),
+                            preferred_email VARCHAR(100),
+                            prompt1 VARCHAR(200),
+                            answer1 TEXT,
+                            prompt2 VARCHAR(200),
+                            answer2 TEXT,
+                            prompt3 VARCHAR(200),
+                            answer3 TEXT
+                        )
+                    '''))
+                    
+                    # Copy data from old table to new table
+                    connection.execute(text('''
+                        INSERT INTO user_new 
+                        SELECT id, username, password_hash, cas_id, netid, name, gender, sexuality, 
+                               height, location, hometown, major, class_year, interests, 
+                               profile_image, created_at, onboarding_completed, phone_number, preferred_email,
+                               prompt1, answer1, prompt2, answer2, prompt3, answer3
+                        FROM user
+                    '''))
+                    
+                    # Drop the old table
+                    connection.execute(text('DROP TABLE user'))
+                    
+                    # Rename the new table to the original name
+                    connection.execute(text('ALTER TABLE user_new RENAME TO user'))
+                    
+                    connection.commit()
+                elif dialect == "postgresql":
+                    # PostgreSQL supports dropping columns directly
+                    connection.execute(text('ALTER TABLE "user" DROP COLUMN IF EXISTS bio'))
+                    connection.execute(text('ALTER TABLE "user" DROP COLUMN IF EXISTS dietary_restrictions'))
+                    connection.commit()
+                else:
+                    print(f"Unsupported database dialect: {dialect}")
+                    return False
+                
+                print("Columns dropped successfully!")
+                return True
+        except Exception as e:
+            print(f"Error: {e}")
+            db.session.rollback()
             return False
 
 # Function to initialize the database with the Flask app

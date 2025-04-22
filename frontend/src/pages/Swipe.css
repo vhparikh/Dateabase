@@ -10,21 +10,18 @@
   background-color: white;
   overflow: hidden;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  cursor: grab;
   -webkit-user-select: none;
   user-select: none;
-  transform-origin: center;
+  transform-origin: bottom center; /* Change to bottom center for more realistic swipe physics */
   will-change: transform, opacity;
   
   /* Smooth transition for non-drag interactions */
   transition: 
-    box-shadow 0.3s ease,
-    transform 0.05s linear; /* Very subtle transition for micro-movements */
+    box-shadow 0.3s ease;
   animation: floatAnimation 6s ease-in-out infinite;
 }
 
 .hinge-card:active {
-  cursor: grabbing;
   box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.2), 0 10px 15px -6px rgba(0, 0, 0, 0.15);
 }
 
@@ -111,21 +108,26 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-/* Card swipe transition effects - smoother exit animations */
+/* Card swipe transition effects - enhanced for multi-step animation */
 .swipe-right-exit {
-  transform: translateX(120%) rotate(15deg) !important;
-  opacity: 0 !important;
-  transition: 
-    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), 
-    opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  pointer-events: none;
+  animation: swipeRightExit 0.35s forwards;
 }
 
 .swipe-left-exit {
-  transform: translateX(-120%) rotate(-15deg) !important;
-  opacity: 0 !important;
-  transition: 
-    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), 
-    opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  pointer-events: none;
+  animation: swipeLeftExit 0.35s forwards;
+}
+
+/* Add explicit swipe animations for fallback and additional visual reinforcement */
+@keyframes swipeRightExit {
+  0% { transform: translateX(0) rotate(0); opacity: 1; }
+  100% { transform: translateX(150%) rotate(30deg); opacity: 0; }
+}
+
+@keyframes swipeLeftExit {
+  0% { transform: translateX(0) rotate(0); opacity: 1; }
+  100% { transform: translateX(-150%) rotate(-30deg); opacity: 0; }
 }
 
 /* Enhanced animation classes */

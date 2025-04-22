@@ -4,6 +4,7 @@ import AuthContext from '../context/AuthContext';
 import { updateCurrentUser } from '../services/api';
 import axios from 'axios';
 import { API_URL } from '../config';
+import ProfileImageUpload from '../components/ProfileImageUpload';
 
 const EditProfile = () => {
   const { user, setUser } = useContext(AuthContext);
@@ -25,7 +26,9 @@ const EditProfile = () => {
     prompt2: '',
     answer2: '',
     prompt3: '',
-    answer3: ''
+    answer3: '',
+    phone_number: '',
+    preferred_email: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -112,7 +115,9 @@ const EditProfile = () => {
         prompt2: user.prompt2 || '',
         answer2: user.answer2 || '',
         prompt3: user.prompt3 || '',
-        answer3: user.answer3 || ''
+        answer3: user.answer3 || '',
+        phone_number: user.phone_number || '',
+        preferred_email: user.preferred_email || ''
       });
     }
   }, [user]);
@@ -129,6 +134,33 @@ const EditProfile = () => {
         // Still update the form value for UX purposes, but it won't pass submission validation
       } else {
         setError(''); // Clear error if height is valid
+      }
+    }
+    
+    // Validate email field - now required
+    if (name === 'preferred_email') {
+      if (!value.trim()) {
+        setError('Email address is required.');
+      } else {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(value)) {
+          setError('Please enter a valid email address.');
+          // Still update the form value for UX purposes
+        } else {
+          setError(''); // Clear error if email is valid
+        }
+      }
+    }
+    
+    // Validate phone number field
+    if (name === 'phone_number' && value) {
+      // Basic phone validation - allows various formats with optional country code
+      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+      if (!phoneRegex.test(value)) {
+        setError('Please enter a valid phone number.');
+        // Still update the form value for UX purposes
+      } else {
+        setError(''); // Clear error if phone is valid
       }
     }
     
@@ -179,6 +211,30 @@ const EditProfile = () => {
       return;
     }
     
+    // Validate email - now required
+    if (!formData.preferred_email.trim()) {
+      setError('Email address is required.');
+      setLoading(false);
+      return;
+    }
+    
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(formData.preferred_email)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
+    
+    // Validate phone number if provided
+    if (formData.phone_number) {
+      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+      if (!phoneRegex.test(formData.phone_number)) {
+        setError('Please enter a valid phone number.');
+        setLoading(false);
+        return;
+      }
+    }
+    
     // Validate that prompts are not duplicated
     const selectedPrompts = [formData.prompt1, formData.prompt2, formData.prompt3].filter(Boolean);
     const uniquePrompts = [...new Set(selectedPrompts)];
@@ -208,6 +264,7 @@ const EditProfile = () => {
       const height = formData.height ? heightVal : null;
       const class_year = formData.class_year ? parseInt(formData.class_year, 10) : null;
       
+      // Ensure phone number and email are explicitly included in userData
       const userData = {
         name,
         gender: formData.gender,
@@ -223,7 +280,9 @@ const EditProfile = () => {
         prompt2: formData.prompt2,
         answer2: formData.answer2,
         prompt3: formData.prompt3,
-        answer3: formData.answer3
+        answer3: formData.answer3,
+        phone_number: formData.phone_number || '',
+        preferred_email: formData.preferred_email || ''
       };
       
       console.log('Submitting profile update with data:', userData);
@@ -248,10 +307,21 @@ const EditProfile = () => {
         
         if (response.data) {
           console.log('Profile updated successfully:', response.data);
+          // Verify the response includes contact information
+          if (!response.data.preferred_email && formData.preferred_email) {
+            console.warn('Email was not returned in the response data');
+          }
+          if (!response.data.phone_number && formData.phone_number) {
+            console.warn('Phone number was not returned in the response data');
+          }
+          
           // Update AuthContext with new data
           setUser({
             ...user,
-            ...response.data
+            ...response.data,
+            // Explicitly ensure these fields are included in case they're missing
+            preferred_email: response.data.preferred_email || formData.preferred_email,
+            phone_number: response.data.phone_number || formData.phone_number
           });
           
           setSuccess(true);
@@ -296,24 +366,37 @@ const EditProfile = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-8">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6">
-        <div className="bg-white rounded-xl shadow-card p-6 md:p-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Edit Your Profile</h1>
-          
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
-              Profile updated successfully! Redirecting to profile page...
-            </div>
-          )}
-          
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit}>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-10">
+      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-card p-8">
+        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Edit Your Profile</h1>
+        
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+            <p>{error}</p>
+          </div>
+        )}
+        
+        {success && (
+          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded">
+            <p>Profile updated successfully!</p>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit}>
+          {/* Profile Images */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">Profile Photos</h2>
+            <ProfileImageUpload 
+              userId={user?.id} 
+              onImageUploaded={(image) => {
+                // No need to do anything special here since we'll refresh the profile after save
+                console.log('Image uploaded:', image);
+              }}
+            />
+          </div>
+
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">Basic Information</h2>
             <div className="space-y-6">
               {/* Name Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -329,6 +412,7 @@ const EditProfile = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your first name"
+                    required
                   />
                 </div>
                 
@@ -512,122 +596,167 @@ const EditProfile = () => {
                   ))}
                 </div>
               </div>
-              
-              {/* Prompts and Answers Section */}
-              <div className="mt-8">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">About You</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  Answer a few prompts to help others get to know you better. Choose different prompts for each answer.
-                </p>
-                
-                {/* Prompt 1 */}
-                <div className="mb-6">
-                  <label htmlFor="prompt1" className="block text-sm font-medium text-gray-700 mb-1">
-                    Prompt 1
+            </div>
+          </div>
+          
+          {/* Contact Information */}
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">Contact Information</h2>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
                   </label>
-                  <select
-                    id="prompt1"
-                    name="prompt1"
-                    value={formData.prompt1}
-                    onChange={handlePromptChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
-                    required
-                  >
-                    <option value="">Select a prompt...</option>
-                    {getAvailablePrompts('prompt1').map(prompt => (
-                      <option key={prompt} value={prompt}>{prompt}</option>
-                    ))}
-                  </select>
-                  <textarea
-                    id="answer1"
-                    name="answer1"
-                    value={formData.answer1}
+                  <input
+                    type="tel"
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
                     onChange={handleInputChange}
-                    placeholder="Your answer..."
-                    rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  ></textarea>
+                    placeholder="Enter your phone number (optional)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Will be shown to your matches for contact purposes
+                  </p>
                 </div>
                 
-                {/* Prompt 2 */}
-                <div className="mb-6">
-                  <label htmlFor="prompt2" className="block text-sm font-medium text-gray-700 mb-1">
-                    Prompt 2
+                <div>
+                  <label htmlFor="preferred_email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
                   </label>
-                  <select
-                    id="prompt2"
-                    name="prompt2"
-                    value={formData.prompt2}
-                    onChange={handlePromptChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
-                    required
-                  >
-                    <option value="">Select a prompt...</option>
-                    {getAvailablePrompts('prompt2').map(prompt => (
-                      <option key={prompt} value={prompt}>{prompt}</option>
-                    ))}
-                  </select>
-                  <textarea
-                    id="answer2"
-                    name="answer2"
-                    value={formData.answer2}
+                  <input
+                    type="email"
+                    id="preferred_email"
+                    name="preferred_email"
+                    value={formData.preferred_email}
                     onChange={handleInputChange}
-                    placeholder="Your answer..."
-                    rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  ></textarea>
-                </div>
-                
-                {/* Prompt 3 */}
-                <div className="mb-6">
-                  <label htmlFor="prompt3" className="block text-sm font-medium text-gray-700 mb-1">
-                    Prompt 3
-                  </label>
-                  <select
-                    id="prompt3"
-                    name="prompt3"
-                    value={formData.prompt3}
-                    onChange={handlePromptChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                    placeholder="Enter your email address"
                     required
-                  >
-                    <option value="">Select a prompt...</option>
-                    {getAvailablePrompts('prompt3').map(prompt => (
-                      <option key={prompt} value={prompt}>{prompt}</option>
-                    ))}
-                  </select>
-                  <textarea
-                    id="answer3"
-                    name="answer3"
-                    value={formData.answer3}
-                    onChange={handleInputChange}
-                    placeholder="Your answer..."
-                    rows="3"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  ></textarea>
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your email will only be shared with confirmed matches
+                  </p>
                 </div>
-              </div>
-              
-              {/* Form submission buttons */}
-              <div className="flex items-center justify-end space-x-4 mt-8">
-                <button
-                  type="button"
-                  onClick={() => navigate('/profile')}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 border border-transparent rounded-lg text-white bg-gradient-to-r from-orange-start to-orange-end shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
-                >
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
               </div>
             </div>
-          </form>
-        </div>
+          </div>
+          
+          {/* Prompts and Answers Section */}
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">About You</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Answer a few prompts to help others get to know you better. Choose different prompts for each answer.
+            </p>
+            
+            {/* Prompt 1 */}
+            <div className="mb-6">
+              <label htmlFor="prompt1" className="block text-sm font-medium text-gray-700 mb-1">
+                Prompt 1
+              </label>
+              <select
+                id="prompt1"
+                name="prompt1"
+                value={formData.prompt1}
+                onChange={handlePromptChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                required
+              >
+                <option value="">Select a prompt...</option>
+                {getAvailablePrompts('prompt1').map(prompt => (
+                  <option key={prompt} value={prompt}>{prompt}</option>
+                ))}
+              </select>
+              <textarea
+                id="answer1"
+                name="answer1"
+                value={formData.answer1}
+                onChange={handleInputChange}
+                placeholder="Your answer..."
+                rows="3"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              ></textarea>
+            </div>
+            
+            {/* Prompt 2 */}
+            <div className="mb-6">
+              <label htmlFor="prompt2" className="block text-sm font-medium text-gray-700 mb-1">
+                Prompt 2
+              </label>
+              <select
+                id="prompt2"
+                name="prompt2"
+                value={formData.prompt2}
+                onChange={handlePromptChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                required
+              >
+                <option value="">Select a prompt...</option>
+                {getAvailablePrompts('prompt2').map(prompt => (
+                  <option key={prompt} value={prompt}>{prompt}</option>
+                ))}
+              </select>
+              <textarea
+                id="answer2"
+                name="answer2"
+                value={formData.answer2}
+                onChange={handleInputChange}
+                placeholder="Your answer..."
+                rows="3"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              ></textarea>
+            </div>
+            
+            {/* Prompt 3 */}
+            <div className="mb-6">
+              <label htmlFor="prompt3" className="block text-sm font-medium text-gray-700 mb-1">
+                Prompt 3
+              </label>
+              <select
+                id="prompt3"
+                name="prompt3"
+                value={formData.prompt3}
+                onChange={handlePromptChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
+                required
+              >
+                <option value="">Select a prompt...</option>
+                {getAvailablePrompts('prompt3').map(prompt => (
+                  <option key={prompt} value={prompt}>{prompt}</option>
+                ))}
+              </select>
+              <textarea
+                id="answer3"
+                name="answer3"
+                value={formData.answer3}
+                onChange={handleInputChange}
+                placeholder="Your answer..."
+                rows="3"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              ></textarea>
+            </div>
+          </div>
+          
+          <div className="mt-8 flex justify-between">
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="px-6 py-2 bg-gray-50 text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-6 py-2 bg-orange-500 text-white rounded-lg shadow hover:bg-orange-600 transition-colors ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
