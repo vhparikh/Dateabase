@@ -80,4 +80,29 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - Princeton University for inspiration
-- The open source community for the amazing tools and libraries 
+- The open source community for the amazing tools and libraries
+
+## Google Maps API Integration
+
+The app now integrates Google Maps API for enhanced location features:
+
+### Setup
+
+1. Get a Google Maps API key from the [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable the following APIs in your project:
+   - Maps JavaScript API
+   - Places API
+   - Geocoding API
+   - Static Maps API
+3. Add your API key to the `.env` file in the frontend directory:
+   ```
+   REACT_APP_GOOGLE_MAPS_API_KEY=your_api_key_here
+   ```
+
+### Features
+
+- **Location Autocomplete**: When creating or editing experiences, users can search for locations with Google Places Autocomplete
+- **Map Preview**: After selecting a location, a map preview shows the exact spot with a marker
+- **Directions**: Experience cards include a "Get Directions" button that opens Google Maps navigation
+- **Static Maps**: Experiences with coordinates show a small static map image
+- **Coordinates Storage**: The app properly stores latitude, longitude, and place_id for precise location data 

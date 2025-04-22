@@ -359,70 +359,49 @@ def update_user(user_id):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/experiences', methods=['POST'])
-@login_required()
-def create_experience(current_user_id=None):
+@login_required
+def create_experience():
+    """Create a new experience"""
     try:
-        print(f"Creating experience for user ID: {current_user_id}")
+        data = request.get_json()
         
-        # Check if we received JSON data
-        if not request.is_json:
-            print("Error: Request does not contain JSON data")
-            return jsonify({'detail': 'Request must be JSON'}), 400
+        # Validate required fields
+        if not data.get('experience_type'):
+            return jsonify({'error': 'Experience type is required'}), 400
             
-        data = request.json
-        print(f"Received data: {data}")
-        
-        if not data:
-            return jsonify({'detail': 'No data provided'}), 400
-        
-        required_fields = ['experience_type', 'location']
-        for field in required_fields:
-            if field not in data:
-                print(f"Missing required field: {field}")
-                return jsonify({'detail': f'Missing required field: {field}'}), 400
-                
-        # Use authenticated user's ID instead of passing it in the request
-        user = User.query.get(current_user_id)
-        if not user:
-            print(f"User not found with ID: {current_user_id}")
-            return jsonify({'detail': 'User not found'}), 404
-        
-        print(f"Creating experience for user: {user.username}")
-        
-        # Clean up input data to prevent duplication
-        experience_type = data['experience_type'].strip() if data['experience_type'] else ''
-        location = data['location'].strip() if data['location'] else ''
-        description = data.get('description', '').strip()
-        
-        # Handle new fields
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
-        place_id = data.get('place_id', '').strip() if data.get('place_id') else None
-        location_image = data.get('location_image', '').strip() if data.get('location_image') else None
-        
-        print(f"Creating experience with type: {experience_type}, location: {location}")
-        
+        if not data.get('location'):
+            return jsonify({'error': 'Location is required'}), 400
+            
+        # Create new experience
         new_experience = Experience(
-            user_id=current_user_id,
-            experience_type=experience_type,
-            location=location,
-            description=description,
-            latitude=latitude,
-            longitude=longitude,
-            place_id=place_id,
-            location_image=location_image
+            user_id=current_user.id,
+            experience_type=data.get('experience_type'),
+            location=data.get('location'),
+            description=data.get('description', ''),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            place_id=data.get('place_id'),
+            location_image=data.get('location_image', '')
         )
+        
+        # Validate location data from Google Maps API
+        if data.get('latitude') and data.get('longitude'):
+            if not isinstance(data.get('latitude'), (int, float)) or not isinstance(data.get('longitude'), (int, float)):
+                return jsonify({'error': 'Invalid coordinates format'}), 400
+                
+            # Basic coordinate range validation
+            if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
+                return jsonify({'error': 'Coordinates out of valid range'}), 400
+        
+        # Add to database
         db.session.add(new_experience)
         db.session.commit()
         
-        print(f"Experience created successfully with ID: {new_experience.id}")
-        
+        # Return the created experience
         return jsonify({
-            'id': new_experience.id, 
             'message': 'Experience created successfully',
             'experience': {
                 'id': new_experience.id,
-                'user_id': new_experience.user_id,
                 'experience_type': new_experience.experience_type,
                 'location': new_experience.location,
                 'description': new_experience.description,
@@ -430,19 +409,18 @@ def create_experience(current_user_id=None):
                 'longitude': new_experience.longitude,
                 'place_id': new_experience.place_id,
                 'location_image': new_experience.location_image,
-                'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
+                'created_at': new_experience.created_at.isoformat(),
+                'is_active': True
             }
         }), 201
     except Exception as e:
-        print(f"Error creating experience: {e}")
-        import traceback
-        traceback.print_exc()
         db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
+        print(f"Error creating experience: {str(e)}")
+        return jsonify({'error': f"Failed to create experience: {str(e)}"}), 500
 
 @app.route('/api/experiences', methods=['GET'])
-@login_required()
-def get_experiences(current_user_id=None):
+@login_required
+def get_experiences():
     try:
         experiences = Experience.query.order_by(Experience.created_at.desc()).all()
         result = []
@@ -474,10 +452,10 @@ def get_experiences(current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/my-experiences', methods=['GET'])
-@login_required()
-def get_my_experiences(current_user_id=None):
+@login_required
+def get_my_experiences():
     try:
-        experiences = Experience.query.filter_by(user_id=current_user_id).order_by(Experience.created_at.desc()).all()
+        experiences = Experience.query.filter_by(user_id=current_user.id).order_by(Experience.created_at.desc()).all()
         result = []
         
         for exp in experiences:
@@ -505,8 +483,8 @@ def get_my_experiences(current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/experiences/<int:experience_id>', methods=['DELETE'])
-@login_required()
-def delete_experience(experience_id, current_user_id=None):
+@login_required
+def delete_experience(experience_id):
     try:
         # Get the experience
         experience = db.session.get(Experience, experience_id)
@@ -514,7 +492,7 @@ def delete_experience(experience_id, current_user_id=None):
             return jsonify({'detail': 'Experience not found'}), 404
             
         # Check if the user owns this experience
-        if experience.user_id != current_user_id:
+        if experience.user_id != current_user.id:
             return jsonify({'detail': 'You can only delete your own experiences'}), 403
         
         # First, delete any matches related to this experience
@@ -543,44 +521,55 @@ def delete_experience(experience_id, current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/experiences/<int:experience_id>', methods=['PUT'])
-@login_required()
-def update_experience(experience_id, current_user_id=None):
+@login_required
+def update_experience(experience_id):
+    """Update an existing experience"""
     try:
-        # Get the experience
-        experience = db.session.get(Experience, experience_id)
-        if not experience:
-            return jsonify({'detail': 'Experience not found'}), 404
-            
-        # Check if the user owns this experience
-        if experience.user_id != current_user_id:
-            return jsonify({'detail': 'You can only update your own experiences'}), 403
-            
-        # Update the experience
-        data = request.json
+        data = request.get_json()
         
-        # Update fields if they exist in the request
-        if 'experience_type' in data:
-            experience.experience_type = data['experience_type'].strip()
-        if 'location' in data:
-            experience.location = data['location'].strip()
-        if 'description' in data:
-            experience.description = data['description'].strip()
-        if 'latitude' in data:
-            experience.latitude = data['latitude']
-        if 'longitude' in data:
-            experience.longitude = data['longitude']
-        if 'place_id' in data:
-            experience.place_id = data['place_id']
-        if 'location_image' in data:
-            experience.location_image = data['location_image']
+        # Find the experience
+        experience = Experience.query.get(experience_id)
+        
+        if not experience:
+            return jsonify({'error': 'Experience not found'}), 404
             
+        # Check if the experience belongs to the current user
+        if experience.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized to update this experience'}), 403
+            
+        # Validate required fields
+        if not data.get('experience_type'):
+            return jsonify({'error': 'Experience type is required'}), 400
+            
+        if not data.get('location'):
+            return jsonify({'error': 'Location is required'}), 400
+        
+        # Validate location data from Google Maps API
+        if data.get('latitude') and data.get('longitude'):
+            if not isinstance(data.get('latitude'), (int, float)) or not isinstance(data.get('longitude'), (int, float)):
+                return jsonify({'error': 'Invalid coordinates format'}), 400
+                
+            # Basic coordinate range validation
+            if not (-90 <= float(data.get('latitude')) <= 90) or not (-180 <= float(data.get('longitude')) <= 180):
+                return jsonify({'error': 'Coordinates out of valid range'}), 400
+            
+        # Update fields
+        experience.experience_type = data.get('experience_type')
+        experience.location = data.get('location')
+        experience.description = data.get('description', '')
+        experience.latitude = data.get('latitude')
+        experience.longitude = data.get('longitude')
+        experience.place_id = data.get('place_id')
+        experience.location_image = data.get('location_image', '')
+        
+        # Save changes
         db.session.commit()
         
+        # Return the updated experience
         return jsonify({
             'message': 'Experience updated successfully',
             'experience': {
                 'id': experience.id,
-                'user_id': experience.user_id,
                 'experience_type': experience.experience_type,
                 'location': experience.location,
                 'description': experience.description,
@@ -588,19 +577,20 @@ def update_experience(experience_id, current_user_id=None):
                 'longitude': experience.longitude,
                 'place_id': experience.place_id,
                 'location_image': experience.location_image,
-                'created_at': experience.created_at.isoformat() if experience.created_at else None
+                'created_at': experience.created_at.isoformat(),
+                'is_active': True
             }
         }), 200
     except Exception as e:
-        print(f"Error updating experience: {e}")
         db.session.rollback()
-        return jsonify({'detail': str(e)}), 500
+        print(f"Error updating experience: {str(e)}")
+        return jsonify({'error': f"Failed to update experience: {str(e)}"}), 500
 
 @app.route('/api/swipes', methods=['POST'])
-@login_required()
-def record_swipe(current_user_id=None):
+@login_required
+def record_swipe():
     try:
-        print(f"Recording swipe from user {current_user_id}")
+        print(f"Recording swipe from user {current_user.id}")
         data = request.json
         print(f"Swipe data: {data}")
         
@@ -616,7 +606,7 @@ def record_swipe(current_user_id=None):
             return jsonify({'detail': 'Experience not found'}), 404
             
         # Check if the user owns this experience
-        if experience.user_id == current_user_id:
+        if experience.user_id == current_user.id:
             print("User tried to swipe on their own experience")
             return jsonify({'detail': 'Cannot swipe on your own experience'}), 400
         
@@ -625,13 +615,13 @@ def record_swipe(current_user_id=None):
             
         # Create or update the swipe
         swipe = UserSwipe.query.filter_by(
-            user_id=current_user_id,
+            user_id=current_user.id,
             experience_id=data['experience_id']
         ).first()
         
         if not swipe:
             swipe = UserSwipe(
-                user_id=current_user_id,
+                user_id=current_user.id,
                 experience_id=data['experience_id'],
                 direction=data['is_like']
             )
@@ -651,7 +641,7 @@ def record_swipe(current_user_id=None):
             print("Processing right swipe (like)")
             
             # Check if the experience creator has also liked this user's experiences
-            user_experiences = Experience.query.filter_by(user_id=current_user_id).all()
+            user_experiences = Experience.query.filter_by(user_id=current_user.id).all()
             print(f"Found {len(user_experiences)} experiences created by swiper")
             
             # Check for mutual interest (real match)
@@ -668,15 +658,15 @@ def record_swipe(current_user_id=None):
                     
                     # Check if match already exists
                     existing_match = Match.query.filter(
-                        ((Match.user1_id == current_user_id) & (Match.user2_id == experience_creator)) |
-                        ((Match.user1_id == experience_creator) & (Match.user2_id == current_user_id))
+                        ((Match.user1_id == current_user.id) & (Match.user2_id == experience_creator)) |
+                        ((Match.user1_id == experience_creator) & (Match.user2_id == current_user.id))
                     ).first()
                     
                     if not existing_match:
                         print("Creating new confirmed match")
                         # Create a match record between the two users
                         match_record = Match(
-                            user1_id=current_user_id,
+                            user1_id=current_user.id,
                             user2_id=experience_creator,
                             experience_id=data['experience_id'],
                             status='confirmed'  # Mark as confirmed since it's a mutual match
@@ -696,7 +686,7 @@ def record_swipe(current_user_id=None):
             # ALWAYS create a potential match for right swipes, regardless of mutual match status
             # This ensures the experience owner sees this in their pending matches
             potential_match = Match.query.filter(
-                (Match.user1_id == current_user_id) & 
+                (Match.user1_id == current_user.id) & 
                 (Match.user2_id == experience_creator) &
                 (Match.experience_id == data['experience_id'])
             ).first()
@@ -704,7 +694,7 @@ def record_swipe(current_user_id=None):
             if not potential_match:
                 print("Creating new pending match")
                 potential_match = Match(
-                    user1_id=current_user_id,
+                    user1_id=current_user.id,
                     user2_id=experience_creator,
                     experience_id=data['experience_id'],
                     status='pending'
@@ -856,11 +846,11 @@ def get_recommendations(user_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/swipe-experiences', methods=['GET'])
-@login_required()
-def get_swipe_experiences(current_user_id=None):
+@login_required
+def get_swipe_experiences():
     try:
         # Get experiences that are not created by the current user
-        experiences = Experience.query.filter(Experience.user_id != current_user_id).order_by(Experience.created_at.desc()).all()
+        experiences = Experience.query.filter(Experience.user_id != current_user.id).order_by(Experience.created_at.desc()).all()
         
         result = []
         for exp in experiences:
@@ -1407,8 +1397,8 @@ def complete_onboarding():
 
 # Added endpoints for accepting and rejecting matches
 @app.route('/api/matches/<int:match_id>/accept', methods=['PUT'])
-@login_required()
-def accept_match(match_id, current_user_id=None):
+@login_required
+def accept_match(match_id):
     try:
         # Get the match
         match = Match.query.get(match_id)
@@ -1421,11 +1411,11 @@ def accept_match(match_id, current_user_id=None):
             return jsonify({'detail': 'Experience not found'}), 404
             
         # Verify that the current user is either involved in the match as user1 or user2
-        if current_user_id != match.user1_id and current_user_id != match.user2_id:
+        if current_user.id != match.user1_id and current_user.id != match.user2_id:
             return jsonify({'detail': 'You are not authorized to interact with this match'}), 403
         
         # If the user is the experience owner, they can confirm the match
-        if experience.user_id == current_user_id:
+        if experience.user_id == current_user.id:
             # Update match status to confirmed
             match.status = 'confirmed'
             db.session.commit()
@@ -1446,8 +1436,8 @@ def accept_match(match_id, current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/matches/<int:match_id>/reject', methods=['PUT'])
-@login_required()
-def reject_match(match_id, current_user_id=None):
+@login_required
+def reject_match(match_id):
     try:
         # Get the match
         match = Match.query.get(match_id)
@@ -1460,7 +1450,7 @@ def reject_match(match_id, current_user_id=None):
             return jsonify({'detail': 'Experience not found'}), 404
             
         # Verify that the current user is either involved in the match as user1 or user2
-        if current_user_id != match.user1_id and current_user_id != match.user2_id:
+        if current_user.id != match.user1_id and current_user.id != match.user2_id:
             return jsonify({'detail': 'You are not authorized to interact with this match'}), 403
         
         # Any user involved in the match can reject it
@@ -1564,8 +1554,8 @@ def serve_matches():
 
 # Profile Image Management API Endpoints
 @app.route('/api/users/images', methods=['POST'])
-@login_required()
-def upload_user_image(current_user_id=None):
+@login_required
+def upload_user_image():
     """
     Upload a user profile image to Cloudinary and save the URL to the database.
     Users can have up to 4 images. If a user already has 4 images, the oldest one will be replaced.
@@ -1586,7 +1576,7 @@ def upload_user_image(current_user_id=None):
             return jsonify({'detail': 'File must be an image'}), 400
             
         # Get user's existing images
-        user_images = UserImage.query.filter_by(user_id=current_user_id).order_by(UserImage.created_at).all()
+        user_images = UserImage.query.filter_by(user_id=current_user.id).order_by(UserImage.created_at).all()
         
         # Calculate position for the new image
         position = request.form.get('position')
@@ -1623,13 +1613,13 @@ def upload_user_image(current_user_id=None):
         # Upload the file to Cloudinary
         upload_result = cloudinary.uploader.upload(
             image_file,
-            folder=f"dateabase/users/{current_user_id}",
+            folder=f"dateabase/users/{current_user.id}",
             public_id=f"profile_{position}_{datetime.utcnow().timestamp()}"
         )
         
         # Create a new UserImage
         new_image = UserImage(
-            user_id=current_user_id,
+            user_id=current_user.id,
             image_url=upload_result['secure_url'],
             public_id=upload_result['public_id'],
             position=position
@@ -1637,7 +1627,7 @@ def upload_user_image(current_user_id=None):
         
         # If this is the first image or position is 0, also set it as the user's primary profile image
         if position == 0 or len(user_images) == 0:
-            user = User.query.get(current_user_id)
+            user = User.query.get(current_user.id)
             user.profile_image = upload_result['secure_url']
         
         db.session.add(new_image)
@@ -1659,11 +1649,11 @@ def upload_user_image(current_user_id=None):
         return jsonify({'detail': str(e)}), 500
         
 @app.route('/api/users/images', methods=['GET'])
-@login_required()
-def get_user_images(current_user_id=None):
+@login_required
+def get_user_images():
     """Get all images for the current user."""
     try:
-        user_images = UserImage.query.filter_by(user_id=current_user_id).order_by(UserImage.position).all()
+        user_images = UserImage.query.filter_by(user_id=current_user.id).order_by(UserImage.position).all()
         
         images = []
         for img in user_images:
@@ -1680,8 +1670,8 @@ def get_user_images(current_user_id=None):
         return jsonify({'detail': str(e)}), 500
         
 @app.route('/api/users/images/<int:image_id>', methods=['DELETE'])
-@login_required()
-def delete_user_image(image_id, current_user_id=None):
+@login_required
+def delete_user_image(image_id):
     """Delete a user image."""
     try:
         # Get the image
@@ -1690,7 +1680,7 @@ def delete_user_image(image_id, current_user_id=None):
             return jsonify({'detail': 'Image not found'}), 404
             
         # Check if the user owns the image
-        if image.user_id != current_user_id:
+        if image.user_id != current_user.id:
             return jsonify({'detail': 'You can only delete your own images'}), 403
             
         # Delete from Cloudinary
@@ -1700,11 +1690,11 @@ def delete_user_image(image_id, current_user_id=None):
             print(f"Error deleting image from Cloudinary: {e}")
             
         # If this is the primary profile image, clear it
-        user = User.query.get(current_user_id)
+        user = User.query.get(current_user.id)
         if user.profile_image == image.image_url:
             # Find another image to use as the profile image
             other_image = UserImage.query.filter(
-                UserImage.user_id == current_user_id,
+                UserImage.user_id == current_user.id,
                 UserImage.id != image_id
             ).first()
             
@@ -1724,8 +1714,8 @@ def delete_user_image(image_id, current_user_id=None):
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/users/images/<int:image_id>/set-position', methods=['PUT'])
-@login_required()
-def update_image_position(image_id, current_user_id=None):
+@login_required
+def update_image_position(image_id):
     """Update the position of a user image."""
     try:
         # Get the position from the request
@@ -1743,12 +1733,12 @@ def update_image_position(image_id, current_user_id=None):
             return jsonify({'detail': 'Image not found'}), 404
             
         # Check if the user owns the image
-        if image.user_id != current_user_id:
+        if image.user_id != current_user.id:
             return jsonify({'detail': 'You can only update your own images'}), 403
             
         # If there's already an image at the requested position, swap positions
         existing_image = UserImage.query.filter(
-            UserImage.user_id == current_user_id,
+            UserImage.user_id == current_user.id,
             UserImage.position == position,
             UserImage.id != image_id
         ).first()
@@ -1761,7 +1751,7 @@ def update_image_position(image_id, current_user_id=None):
         
         # If this is position 0, also set it as the primary profile image
         if position == 0:
-            user = User.query.get(current_user_id)
+            user = User.query.get(current_user.id)
             user.profile_image = image.image_url
             
         db.session.commit()
