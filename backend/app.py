@@ -1510,12 +1510,36 @@ def check_inappropriate():
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
 def catch_all(path):
-    # First try to serve as a static file (CSS, JS, etc.)
+    print(f"Catch-all route for path: {path}")
+    # First check if it's a known API route to avoid conflicts
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
+        
+    # Then try to serve as a static file from the static directory
     try:
+        print(f"Trying to serve static file: {path}")
+        static_file_path = os.path.join(app.static_folder, path)
+        print(f"Full static file path: {static_file_path}")
+        print(f"File exists: {os.path.exists(static_file_path)}")
+        
         return app.send_static_file(path)
-    except:
-        # If not a static file, serve the index.html for client-side routing
+    except Exception as e:
+        print(f"Error serving static file: {e}")
+        # If not a static file or error occurs, serve the index.html for client-side routing
         return app.send_static_file('index.html')
+
+# Serve React frontend at root URL in production
+@app.route('/')
+def serve_frontend():
+    print("Serving frontend at root URL")
+    try:
+        index_path = os.path.join(app.static_folder, 'index.html')
+        print(f"Index path: {index_path}")
+        print(f"Index exists: {os.path.exists(index_path)}")
+        return app.send_static_file('index.html')
+    except Exception as e:
+        print(f"Error serving index.html: {e}")
+        return jsonify({'error': 'Failed to serve frontend'}), 500
 
 # Add specific routes for top-level client-side routes
 @app.route('/swipe')
@@ -1817,11 +1841,6 @@ with app.app_context():
         print("Tables created successfully")
     except Exception as e:
         print(f"Error initializing database: {e}")
-
-# Serve React frontend at root URL in production
-@app.route('/')
-def serve_frontend():
-    return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     with app.app_context():
