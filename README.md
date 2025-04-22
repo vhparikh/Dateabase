@@ -106,3 +106,62 @@ The app now integrates Google Maps API for enhanced location features:
 - **Directions**: Experience cards include a "Get Directions" button that opens Google Maps navigation
 - **Static Maps**: Experiences with coordinates show a small static map image
 - **Coordinates Storage**: The app properly stores latitude, longitude, and place_id for precise location data 
+
+## Personalized Recommendations
+
+The app supports personalized experience recommendations using Pinecone vector search with Cohere embeddings:
+
+### Setup
+
+1. Create a Pinecone account and create an index with dimension 1024
+2. Create a Cohere account and get an API key from [Cohere Dashboard](https://dashboard.cohere.com/api-keys)
+3. Set the required environment variables:
+   
+   **Local Development:**
+   ```
+   PINECONE_API_KEY=your_pinecone_api_key
+   PINECONE_INDEX=your_pinecone_index_name
+   COHERE_API_KEY=your_cohere_api_key
+   ```
+
+   **Heroku Deployment:**
+   ```
+   heroku config:set PINECONE_API_KEY=your_pinecone_api_key
+   heroku config:set PINECONE_INDEX_NAME=your_pinecone_index_name
+   heroku config:set COHERE_API_KEY=your_cohere_api_key
+   ```
+
+4. Run the indexing script to populate Pinecone with existing experiences:
+   
+   **Local:**
+   ```
+   cd backend
+   python index_experiences.py
+   ```
+   
+   **Heroku:**
+   ```
+   heroku run python backend/index_experiences.py
+   ```
+
+### Testing Pinecone Connectivity
+
+If you're having issues with Pinecone integration, you can run the test script:
+
+```
+cd backend
+python pinecone_test.py
+```
+
+This script will:
+1. Verify your environment variables are set correctly
+2. Attempt to connect to your Pinecone index
+3. Perform a test upsert, query, and delete operation
+4. Report detailed error messages if any step fails
+
+### Features
+
+- **Preference-Based Matching**: Users get experience recommendations based on their preferences
+- **Semantic Search**: Uses vector similarity to find experiences that match user preferences
+- **Automatic Indexing**: New experiences are automatically indexed for recommendations
+- **Fallback Mechanism**: If no personalized matches found, shows recent experiences 
