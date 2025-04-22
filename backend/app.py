@@ -438,7 +438,16 @@ def get_experiences():
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
-            experience_name = exp.experience_name.strip() if exp.experience_name else ''
+            
+            # Safely access experience_name, handle cases where attribute might not exist
+            experience_name = ''
+            try:
+                if hasattr(exp, 'experience_name') and exp.experience_name:
+                    experience_name = exp.experience_name.strip()
+                else:
+                    experience_name = location  # Fall back to location if no experience_name
+            except AttributeError:
+                experience_name = location  # Fall back to location if attribute doesn't exist
             
             result.append({
                 'id': exp.id,
@@ -472,7 +481,16 @@ def get_my_experiences(current_user_id=None):
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
-            experience_name = exp.experience_name.strip() if exp.experience_name else ''
+            
+            # Safely access experience_name, handle cases where attribute might not exist
+            experience_name = ''
+            try:
+                if hasattr(exp, 'experience_name') and exp.experience_name:
+                    experience_name = exp.experience_name.strip()
+                else:
+                    experience_name = location  # Fall back to location if no experience_name
+            except AttributeError:
+                experience_name = location  # Fall back to location if attribute doesn't exist
             
             result.append({
                 'id': exp.id,
@@ -753,6 +771,16 @@ def get_matches(user_id):
             
             if not other_user or not experience:
                 continue
+                
+            # Safely access experience_name, handle cases where attribute might not exist
+            experience_name = ''
+            try:
+                if hasattr(experience, 'experience_name') and experience.experience_name:
+                    experience_name = experience.experience_name.strip()
+                else:
+                    experience_name = experience.location.strip() if experience.location else ''  # Fall back to location
+            except AttributeError:
+                experience_name = experience.location.strip() if experience.location else ''  # Fall back to location
             
             match_data = {
                 'match_id': match.id,
@@ -766,7 +794,7 @@ def get_matches(user_id):
                 'experience': {
                     'id': experience.id,
                     'experience_type': experience.experience_type,
-                    'experience_name': experience.experience_name,
+                    'experience_name': experience_name,
                     'location': experience.location,
                     'description': experience.description,
                     'latitude': experience.latitude,
@@ -832,6 +860,16 @@ def get_recommendations(user_id):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
+            # Safely access experience_name, handle cases where attribute might not exist
+            experience_name = ''
+            try:
+                if hasattr(exp, 'experience_name') and exp.experience_name:
+                    experience_name = exp.experience_name.strip()
+                else:
+                    experience_name = location  # Fall back to location if no experience_name
+            except AttributeError:
+                experience_name = location  # Fall back to location if attribute doesn't exist
+            
             creator_data = {
                 'id': creator.id,
                 'username': creator.username,
@@ -847,6 +885,7 @@ def get_recommendations(user_id):
                 'user_id': exp.user_id,
                 'creator': creator_data,
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
@@ -881,6 +920,16 @@ def get_swipe_experiences(current_user_id=None):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
+            # Safely access experience_name, handle cases where attribute might not exist
+            experience_name = ''
+            try:
+                if hasattr(exp, 'experience_name') and exp.experience_name:
+                    experience_name = exp.experience_name.strip()
+                else:
+                    experience_name = location  # Fall back to location if no experience_name
+            except AttributeError:
+                experience_name = location  # Fall back to location if attribute doesn't exist
+            
             result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
@@ -888,6 +937,7 @@ def get_swipe_experiences(current_user_id=None):
                 'creator_netid': creator.netid if creator else '',
                 'creator_profile_image': creator.profile_image if creator else None,
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
