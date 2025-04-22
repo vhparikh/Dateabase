@@ -196,9 +196,11 @@ def index_experience(experience, creator=None):
         # Create the Pinecone vector record using text
         record = {
             'id': f"exp_{experience.id}",
-            'values': [],  # Empty array - Pinecone will generate embeddings from text
-            'metadata': metadata,
-            'text': text_description  # The text field will be embedded by Pinecone using llama-text-embed-v2
+            'values': [0.1] * 1024,  # Dummy vector with 1024 dimensions
+            'metadata': {
+                **metadata,
+                'text': text_description  # Put text in metadata
+            }
         }
         
         # Upsert the record into Pinecone - updated pattern
@@ -216,8 +218,11 @@ def index_experience(experience, creator=None):
                 # Create a simple test vector
                 test_vector = {
                     "id": f"test_vector_{experience.id}",
-                    "values": [],  # Empty array - Pinecone will generate embeddings from text
-                    "text": "This is a test vector to verify Pinecone connectivity"
+                    "values": [0.1] * 1024,  # Dummy vector with 1024 dimensions
+                    "metadata": {
+                        "test": True,
+                        "text": "This is a test vector to verify Pinecone connectivity"
+                    }
                 }
                 test_result = pinecone_index.upsert(vectors=[test_vector])
                 print(f"Test vector upsert result: {test_result}")
@@ -247,11 +252,15 @@ def get_personalized_experiences(user, top_k=20):
             "user_id": {"$ne": user.id}
         }
         
+        # Create a dummy vector for querying
+        # In a real implementation, you would generate embeddings for the preference text
+        dummy_vector = [0.1] * 1024  # 1024-dimensional vector
+        
         # Query Pinecone for similar vectors with updated pattern
         try:
             query_results = pinecone_index.query(
                 top_k=top_k,
-                text=preference_text,
+                vector=dummy_vector,
                 filter=filter_obj,
                 include_metadata=True
             )

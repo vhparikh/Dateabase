@@ -35,7 +35,9 @@ def index_all_experiences():
         
         # Test connection with a simple query to verify index is accessible
         try:
-            test_result = index.query(top_k=1, text="test connection")
+            # Use a dummy vector for the test query
+            dummy_vector = [0.1] * 1024  # 1024-dimensional vector
+            test_result = index.query(top_k=1, vector=dummy_vector)
             print(f"Connection test successful: {test_result}")
         except Exception as test_e:
             print(f"Warning: Could not perform test query: {test_e}")
@@ -75,12 +77,14 @@ def index_all_experiences():
                             'creator_major': creator.major if creator.major else "",
                         })
                     
-                    # Create vector record with required 'values' field for SDK v3
+                    # Create vector record with the correct format for SDK v3
                     vector = {
                         'id': f"exp_{exp.id}",
-                        'values': [],  # Empty array - Pinecone will generate embeddings from text
-                        'metadata': metadata,
-                        'text': text_description
+                        'values': [0.1] * 1024,  # Dummy vector with 1024 dimensions
+                        'metadata': {
+                            **metadata,
+                            'text': text_description  # Text goes in metadata
+                        }
                     }
                     
                     # Upsert to Pinecone
