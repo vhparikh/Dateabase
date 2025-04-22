@@ -25,6 +25,13 @@ app = Flask(__name__,
            static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
 
+# Print current directory and check if static folder exists
+print(f"Current working directory: {os.getcwd()}")
+print(f"Static folder path: {app.static_folder}")
+print(f"Static folder exists: {os.path.exists(app.static_folder)}")
+if os.path.exists(app.static_folder):
+    print(f"Static folder contents: {os.listdir(app.static_folder)}")
+    
 # Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 # Set session type for CAS auth
