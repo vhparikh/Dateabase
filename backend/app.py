@@ -15,6 +15,12 @@ import json
 try:
     # Try to import sentence transformers for embeddings
     from sentence_transformers import SentenceTransformer
+    import torch
+    
+    # Configure PyTorch to be memory-efficient
+    torch.set_grad_enabled(False)  # Disable gradient tracking
+    
+    # Global variable for embedding model (lazy-loaded)
     embedding_model = None
     
     def get_embedding(text):
@@ -25,26 +31,41 @@ try:
             # Lazy-load the model only when needed
             if embedding_model is None:
                 print("Loading embedding model...")
-                embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-                print("Embedding model loaded successfully")
+                # Use CPU explicitly
+                device = "cpu"
+                # Load with minimal memory footprint
+                embedding_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+                print("Embedding model loaded successfully on CPU")
             
-            # Generate embedding
-            embedding = embedding_model.encode(text).tolist()
+            # Make sure we're using CPU
+            if hasattr(embedding_model, 'to'):
+                embedding_model.to('cpu')
+            
+            # Generate embedding (produces 384-dim vectors)
+            embedding = embedding_model.encode(text, convert_to_numpy=True).tolist()
             
             # The model produces 384-dim vectors, but Pinecone expects 1024-dim
             # Pad with zeros to match the expected dimension
-            if len(embedding) < 1024:
-                embedding = embedding + [0.0] * (1024 - len(embedding))
+            embedding_dim = len(embedding)
+            if embedding_dim < 1024:
+                # Zero-padding to match Pinecone's dimension
+                print(f"Padding embedding from {embedding_dim} to 1024 dimensions")
+                embedding = embedding + [0.0] * (1024 - embedding_dim)
             
             # Truncate if longer (shouldn't happen with this model)
             if len(embedding) > 1024:
+                print(f"Truncating embedding from {len(embedding)} to 1024 dimensions")
                 embedding = embedding[:1024]
+            
+            # Ensure we have exactly 1024 dimensions
+            assert len(embedding) == 1024, f"Embedding dimension mismatch: {len(embedding)} != 1024"
                 
             return embedding
             
         except Exception as e:
             print(f"Error generating embedding: {e}")
             # Return dummy vector as fallback
+            print("Using fallback dummy vector of 1024 dimensions")
             return [0.1] * 1024
             
 except ImportError:

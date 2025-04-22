@@ -1,1 +1,1 @@
-web: gunicorn backend.app:app
+web: PYTORCH_NO_CUDA=1 PYTORCH_CPU_ONLY=1 TOKENIZERS_PARALLELISM=false gunicorn backend.app:app
