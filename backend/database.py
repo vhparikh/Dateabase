@@ -43,6 +43,10 @@ class User(db.Model):
     class_year_max_pref = db.Column(db.Integer, nullable=True)  # Maximum class year preference
     interests_prefs = db.Column(db.Text, nullable=True)  # Interest preferences (JSON string)
     
+    # Cached preference vector - stored as a JSON string of floats
+    preference_vector = db.Column(db.Text, nullable=True)  # Serialized vector for caching
+    preference_vector_updated_at = db.Column(db.DateTime, nullable=True)  # When the vector was last updated
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         

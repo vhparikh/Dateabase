@@ -13,6 +13,7 @@ import pinecone
 import numpy as np
 import json
 import cohere  # Import Cohere client
+from sqlalchemy import text
 
 # Embedding function using Cohere API
 def get_embedding(text):
@@ -125,6 +126,43 @@ add_new_columns(app)
 
 # Drop bio and dietary_restrictions columns
 drop_unused_columns(app)
+
+# Add preference vector caching columns
+def add_preference_vector_columns(app):
+    """Add preference_vector and preference_vector_updated_at columns to User table"""
+    print("Starting migration to add preference vector caching columns...")
+    with app.app_context():
+        # Check if we're using SQLite or PostgreSQL
+        dialect = db.engine.dialect.name
+        print(f"Using {dialect} database")
+        
+        try:
+            with db.engine.connect() as connection:
+                if dialect == "sqlite":
+                    # For SQLite
+                    connection.execute(text('ALTER TABLE user ADD COLUMN preference_vector TEXT'))
+                    connection.execute(text('ALTER TABLE user ADD COLUMN preference_vector_updated_at DATETIME'))
+                    connection.commit()
+                elif dialect == "postgresql":
+                    # For PostgreSQL
+                    connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS preference_vector TEXT'))
+                    connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS preference_vector_updated_at TIMESTAMP'))
+                    connection.commit()
+                else:
+                    print(f"Unsupported database dialect: {dialect}")
+                    return False
+                
+                print("Preference vector caching columns added successfully!")
+                return True
+        except Exception as e:
+            print(f"Error: {e}")
+            if "duplicate column name" in str(e):
+                print("Column already exists. This is fine.")
+                return True
+            return False
+
+# Add preference vector caching columns
+add_preference_vector_columns(app)
 
 # Helper function to convert user preferences to a text description for embedding
 def get_user_preference_text(user):
@@ -305,15 +343,29 @@ def get_experience_text(experience, creator=None):
 
 # Helper function to index an experience in Pinecone
 def index_experience(experience, creator=None):
-    """Index an experience in Pinecone for vector search"""
+    """
+    Index an experience in Pinecone for vector search.
+    
+    This function creates a combined vector representation of both the experience and
+    its creator's profile, ensuring that personalized recommendation can consider
+    both the experience itself and the person who created it.
+    """
     if not pinecone_initialized or not pinecone_index:
-        print("Pinecone not initialized. Cannot index experience.")
+        print(f"Experience {experience.id}: Pinecone not initialized. Cannot index experience.")
         return False
     
     try:
-        # Generate text description of the experience
+        # Ensure we have the creator data for better vectorization
+        if not creator:
+            creator = User.query.get(experience.user_id)
+            if not creator:
+                print(f"Experience {experience.id}: Creator not found, experience vector may be incomplete")
+            else:
+                print(f"Experience {experience.id}: Found creator {creator.id} ({creator.name})")
+        
+        # Generate text description of the experience with creator details
         text_description = get_experience_text(experience, creator)
-        print(f"Generated text description for experience {experience.id}: {text_description[:100]}...")
+        print(f"Experience {experience.id}: Generated text description: {text_description[:100]}...")
         
         # Create metadata for the experience
         metadata = {
@@ -333,13 +385,18 @@ def index_experience(experience, creator=None):
                 'creator_class_year': creator.class_year if creator.class_year else 0,
                 'creator_major': creator.major if creator.major else "",
             })
+            # Add more creator metadata for better matches
+            if creator.hometown:
+                metadata['creator_hometown'] = creator.hometown
+            if creator.interests:
+                metadata['creator_interests'] = creator.interests
         
-        print(f"Created metadata for experience {experience.id}")
+        print(f"Experience {experience.id}: Created metadata")
         
         # Generate real embedding for the text description
-        print(f"Generating embedding for experience {experience.id}")
+        print(f"Experience {experience.id}: Generating embedding")
         embedding = get_embedding(text_description)
-        print(f"Generated embedding with dimension {len(embedding)}")
+        print(f"Experience {experience.id}: Generated embedding with dimension {len(embedding)}")
         
         # Create the Pinecone vector record with real embedding
         record = {
@@ -351,22 +408,22 @@ def index_experience(experience, creator=None):
             }
         }
         
-        print(f"Created vector record for experience {experience.id}")
+        print(f"Experience {experience.id}: Created vector record")
         
         # Upsert the record into Pinecone - updated pattern
         try:
-            print(f"Attempting to upsert to Pinecone: exp_{experience.id}")
+            print(f"Experience {experience.id}: Attempting to upsert to Pinecone")
             result = pinecone_index.upsert(
                 vectors=[record],
             )
-            print(f"Successfully indexed experience {experience.id} in Pinecone. Response: {result}")
+            print(f"Experience {experience.id}: Successfully indexed in Pinecone. Response: {result}")
             return True
         except Exception as e:
-            print(f"Error in Pinecone upsert operation: {e}")
+            print(f"Experience {experience.id}: Error in Pinecone upsert operation: {e}")
             
             # Additional debug - try a simple test vector to verify connectivity
             try:
-                print("Trying a simpler test vector...")
+                print(f"Experience {experience.id}: Trying a simpler test vector...")
                 # Create a simple test vector with the same dimension
                 test_vector = {
                     "id": f"test_vector_{experience.id}",
@@ -377,14 +434,14 @@ def index_experience(experience, creator=None):
                     }
                 }
                 test_result = pinecone_index.upsert(vectors=[test_vector])
-                print(f"Test vector upsert result: {test_result}")
+                print(f"Experience {experience.id}: Test vector upsert result: {test_result}")
             except Exception as test_e:
-                print(f"Test vector also failed: {test_e}")
+                print(f"Experience {experience.id}: Test vector also failed: {test_e}")
             
             return False
             
     except Exception as e:
-        print(f"Error preparing data for Pinecone indexing: {e}")
+        print(f"Experience {experience.id}: Error preparing data for Pinecone indexing: {e}")
         return False
 
 # Helper function to query Pinecone with user preferences
@@ -393,23 +450,83 @@ def get_personalized_experiences(user, top_k=20):
     Query Pinecone with user preferences to get highly personalized experience recommendations.
     
     This function:
-    1. Generates a rich user preference embedding that includes explicit and implicit preferences
+    1. Uses the cached preference vector if available, or generates a new one if needed
     2. Searches for experiences with similar embeddings, considering both experience and creator attributes
     3. Returns a ranked list of experiences that best match the user's preferences
     """
     if not pinecone_initialized or not pinecone_index:
-        print("Pinecone not initialized. Cannot query for personalized experiences.")
+        print(f"User {user.id}: Pinecone not initialized. Cannot query for personalized experiences.")
         return None
     
     try:
-        # Generate comprehensive text description of user preferences including swipe history
-        preference_text = get_user_preference_text(user)
-        print(f"Generated comprehensive preference text for user {user.id}: {preference_text[:100]}...")
+        # Determine if we need to generate a new preference embedding
+        # or if we can use the cached one
+        preference_embedding = None
+        need_new_embedding = True
+        cache_new_embedding = False
         
-        # Generate embedding for user preferences using Cohere
-        print(f"Generating preference embedding via Cohere for user {user.id}")
-        preference_embedding = get_embedding(preference_text)
-        print(f"Generated preference embedding with dimension {len(preference_embedding)}")
+        # Check if we have a cached preference vector
+        if user.preference_vector and user.preference_vector_updated_at:
+            print(f"User {user.id}: Found cached preference vector from {user.preference_vector_updated_at}")
+            
+            # Deserialize the cached vector from JSON
+            try:
+                import json
+                preference_embedding = json.loads(user.preference_vector)
+                vector_dimension = len(preference_embedding)
+                print(f"User {user.id}: Loaded cached preference vector with dimension {vector_dimension}")
+                
+                # Make sure the vector has the correct dimension
+                if vector_dimension == 1024:
+                    # Use the cached vector - only generate a new one if the user has swiped on something
+                    # since the vector was last cached
+                    latest_swipe = UserSwipe.query.filter_by(user_id=user.id).order_by(
+                        UserSwipe.created_at.desc()
+                    ).first()
+                    
+                    if latest_swipe and latest_swipe.created_at > user.preference_vector_updated_at:
+                        print(f"User {user.id}: Found newer swipes than cached vector, regenerating")
+                        need_new_embedding = True
+                        cache_new_embedding = True
+                    else:
+                        print(f"User {user.id}: Using cached preference vector from {user.preference_vector_updated_at}")
+                        need_new_embedding = False
+                else:
+                    print(f"User {user.id}: Cached vector dimension mismatch: {vector_dimension} != 1024, regenerating")
+                    need_new_embedding = True
+                    cache_new_embedding = True
+            except Exception as e:
+                print(f"User {user.id}: Error loading cached preference vector: {e}")
+                need_new_embedding = True
+                cache_new_embedding = True
+        else:
+            print(f"User {user.id}: No cached preference vector found, generating new one")
+            need_new_embedding = True
+            cache_new_embedding = True
+        
+        # Generate a new preference embedding if needed
+        if need_new_embedding:
+            # Generate comprehensive text description of user preferences including swipe history
+            preference_text = get_user_preference_text(user)
+            print(f"User {user.id}: Generated preference text: {preference_text[:100]}...")
+            
+            # Generate embedding for user preferences using Cohere
+            print(f"User {user.id}: Generating new preference embedding")
+            preference_embedding = get_embedding(preference_text)
+            print(f"User {user.id}: Generated preference embedding with dimension {len(preference_embedding)}")
+            
+            # Cache the new embedding if needed
+            if cache_new_embedding:
+                try:
+                    import json
+                    user.preference_vector = json.dumps(preference_embedding)
+                    user.preference_vector_updated_at = datetime.utcnow()
+                    db.session.commit()
+                    print(f"User {user.id}: Cached new preference vector at {user.preference_vector_updated_at}")
+                except Exception as e:
+                    print(f"User {user.id}: Error caching preference vector: {e}")
+                    db.session.rollback()
+                    # Continue even if caching fails
         
         # Filter to exclude experiences created by the user
         # and also include any additional filtering based on user preferences
@@ -428,9 +545,12 @@ def get_personalized_experiences(user, top_k=20):
                 "$lte": user.class_year_max_pref
             }
         
+        # For debugging, log the exact filter being used
+        print(f"User {user.id}: Using Pinecone filter: {filter_conditions}")
+        
         # Query Pinecone for similar vectors with enhanced filtering
         try:
-            print(f"Querying Pinecone with user preference embedding and filters: {filter_conditions}")
+            print(f"User {user.id}: Querying Pinecone with preference embedding")
             query_results = pinecone_index.query(
                 top_k=top_k * 2,  # Request more results to account for filtering
                 vector=preference_embedding,
@@ -438,7 +558,7 @@ def get_personalized_experiences(user, top_k=20):
                 include_metadata=True
             )
             
-            print(f"Pinecone query returned {len(query_results.get('matches', []))} matches")
+            print(f"User {user.id}: Pinecone query returned {len(query_results.get('matches', []))} matches")
             
             # Extract and process the matching experiences
             matches = []
@@ -465,14 +585,14 @@ def get_personalized_experiences(user, top_k=20):
             # Take top_k matches after filtering
             matches = matches[:top_k]
             
-            print(f"Found {len(matches)} personalized experiences for user {user.id} after filtering")
+            print(f"User {user.id}: Found {len(matches)} personalized experiences after filtering")
             return matches
         except Exception as query_e:
-            print(f"Error in Pinecone query operation: {query_e}")
+            print(f"User {user.id}: Error in Pinecone query operation: {query_e}")
             return None
             
     except Exception as e:
-        print(f"Error querying Pinecone for personalized experiences: {e}")
+        print(f"User {user.id}: Error querying Pinecone for personalized experiences: {e}")
         return None
 
 # Auth Helper Functions
@@ -698,6 +818,9 @@ def update_user(user_id):
         user = User.query.get_or_404(user_id)
         data = request.json
         
+        # Track if preference fields were updated
+        preference_fields_updated = False
+        
         # Update basic profile information
         if 'name' in data:
             user.name = data['name']
@@ -740,6 +863,29 @@ def update_user(user_id):
             user.prompt3 = data['prompt3']
         if 'answer3' in data:
             user.answer3 = data['answer3']
+        
+        # Check for preference field updates
+        if 'gender_pref' in data:
+            user.gender_pref = data['gender_pref']
+            preference_fields_updated = True
+        if 'experience_type_prefs' in data:
+            user.experience_type_prefs = data['experience_type_prefs']
+            preference_fields_updated = True
+        if 'class_year_min_pref' in data:
+            user.class_year_min_pref = data['class_year_min_pref']
+            preference_fields_updated = True
+        if 'class_year_max_pref' in data:
+            user.class_year_max_pref = data['class_year_max_pref']
+            preference_fields_updated = True
+        if 'interests_prefs' in data:
+            user.interests_prefs = data['interests_prefs']
+            preference_fields_updated = True
+            
+        # If preferences were updated, invalidate the cached preference vector
+        if preference_fields_updated:
+            print(f"User {user.id}: Preferences updated, invalidating cached preference vector")
+            user.preference_vector = None
+            user.preference_vector_updated_at = None
             
         # Handle password updates
         if 'password' in data:
@@ -1058,127 +1204,113 @@ def update_experience(experience_id, current_user_id=None):
 @app.route('/api/swipes', methods=['POST'])
 @login_required()
 def record_swipe(current_user_id=None):
+    """
+    Record a user's swipe on an experience (like or dislike).
+    
+    If the user likes an experience, also check if the creator has liked any of the
+    user's experiences to create a match.
+    """
+    data = request.json
+    
+    # Validate required fields
+    if not data or 'experience_id' not in data or 'is_like' not in data:
+        return jsonify({'detail': 'Missing required fields'}), 400
+    
     try:
-        print(f"Recording swipe from user {current_user_id}")
-        data = request.json
-        print(f"Swipe data: {data}")
+        experience_id = data['experience_id']
+        is_like = data['is_like']
         
-        # Validate required fields
-        if not all(key in data for key in ['experience_id', 'is_like']):
-            print("Missing required fields")
-            return jsonify({'detail': 'Missing required fields'}), 400
-            
-        # Get the experience
-        experience = db.session.get(Experience, data['experience_id'])
+        # Check if experience exists
+        experience = Experience.query.get(experience_id)
         if not experience:
-            print(f"Experience {data['experience_id']} not found")
             return jsonify({'detail': 'Experience not found'}), 404
-            
-        # Check if the user owns this experience
-        if experience.user_id == current_user_id:
-            print("User tried to swipe on their own experience")
-            return jsonify({'detail': 'Cannot swipe on your own experience'}), 400
         
-        experience_creator = experience.user_id
-        print(f"Experience created by user {experience_creator}")
-            
-        # Create or update the swipe
-        swipe = UserSwipe.query.filter_by(
+        # Check if the user has already swiped on this experience
+        existing_swipe = UserSwipe.query.filter_by(
             user_id=current_user_id,
-            experience_id=data['experience_id']
+            experience_id=experience_id
         ).first()
         
-        if not swipe:
-            swipe = UserSwipe(
-                user_id=current_user_id,
-                experience_id=data['experience_id'],
-                direction=data['is_like']
-            )
-            db.session.add(swipe)
-            print(f"Created new swipe record: direction={data['is_like']}")
+        if existing_swipe:
+            # If the swipe direction is the same, just return success
+            if existing_swipe.direction == is_like:
+                return jsonify({'detail': 'Swipe already recorded', 'match_created': False}), 200
+            
+            # Otherwise, update the swipe direction
+            existing_swipe.direction = is_like
+            db.session.commit()
         else:
-            swipe.direction = data['is_like']
-            print(f"Updated existing swipe record: direction={data['is_like']}")
-            
-        db.session.commit()
+            # Record new swipe
+            new_swipe = UserSwipe(
+                user_id=current_user_id,
+                experience_id=experience_id,
+                direction=is_like
+            )
+            db.session.add(new_swipe)
+            db.session.commit()
         
-        # Initialize match to False
-        match = False
+        # Invalidate the cached preference vector since the user has new swipe data
+        try:
+            user = User.query.get(current_user_id)
+            if user and user.preference_vector:
+                print(f"User {current_user_id}: Invalidating preference vector after new swipe")
+                user.preference_vector_updated_at = datetime.utcnow()  # Keep the vector but mark it as needing update
+                db.session.commit()
+        except Exception as e:
+            print(f"User {current_user_id}: Error updating preference vector timestamp: {e}")
+            # Continue even if this fails
         
-        # Only process potential matches for right swipes (likes)
-        if data['is_like']:  
-            print("Processing right swipe (like)")
+        # If user liked (swiped right), check for a match
+        if is_like:
+            # Get the creator of the experience
+            creator_id = experience.user_id
             
-            # Check if the experience creator has also liked this user's experiences
+            # Skip match checking if the creator is the same as the current user
+            if creator_id == current_user_id:
+                return jsonify({
+                    'detail': 'Swipe recorded successfully',
+                    'match_created': False
+                })
+            
+            # Check if creator has liked any of this user's experiences
             user_experiences = Experience.query.filter_by(user_id=current_user_id).all()
-            print(f"Found {len(user_experiences)} experiences created by swiper")
+            user_experience_ids = [exp.id for exp in user_experiences]
             
-            # Check for mutual interest (real match)
-            for user_exp in user_experiences:
-                matching_swipe = UserSwipe.query.filter_by(
-                    user_id=experience_creator,
-                    experience_id=user_exp.id,
-                    direction=True
+            if user_experience_ids:
+                creator_likes = UserSwipe.query.filter(
+                    UserSwipe.user_id == creator_id,
+                    UserSwipe.experience_id.in_(user_experience_ids),
+                    UserSwipe.direction == True
                 ).first()
                 
-                if matching_swipe:
-                    match = True
-                    print(f"Found mutual match! Experience creator has liked swiper's experience {user_exp.id}")
+                if creator_likes:
+                    # Create a match
+                    new_match = Match(
+                        user1_id=current_user_id,
+                        user2_id=creator_id,
+                        experience_id=experience_id,
+                        status='pending'
+                    )
+                    db.session.add(new_match)
+                    db.session.commit()
                     
-                    # Check if match already exists
-                    existing_match = Match.query.filter(
-                        ((Match.user1_id == current_user_id) & (Match.user2_id == experience_creator)) |
-                        ((Match.user1_id == experience_creator) & (Match.user2_id == current_user_id))
-                    ).first()
-                    
-                    if not existing_match:
-                        print("Creating new confirmed match")
-                        # Create a match record between the two users
-                        match_record = Match(
-                            user1_id=current_user_id,
-                            user2_id=experience_creator,
-                            experience_id=data['experience_id'],
-                            status='confirmed'  # Mark as confirmed since it's a mutual match
-                        )
-                        db.session.add(match_record)
-                        db.session.commit()
-                    else:
-                        print(f"Match already exists with status: {existing_match.status}")
-                        # Update existing match to confirmed if it was pending
-                        if existing_match.status == 'pending':
-                            existing_match.status = 'confirmed'
-                            db.session.commit()
-                            print("Updated existing match to confirmed status")
-                    
-                    break  # Only create one match between users
-            
-            # ALWAYS create a potential match for right swipes, regardless of mutual match status
-            # This ensures the experience owner sees this in their pending matches
-            potential_match = Match.query.filter(
-                (Match.user1_id == current_user_id) & 
-                (Match.user2_id == experience_creator) &
-                (Match.experience_id == data['experience_id'])
-            ).first()
-            
-            if not potential_match:
-                print("Creating new pending match")
-                potential_match = Match(
-                    user1_id=current_user_id,
-                    user2_id=experience_creator,
-                    experience_id=data['experience_id'],
-                    status='pending'
-                )
-                db.session.add(potential_match)
-                db.session.commit()
-                print(f"Created pending match: {potential_match.id}")
-        else:
-            print("Left swipe (pass) - not creating any matches")
+                    # Return success with match info
+                    return jsonify({
+                        'detail': 'Swipe recorded successfully',
+                        'match_created': True,
+                        'match_id': new_match.id,
+                        'match_user': {
+                            'id': creator_id,
+                            'name': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
+                        }
+                    })
         
-        print(f"Returning match status: {match}")
+        # Return success without match
         return jsonify({
-            'message': 'Swipe recorded successfully',
-            'match': match
-        }), 200
+            'detail': 'Swipe recorded successfully',
+            'match_created': False
+        })
+        
     except Exception as e:
         print(f"Error recording swipe: {e}")
         db.session.rollback()
@@ -1330,27 +1462,27 @@ def get_swipe_experiences(current_user_id=None):
         if not user:
             return jsonify({'detail': 'User not found'}), 404
         
-        print(f"Retrieving personalized swipe experiences for user {current_user_id}")
+        print(f"User {current_user_id}: Retrieving personalized swipe experiences")
         
         # Get experiences the user has already swiped on to filter them out
         swiped_experience_ids = [
             swipe.experience_id for swipe in 
             UserSwipe.query.filter_by(user_id=current_user_id).all()
         ]
-        print(f"User has already swiped on {len(swiped_experience_ids)} experiences")
+        print(f"User {current_user_id}: Has already swiped on {len(swiped_experience_ids)} experiences")
         
         # Initialize experiences list
         experiences = []
         
         # Use Pinecone for personalized recommendations if available
         if pinecone_initialized:
-            print(f"Using Pinecone for personalized recommendations for user {current_user_id}")
+            print(f"User {current_user_id}: Using Pinecone for personalized recommendations")
             
             # Get personalized experiences from Pinecone based on rich user preferences
             personalized_matches = get_personalized_experiences(user, top_k=50)  # Request more to have a buffer
             
             if personalized_matches and len(personalized_matches) > 0:
-                print(f"Found {len(personalized_matches)} personalized matches from Pinecone")
+                print(f"User {current_user_id}: Found {len(personalized_matches)} personalized matches from Pinecone")
                 
                 # Extract experience IDs from the matches
                 experience_ids = [match['id'] for match in personalized_matches]
@@ -1361,34 +1493,57 @@ def get_swipe_experiences(current_user_id=None):
                     Experience.user_id != current_user_id  # Ensure we don't include user's own experiences
                 ).all()
                 
-                # Create a mapping for quick lookup of score
+                # Create a mapping for quick lookup of score and metadata
                 score_map = {match['id']: match['score'] for match in personalized_matches}
                 metadata_map = {match['id']: match['metadata'] for match in personalized_matches}
                 
-                # Sort experiences by their match score (highest first)
-                experiences.sort(key=lambda exp: score_map.get(exp.id, 0), reverse=True)
+                # Create a dictionary to maintain the order from personalized_matches
+                ordered_experiences = {}
+                for exp in experiences:
+                    ordered_experiences[exp.id] = exp
                 
-                print(f"Retrieved {len(experiences)} personalized experiences from database")
+                # Rebuild experiences list in the order of personalized_matches
+                experiences = []
+                for match in personalized_matches:
+                    exp_id = match['id']
+                    if exp_id in ordered_experiences:
+                        experiences.append(ordered_experiences[exp_id])
+                
+                print(f"User {current_user_id}: Retrieved {len(experiences)} personalized experiences from database")
                 
                 # Add match reason based on score and metadata
                 for i, exp in enumerate(experiences):
                     exp.match_score = score_map.get(exp.id, 0)
                     exp.match_reason = get_match_reason(user, exp, metadata_map.get(exp.id, {}))
+                    
+                    # For debugging, log the top experiences with their scores
+                    if i < 5:  # Only log the top 5 for brevity
+                        print(f"User {current_user_id}: Top match {i+1}: Experience {exp.id} ({exp.experience_type}) with score {exp.match_score:.4f}")
                 
             else:
-                print("No personalized matches found in Pinecone, falling back to fallback strategy")
+                print(f"User {current_user_id}: No personalized matches found in Pinecone, falling back to fallback strategy")
         else:
-            print("Pinecone not initialized. Using fallback experience retrieval")
+            print(f"User {current_user_id}: Pinecone not initialized. Using fallback experience retrieval")
         
         # Fallback if no or few personalized experiences were found
         if not experiences or len(experiences) < 5:
-            print(f"Using fallback strategy to get more experiences for user {current_user_id}")
+            print(f"User {current_user_id}: Using fallback strategy to get more experiences")
             
-            # Get recent experiences
-            fallback_experiences = Experience.query.filter(
-                Experience.user_id != current_user_id,
-                ~Experience.id.in_(swiped_experience_ids) if swiped_experience_ids else True
-            ).order_by(Experience.created_at.desc()).limit(20).all()
+            # Get recent experiences - explicitly exclude already swiped IDs
+            fallback_query = Experience.query.filter(
+                Experience.user_id != current_user_id
+            )
+            
+            # Apply the filter for already swiped experiences if any
+            if swiped_experience_ids:
+                fallback_query = fallback_query.filter(
+                    ~Experience.id.in_(swiped_experience_ids)
+                )
+            
+            # Get the most recent experiences
+            fallback_experiences = fallback_query.order_by(Experience.created_at.desc()).limit(20).all()
+            
+            print(f"User {current_user_id}: Found {len(fallback_experiences)} fallback experiences")
             
             # Add them to the experiences list if not already there
             for exp in fallback_experiences:
@@ -1396,15 +1551,23 @@ def get_swipe_experiences(current_user_id=None):
                     exp.match_score = 0.5  # Neutral score for fallback experiences
                     exp.match_reason = "New experience you might like"
                     experiences.append(exp)
+            
+            print(f"User {current_user_id}: Added fallback experiences, now have {len(experiences)} total")
         
         # Final filtering of already swiped experiences (double-check)
         experiences = [exp for exp in experiences if exp.id not in swiped_experience_ids]
+        print(f"User {current_user_id}: After final filtering, have {len(experiences)} experiences for swiping")
         
         result = []
         for exp in experiences:
             # Get the creator of the experience
             creator = User.query.get(exp.user_id)
             
+            # Skip if creator no longer exists (shouldn't happen but for safety)
+            if not creator:
+                print(f"User {current_user_id}: Skipping experience {exp.id} as creator no longer exists")
+                continue
+                
             # Clean up text data
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
@@ -1417,6 +1580,8 @@ def get_swipe_experiences(current_user_id=None):
                 'creator_name': creator.name if creator else 'Unknown',
                 'creator_netid': creator.netid if creator else '',
                 'creator_profile_image': creator.profile_image if creator else None,
+                'creator_class_year': creator.class_year if creator else None,  # Add class year for UI display
+                'creator_major': creator.major if creator else None,  # Add major for UI display
                 'experience_type': experience_type,
                 'location': location,
                 'description': description,
@@ -1429,15 +1594,17 @@ def get_swipe_experiences(current_user_id=None):
             
             # Add match score and reason if available
             if hasattr(exp, 'match_score'):
-                exp_data['match_score'] = exp.match_score
+                exp_data['match_score'] = float(exp.match_score)  # Convert to float to ensure it's JSON serializable
                 exp_data['match_reason'] = getattr(exp, 'match_reason', "Experience you might like")
             
             result.append(exp_data)
         
-        print(f"Returning {len(result)} experiences for swiping")
+        print(f"User {current_user_id}: Returning {len(result)} experiences for swiping")
         return jsonify(result)
     except Exception as e:
-        print(f"Error fetching swipe experiences: {e}")
+        print(f"User {current_user_id}: Error fetching swipe experiences: {e}")
+        import traceback
+        traceback.print_exc()  # Print stack trace for better debugging
         return jsonify({'detail': str(e)}), 500
 
 def get_match_reason(user, experience, metadata):
@@ -1730,6 +1897,9 @@ def get_or_update_current_user():
             # Update user profile data
             data = request.json
             
+            # Track if preference fields were updated
+            preference_fields_updated = False
+            
             # Only update allowed fields
             if 'name' in data:
                 user.name = data['name']
@@ -1774,8 +1944,10 @@ def get_or_update_current_user():
             # Handle preference fields
             if 'gender_pref' in data:
                 user.gender_pref = data['gender_pref']
+                preference_fields_updated = True
             if 'experience_type_prefs' in data:
                 user.experience_type_prefs = data['experience_type_prefs']
+                preference_fields_updated = True
             if 'class_year_min_pref' in data:
                 # Validate class year is within reasonable bounds
                 try:
@@ -1784,6 +1956,7 @@ def get_or_update_current_user():
                         if year_val < 2000 or year_val > 2100:
                             return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
                     user.class_year_min_pref = data['class_year_min_pref']
+                    preference_fields_updated = True
                 except (ValueError, TypeError):
                     return jsonify({'detail': 'Invalid class year value'}), 400
             if 'class_year_max_pref' in data:
@@ -1794,22 +1967,28 @@ def get_or_update_current_user():
                         if year_val < 2000 or year_val > 2100:
                             return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
                     user.class_year_max_pref = data['class_year_max_pref']
+                    preference_fields_updated = True
                 except (ValueError, TypeError):
                     return jsonify({'detail': 'Invalid class year value'}), 400
             if 'interests_prefs' in data:
                 user.interests_prefs = data['interests_prefs']
+                preference_fields_updated = True
             # Add handling for phone_number and preferred_email fields
             if 'phone_number' in data:
                 user.phone_number = data['phone_number']
             if 'preferred_email' in data:
                 user.preferred_email = data['preferred_email']
             
+            # If preferences were updated, invalidate the cached preference vector
+            if preference_fields_updated:
+                print(f"User {user.id}: Preferences updated, invalidating cached preference vector")
+                user.preference_vector = None
+                user.preference_vector_updated_at = None
+            
             # Save all changes to the database
             db.session.commit()
             
-            # Check if any preference fields were updated, and if so, log that personalized recommendations will be refreshed
-            preference_fields_updated = any(field in data for field in ['gender_pref', 'experience_type_prefs', 'class_year_min_pref', 'class_year_max_pref', 'interests_prefs'])
-            
+            # Log if preference fields were updated for visibility
             if preference_fields_updated:
                 print(f"User {user.id} updated their preferences. Personalized recommendations will be refreshed.")
                 
