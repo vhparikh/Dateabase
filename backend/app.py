@@ -167,34 +167,46 @@ add_preference_vector_columns(app)
 # Helper function to convert user preferences to a text description for embedding
 def get_user_preference_text(user):
     """
-    Generate a comprehensive text description of user preferences including explicit preferences
-    from their profile and implicit preferences from their swipe history.
+    Generate a clean text description of user preferences for vector embedding.
     
-    This richer representation will be used to generate a more accurate embedding vector.
+    Focus only on explicit preferences from user profile, without including
+    any identifying information like username or user ID.
     """
     preference_parts = []
-    
-    # EXPLICIT PREFERENCES FROM USER PROFILE
-    
-    # Add gender preference
-    if user.gender_pref:
-        preference_parts.append(f"Gender preference: {user.gender_pref}")
     
     # Add experience type preferences
     if user.experience_type_prefs:
         try:
+            # Try as JSON object
             exp_prefs = json.loads(user.experience_type_prefs)
-            exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
-            if exp_types:
-                preference_parts.append(f"Experience types: {', '.join(exp_types)}")
+            if isinstance(exp_prefs, dict):
+                # Handle dictionary format (most common)
+                exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
+                if exp_types:
+                    preference_parts.append(f"Preferred experience types: {', '.join(exp_types)}")
+            elif isinstance(exp_prefs, list):
+                # Handle list format (fallback)
+                if exp_prefs:
+                    preference_parts.append(f"Preferred experience types: {', '.join(exp_prefs)}")
         except (json.JSONDecodeError, TypeError):
-            pass
+            # Fallback for string format
+            if isinstance(user.experience_type_prefs, str):
+                if ',' in user.experience_type_prefs:
+                    exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
+                    if exp_types:
+                        preference_parts.append(f"Preferred experience types: {', '.join(exp_types)}")
+                else:
+                    preference_parts.append(f"Preferred experience type: {user.experience_type_prefs.strip()}")
     
-    # Add class year preferences
+    # Add gender preference if specified
+    if user.gender_pref and user.gender_pref != "Any":
+        preference_parts.append(f"Preferred creator gender: {user.gender_pref}")
+    
+    # Add class year preferences if specified
     if user.class_year_min_pref and user.class_year_max_pref:
-        preference_parts.append(f"Class years: {user.class_year_min_pref} to {user.class_year_max_pref}")
+        preference_parts.append(f"Preferred class years: {user.class_year_min_pref} to {user.class_year_max_pref}")
     
-    # Add interest preferences
+    # Add interest preferences if specified
     if user.interests_prefs:
         try:
             interest_prefs = json.loads(user.interests_prefs)
@@ -204,65 +216,9 @@ def get_user_preference_text(user):
         except (json.JSONDecodeError, TypeError):
             pass
     
-    # Add other user attributes that might be relevant for matching
+    # Add major if specified
     if user.major:
         preference_parts.append(f"Major: {user.major}")
-    
-    # IMPLICIT PREFERENCES FROM USER BEHAVIOR
-    
-    # Get experiences this user liked (swiped right)
-    liked_swipes = UserSwipe.query.filter_by(user_id=user.id, direction=True).all()
-    if liked_swipes:
-        liked_experience_ids = [swipe.experience_id for swipe in liked_swipes]
-        liked_experiences = Experience.query.filter(Experience.id.in_(liked_experience_ids)).all()
-        
-        # Extract patterns from liked experiences
-        liked_types = {}
-        liked_creators = {}
-        
-        for exp in liked_experiences:
-            # Count experience types
-            if exp.experience_type:
-                exp_type = exp.experience_type.strip()
-                liked_types[exp_type] = liked_types.get(exp_type, 0) + 1
-            
-            # Count creator attributes
-            creator = User.query.get(exp.user_id)
-            if creator:
-                # Count creator classes
-                if creator.class_year:
-                    liked_creators[f"class_{creator.class_year}"] = liked_creators.get(f"class_{creator.class_year}", 0) + 1
-                
-                # Count creator genders
-                if creator.gender:
-                    liked_creators[f"gender_{creator.gender}"] = liked_creators.get(f"gender_{creator.gender}", 0) + 1
-                
-                # Count creator majors
-                if creator.major:
-                    liked_creators[f"major_{creator.major}"] = liked_creators.get(f"major_{creator.major}", 0) + 1
-        
-        # Add most liked experience types to preferences
-        if liked_types:
-            sorted_types = sorted(liked_types.items(), key=lambda x: x[1], reverse=True)
-            top_types = [t[0] for t in sorted_types[:3]]  # Top 3 experience types
-            if top_types:
-                preference_parts.append(f"Liked experience types: {', '.join(top_types)}")
-        
-        # Add most liked creator attributes to preferences
-        if liked_creators:
-            sorted_creators = sorted(liked_creators.items(), key=lambda x: x[1], reverse=True)
-            top_creator_attrs = []
-            
-            for attr, count in sorted_creators[:5]:  # Top 5 creator attributes
-                if attr.startswith("class_"):
-                    top_creator_attrs.append(f"class year {attr[6:]}")
-                elif attr.startswith("gender_"):
-                    top_creator_attrs.append(f"gender {attr[7:]}")
-                elif attr.startswith("major_"):
-                    top_creator_attrs.append(f"major {attr[6:]}")
-            
-            if top_creator_attrs:
-                preference_parts.append(f"Preferred creator attributes: {', '.join(top_creator_attrs)}")
     
     # Join all parts into a single text description
     if preference_parts:
@@ -871,6 +827,7 @@ def update_user(user_id):
         if 'experience_type_prefs' in data:
             user.experience_type_prefs = data['experience_type_prefs']
             preference_fields_updated = True
+            print(f"User {user.id}: Updated experience_type_prefs to {data['experience_type_prefs']}")
         if 'class_year_min_pref' in data:
             user.class_year_min_pref = data['class_year_min_pref']
             preference_fields_updated = True
@@ -883,9 +840,32 @@ def update_user(user_id):
             
         # If preferences were updated, invalidate the cached preference vector
         if preference_fields_updated:
-            print(f"User {user.id}: Preferences updated, invalidating cached preference vector")
-            user.preference_vector = None
-            user.preference_vector_updated_at = None
+            print(f"User {user.id}: Preferences updated, generating new preference vector")
+            
+            try:
+                # Generate new preference text and embedding
+                preference_text = get_user_preference_text(user)
+                print(f"User {user.id}: Generated new preference text: {preference_text[:100]}...")
+                
+                if pinecone_initialized:
+                    # Get embedding for the preference text
+                    preference_embedding = get_embedding(preference_text)
+                    print(f"User {user.id}: Generated new preference embedding with dimension {len(preference_embedding)}")
+                    
+                    # Update user with new preference vector
+                    user.preference_vector = json.dumps(preference_embedding)
+                    user.preference_vector_updated_at = datetime.utcnow()
+                    print(f"User {user.id}: Updated preference vector at {user.preference_vector_updated_at}")
+                else:
+                    # Reset preference vector if Pinecone is not initialized
+                    user.preference_vector = None
+                    user.preference_vector_updated_at = None
+                    print(f"User {user.id}: Pinecone not initialized, reset preference vector")
+            except Exception as e:
+                print(f"User {user.id}: Error updating preference vector: {e}")
+                # Reset preference vector on error
+                user.preference_vector = None
+                user.preference_vector_updated_at = None
             
         # Handle password updates
         if 'password' in data:
@@ -1507,6 +1487,25 @@ def get_swipe_experiences(current_user_id=None):
                 print(f"User {current_user_id}: Force including swiped experiences")
         
         all_experiences = filtered_experiences
+        
+        # Parse the user's experience_type preferences for direct matching
+        user_preferred_exp_types = []
+        if user.experience_type_prefs:
+            try:
+                exp_prefs = json.loads(user.experience_type_prefs)
+                if isinstance(exp_prefs, dict):
+                    user_preferred_exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
+                elif isinstance(exp_prefs, list):
+                    user_preferred_exp_types = exp_prefs
+            except:
+                # Fallback for non-JSON format
+                if isinstance(user.experience_type_prefs, str):
+                    if ',' in user.experience_type_prefs:
+                        user_preferred_exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
+                    else:
+                        user_preferred_exp_types = [user.experience_type_prefs.strip()]
+        
+        print(f"User {current_user_id} preferred experience types: {user_preferred_exp_types}")
             
         # If pinecone is initialized, use it to rank experiences by vector similarity
         if pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
@@ -1525,50 +1524,88 @@ def get_swipe_experiences(current_user_id=None):
                 if not creator:
                     continue
                 
+                # Calculate base score based on various factors
+                base_score = 0.5  # Start with a neutral score
+                
+                # DIRECT PREFERENCE MATCHING (higher weight than vector similarity)
+                # Apply a significant boost if the experience type matches user preferences
+                preference_boost = 0.0
+                
+                if exp.experience_type and user_preferred_exp_types:
+                    if exp.experience_type in user_preferred_exp_types:
+                        # Strong boost for exact match on preferred experience type
+                        preference_boost += 0.3  # Major boost
+                        print(f"Experience {exp.id} ({exp.experience_type}) exact match with user preference, adding +0.3 boost")
+                    else:
+                        # Check for partial matches
+                        for preferred_type in user_preferred_exp_types:
+                            if preferred_type.lower() in exp.experience_type.lower() or exp.experience_type.lower() in preferred_type.lower():
+                                preference_boost += 0.2  # Moderate boost for partial match
+                                print(f"Experience {exp.id} ({exp.experience_type}) partial match with user preference {preferred_type}, adding +0.2 boost")
+                                break
+                
+                # Boost based on creator match if user has gender preference
+                if user.gender_pref and creator.gender and user.gender_pref != "Any":
+                    if creator.gender == user.gender_pref:
+                        preference_boost += 0.1  # Small boost
+                
+                # Boost based on class year preference
+                if user.class_year_min_pref and user.class_year_max_pref and creator.class_year:
+                    if user.class_year_min_pref <= creator.class_year <= user.class_year_max_pref:
+                        preference_boost += 0.05  # Tiny boost
+                
                 # If the experience has a vector, calculate similarity
-                if hasattr(exp, 'vector') and exp.vector:
+                vector_similarity = 0.0
+                if hasattr(exp, 'vector') and exp.vector and hasattr(user, 'preference_vector') and user.preference_vector:
                     # Calculate similarity between user preference and experience vector
                     try:
                         user_vector = np.array(json.loads(user.preference_vector))
                         exp_vector = np.array(json.loads(exp.vector))
                         
-                        # Calculate cosine similarity (or other similarity measure)
-                        similarity = np.dot(user_vector, exp_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(exp_vector))
+                        # Calculate cosine similarity
+                        vector_similarity = np.dot(user_vector, exp_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(exp_vector))
                         
                         # For already swiped experiences, reduce the similarity slightly to prioritize new content
                         if already_swiped:
-                            similarity *= 0.9  # Reduce score by 10% for already seen content
-                        
-                        # Add to scored experiences
-                        scored_experiences.append({
-                            'experience': exp,
-                            'score': float(similarity),
-                            'already_swiped': already_swiped,
-                            'reason': get_match_reason(user, exp, {})
-                        })
+                            vector_similarity *= 0.8  # Reduce score by 20% for already seen content
                     except (ValueError, TypeError, json.JSONDecodeError) as e:
                         print(f"Error calculating similarity for experience {exp.id}: {e}")
-                        # If vector calculation fails, still include with neutral score
-                        scored_experiences.append({
-                            'experience': exp,
-                            'score': 0.5,  # Neutral score
-                            'already_swiped': already_swiped,
-                            'reason': "New experience you might like"
-                        })
-                else:
-                    # For experiences without vectors, assign a neutral score
-                    scored_experiences.append({
-                        'experience': exp,
-                        'score': 0.5,  # Neutral score
-                        'already_swiped': already_swiped,
-                        'reason': "New experience you might like"
-                    })
+                        # If vector calculation fails, continue with default score
+                
+                # Calculate final score - weight direct preference matching higher than vector similarity
+                final_score = base_score + preference_boost + (vector_similarity * 0.5)
+                
+                # Cap the score at 1.0
+                final_score = min(final_score, 1.0)
+                
+                # For debugging - if this has a high score, log why
+                if final_score > 0.7:
+                    print(f"High-scoring experience {exp.id} ({exp.experience_type}): base={base_score}, boost={preference_boost}, vector={vector_similarity}, final={final_score}")
+                
+                # Add to scored experiences with the combined score
+                match_reason = get_match_reason(user, exp, {})
+                if preference_boost > 0 and match_reason == "Experience you might like":
+                    if exp.experience_type in user_preferred_exp_types:
+                        match_reason = f"Matches your preference for {exp.experience_type} experiences"
+                
+                scored_experiences.append({
+                    'experience': exp,
+                    'score': float(final_score),
+                    'already_swiped': already_swiped,
+                    'reason': match_reason
+                })
             
             # Sort experiences by score (highest first)
             scored_experiences.sort(key=lambda x: x['score'], reverse=True)
             
             # Log some information about the ranking
             print(f"User {current_user_id}: Ranked {len(scored_experiences)} experiences by preference similarity")
+            if len(scored_experiences) > 0:
+                top_experiences = scored_experiences[:5]
+                print(f"User {current_user_id} top 5 experiences:")
+                for i, item in enumerate(top_experiences):
+                    exp = item['experience']
+                    print(f"  {i+1}. {exp.id} ({exp.experience_type}): score={item['score']}, reason={item['reason']}")
             
             # Prepare the final results
             experiences = [item['experience'] for item in scored_experiences]
@@ -1581,15 +1618,61 @@ def get_swipe_experiences(current_user_id=None):
                     exp.match_reason = matching_item['reason']
                     exp.already_swiped = matching_item['already_swiped']
         else:
-            # If no vector ranking is possible, sort by recency
-            print(f"User {current_user_id}: No preference vector available, sorting by recency")
-            experiences = sorted(all_experiences, key=lambda x: x.created_at, reverse=True)
+            # If no vector ranking is possible, we can still do basic preference matching
+            print(f"User {current_user_id}: No preference vector available, doing basic preference matching")
             
-            # Add default scores and reasons
-            for exp in experiences:
-                exp.match_score = 0.5  # Default neutral score
-                exp.match_reason = "Recent experience you might like"
-                exp.already_swiped = exp.id in swiped_experience_ids
+            # Score experiences based on direct preference matching
+            scored_experiences = []
+            for exp in all_experiences:
+                # Starting score
+                score = 0.5  # Neutral
+                already_swiped = exp.id in swiped_experience_ids
+                
+                # Get the creator
+                creator = User.query.get(exp.user_id)
+                if not creator:
+                    continue
+                
+                # Match on experience type preferences
+                if exp.experience_type and user_preferred_exp_types:
+                    if exp.experience_type in user_preferred_exp_types:
+                        score += 0.3  # Strong boost for exact match
+                    else:
+                        # Check for partial matches
+                        for preferred_type in user_preferred_exp_types:
+                            if preferred_type.lower() in exp.experience_type.lower() or exp.experience_type.lower() in preferred_type.lower():
+                                score += 0.2  # Moderate boost for partial match
+                                break
+                
+                # Reduce score for already seen content to prioritize new content
+                if already_swiped:
+                    score *= 0.8
+                
+                # Create match reason
+                match_reason = "Experience you might like"
+                if exp.experience_type and exp.experience_type in user_preferred_exp_types:
+                    match_reason = f"Matches your preference for {exp.experience_type} experiences"
+                
+                scored_experiences.append({
+                    'experience': exp,
+                    'score': score,
+                    'already_swiped': already_swiped,
+                    'reason': match_reason
+                })
+            
+            # Sort by score
+            scored_experiences.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Get sorted experiences
+            experiences = [item['experience'] for item in scored_experiences]
+            
+            # Add match scores and reasons to the experiences
+            for i, exp in enumerate(experiences):
+                matching_item = next((item for item in scored_experiences if item['experience'].id == exp.id), None)
+                if matching_item:
+                    exp.match_score = matching_item['score']
+                    exp.match_reason = matching_item['reason']
+                    exp.already_swiped = matching_item['already_swiped']
         
         print(f"User {current_user_id}: Preparing {len(experiences)} experiences for response")
         
@@ -1987,43 +2070,46 @@ def get_or_update_current_user():
             if 'experience_type_prefs' in data:
                 user.experience_type_prefs = data['experience_type_prefs']
                 preference_fields_updated = True
+                print(f"User {user.id}: Updated experience_type_prefs to {data['experience_type_prefs']}")
             if 'class_year_min_pref' in data:
-                # Validate class year is within reasonable bounds
-                try:
-                    if data['class_year_min_pref'] is not None:
-                        year_val = int(data['class_year_min_pref'])
-                        if year_val < 2000 or year_val > 2100:
-                            return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
-                    user.class_year_min_pref = data['class_year_min_pref']
-                    preference_fields_updated = True
-                except (ValueError, TypeError):
-                    return jsonify({'detail': 'Invalid class year value'}), 400
+                user.class_year_min_pref = data['class_year_min_pref']
+                preference_fields_updated = True
             if 'class_year_max_pref' in data:
-                # Validate class year is within reasonable bounds
-                try:
-                    if data['class_year_max_pref'] is not None:
-                        year_val = int(data['class_year_max_pref'])
-                        if year_val < 2000 or year_val > 2100:
-                            return jsonify({'detail': 'Class year must be between 2000 and 2100'}), 400
-                    user.class_year_max_pref = data['class_year_max_pref']
-                    preference_fields_updated = True
-                except (ValueError, TypeError):
-                    return jsonify({'detail': 'Invalid class year value'}), 400
+                user.class_year_max_pref = data['class_year_max_pref']
+                preference_fields_updated = True
             if 'interests_prefs' in data:
                 user.interests_prefs = data['interests_prefs']
                 preference_fields_updated = True
-            # Add handling for phone_number and preferred_email fields
-            if 'phone_number' in data:
-                user.phone_number = data['phone_number']
-            if 'preferred_email' in data:
-                user.preferred_email = data['preferred_email']
-            
+                
             # If preferences were updated, invalidate the cached preference vector
             if preference_fields_updated:
-                print(f"User {user.id}: Preferences updated, invalidating cached preference vector")
-                user.preference_vector = None
-                user.preference_vector_updated_at = None
-            
+                print(f"User {user.id}: Preferences updated, generating new preference vector")
+                
+                try:
+                    # Generate new preference text and embedding
+                    preference_text = get_user_preference_text(user)
+                    print(f"User {user.id}: Generated new preference text: {preference_text[:100]}...")
+                    
+                    if pinecone_initialized:
+                        # Get embedding for the preference text
+                        preference_embedding = get_embedding(preference_text)
+                        print(f"User {user.id}: Generated new preference embedding with dimension {len(preference_embedding)}")
+                        
+                        # Update user with new preference vector
+                        user.preference_vector = json.dumps(preference_embedding)
+                        user.preference_vector_updated_at = datetime.utcnow()
+                        print(f"User {user.id}: Updated preference vector at {user.preference_vector_updated_at}")
+                    else:
+                        # Reset preference vector if Pinecone is not initialized
+                        user.preference_vector = None
+                        user.preference_vector_updated_at = None
+                        print(f"User {user.id}: Pinecone not initialized, reset preference vector")
+                except Exception as e:
+                    print(f"User {user.id}: Error updating preference vector: {e}")
+                    # Reset preference vector on error
+                    user.preference_vector = None
+                    user.preference_vector_updated_at = None
+                
             # Handle password updates
             if 'password' in data:
                 user.set_password(data['password'])
