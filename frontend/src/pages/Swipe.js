@@ -47,13 +47,24 @@ const Swipe = () => {
       const data = await response.json();
       
       if (data && data.length > 0) {
+        console.log(`Received ${data.length} experiences from API`);
         setExperiences(data);
         // Store the original experiences order
         originalExperiencesRef.current = [...data];
         setCurrentIndex(0);
         // Don't reset hasCompletedCycle flag here to keep track of when we've gone through all experiences
       } else {
-        // If no experiences are returned, just set an empty array
+        // If no experiences are returned, but we've completed a cycle, we should try again with include_swiped=true
+        if (!hasCompletedCycle) {
+          console.log("No experiences found, trying again with include_swiped=true");
+          setHasCompletedCycle(true);
+          // Call fetchExperiences again in the next tick
+          setTimeout(() => fetchExperiences(), 0);
+          return;
+        }
+        
+        // If still no experiences after trying with include_swiped=true
+        console.log("No experiences returned even with include_swiped=true");
         setExperiences([]);
         originalExperiencesRef.current = [];
       }
@@ -237,6 +248,7 @@ const Swipe = () => {
     // Reset current index to 0 to avoid any out-of-bounds issues
     setCurrentIndex(0);
     setHasCompletedCycle(false);
+    console.log("User clicked retry - resetting and fetching fresh experiences");
     // Fetch fresh experiences
     fetchExperiences();
   };

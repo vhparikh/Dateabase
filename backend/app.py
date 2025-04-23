@@ -1485,13 +1485,29 @@ def get_swipe_experiences(current_user_id=None):
         query = Experience.query.filter(Experience.user_id != current_user_id)
         
         # Apply filtering for already swiped experiences if not including them
+        filtered_query = query
         if not include_swiped and swiped_experience_ids:
-            query = query.filter(~Experience.id.in_(swiped_experience_ids))
-            
-        # Get all potential experiences
-        all_experiences = query.all()
-        print(f"User {current_user_id}: Found {len(all_experiences)} total experiences to rank")
+            filtered_query = query.filter(~Experience.id.in_(swiped_experience_ids))
         
+        # Execute the query to get experiences    
+        filtered_experiences = filtered_query.all()
+        print(f"User {current_user_id}: Found {len(filtered_experiences)} experiences with filtering={not include_swiped}")
+        
+        # If we don't have any experiences with filtering and include_swiped is false,
+        # we should check if there are any experiences at all
+        if len(filtered_experiences) == 0 and not include_swiped:
+            # Check if there are any experiences without filtering
+            all_experiences_count = query.count()
+            if all_experiences_count > 0:
+                # If there are experiences but they've all been swiped on, 
+                # we should include swiped experiences
+                print(f"User {current_user_id}: No unswiped experiences found, but {all_experiences_count} total experiences exist")
+                filtered_experiences = query.all()
+                include_swiped = True  # Force include swiped since that's all we have
+                print(f"User {current_user_id}: Force including swiped experiences")
+        
+        all_experiences = filtered_experiences
+            
         # If pinecone is initialized, use it to rank experiences by vector similarity
         if pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
             print(f"User {current_user_id}: Ranking experiences using preference vector")
@@ -2008,7 +2024,10 @@ def get_or_update_current_user():
                 user.preference_vector = None
                 user.preference_vector_updated_at = None
             
-            # Save all changes to the database
+            # Handle password updates
+            if 'password' in data:
+                user.set_password(data['password'])
+                
             db.session.commit()
             
             # Log if preference fields were updated for visibility
