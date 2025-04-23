@@ -30,70 +30,14 @@ if not db_url:
 
 def get_experience_text(experience, creator=None):
     """
-    Generate a rich text description of an experience including both the experience details
-    and comprehensive information about the creator.
+    Generate a simple text description of an experience for vector embedding.
     
-    This combined representation enables searching for experiences based on both
-    the experience itself and the characteristics of the person who created it.
+    Only use the experience_type field for vectorization to keep it simple and focused.
+    No creator information or other metadata is included in the vector.
     """
-    exp_parts = []
-    
-    # EXPERIENCE DETAILS
-    
-    # Basic experience info with stronger emphasis
+    # Only include the experience type (category)
     if experience.experience_type:
-        exp_parts.append(f"Experience type: {experience.experience_type}")
-    
-    if experience.location:
-        exp_parts.append(f"Location: {experience.location}")
-    
-    if experience.description:
-        exp_parts.append(f"Description: {experience.description}")
-    
-    # Add coordinates if available for better location matching
-    if experience.latitude and experience.longitude:
-        exp_parts.append(f"Coordinates: {experience.latitude}, {experience.longitude}")
-    
-    # CREATOR DETAILS (comprehensive profile)
-    if creator:
-        creator_parts = []
-        
-        if creator.name:
-            creator_parts.append(f"Creator name: {creator.name}")
-        
-        if creator.gender:
-            creator_parts.append(f"Creator gender: {creator.gender}")
-        
-        if creator.class_year:
-            creator_parts.append(f"Creator class year: {creator.class_year}")
-        
-        if creator.major:
-            creator_parts.append(f"Creator major: {creator.major}")
-        
-        if creator.interests:
-            creator_parts.append(f"Creator interests: {creator.interests}")
-        
-        # Add other profile fields if available
-        if hasattr(creator, 'hometown') and creator.hometown:
-            creator_parts.append(f"Creator hometown: {creator.hometown}")
-            
-        # Add creator's other experiences to provide more context
-        other_experiences = [exp for exp in creator.experiences 
-                             if exp.id != experience.id]
-        if other_experiences:
-            other_exp_types = [exp.experience_type for exp in other_experiences 
-                              if exp.experience_type]
-            unique_types = list(set(other_exp_types))
-            if unique_types:
-                creator_parts.append(f"Creator's other experience types: {', '.join(unique_types[:5])}")
-        
-        # Add the creator details to the experience parts
-        if creator_parts:
-            exp_parts.append("CREATOR PROFILE: " + " ".join(creator_parts))
-    
-    # Join all parts into a single text description
-    if exp_parts:
-        return " ".join(exp_parts)
+        return f"Experience type: {experience.experience_type}"
     else:
         return "No specific experience details"
 
@@ -155,32 +99,15 @@ def index_all_experiences():
                     print(f"Found creator: {creator.name} (ID: {creator.id})")
                 
                 # Generate text description of the experience
-                text_description = get_experience_text(exp, creator)
+                text_description = get_experience_text(exp)
                 print(f"Generated text description: {text_description[:100]}...")
                 
-                # Create metadata for the experience
+                # Create minimal metadata for the experience
                 metadata = {
                     'id': exp.id,
                     'user_id': exp.user_id,
                     'experience_type': exp.experience_type,
-                    'location': exp.location,
-                    'description': exp.description if exp.description else "",
-                    'created_at': exp.created_at.isoformat() if exp.created_at else "",
                 }
-                
-                # Add creator metadata if available
-                if creator:
-                    metadata.update({
-                        'creator_name': creator.name if creator.name else "",
-                        'creator_gender': creator.gender if creator.gender else "",
-                        'creator_class_year': creator.class_year if creator.class_year else 0,
-                        'creator_major': creator.major if creator.major else "",
-                    })
-                    # Add additional creator metadata for better filtering
-                    if creator.hometown:
-                        metadata['creator_hometown'] = creator.hometown
-                    if creator.interests:
-                        metadata['creator_interests'] = creator.interests
                 
                 # Generate embedding using Cohere API
                 response = co.embed(

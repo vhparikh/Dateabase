@@ -167,14 +167,11 @@ add_preference_vector_columns(app)
 # Helper function to convert user preferences to a text description for embedding
 def get_user_preference_text(user):
     """
-    Generate a clean text description of user preferences for vector embedding.
+    Generate a simple text description of user preferences for vector embedding.
     
-    Focus only on explicit preferences from user profile, without including
-    any identifying information like username or user ID.
+    Only include Experience Type Preferences for simplified vector matching.
     """
-    preference_parts = []
-    
-    # Add experience type preferences
+    # Only process experience type preferences
     if user.experience_type_prefs:
         try:
             # Try as JSON object
@@ -183,117 +180,34 @@ def get_user_preference_text(user):
                 # Handle dictionary format (most common)
                 exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
                 if exp_types:
-                    preference_parts.append(f"Preferred experience types: {', '.join(exp_types)}")
+                    return f"Preferred experience types: {', '.join(exp_types)}"
             elif isinstance(exp_prefs, list):
                 # Handle list format (fallback)
                 if exp_prefs:
-                    preference_parts.append(f"Preferred experience types: {', '.join(exp_prefs)}")
+                    return f"Preferred experience types: {', '.join(exp_prefs)}"
         except (json.JSONDecodeError, TypeError):
             # Fallback for string format
             if isinstance(user.experience_type_prefs, str):
                 if ',' in user.experience_type_prefs:
                     exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
                     if exp_types:
-                        preference_parts.append(f"Preferred experience types: {', '.join(exp_types)}")
+                        return f"Preferred experience types: {', '.join(exp_types)}"
                 else:
-                    preference_parts.append(f"Preferred experience type: {user.experience_type_prefs.strip()}")
+                    return f"Preferred experience type: {user.experience_type_prefs.strip()}"
     
-    # Add gender preference if specified
-    if user.gender_pref and user.gender_pref != "Any":
-        preference_parts.append(f"Preferred creator gender: {user.gender_pref}")
-    
-    # Add class year preferences if specified
-    if user.class_year_min_pref and user.class_year_max_pref:
-        preference_parts.append(f"Preferred class years: {user.class_year_min_pref} to {user.class_year_max_pref}")
-    
-    # Add interest preferences if specified
-    if user.interests_prefs:
-        try:
-            interest_prefs = json.loads(user.interests_prefs)
-            interests = [interest for interest, is_selected in interest_prefs.items() if is_selected]
-            if interests:
-                preference_parts.append(f"Interests: {', '.join(interests)}")
-        except (json.JSONDecodeError, TypeError):
-            pass
-    
-    # Add major if specified
-    if user.major:
-        preference_parts.append(f"Major: {user.major}")
-    
-    # Join all parts into a single text description
-    if preference_parts:
-        return " ".join(preference_parts)
-    else:
-        return "No specific preferences"
+    return "No specific preferences"
 
 # Helper function to get experience text description for embedding
 def get_experience_text(experience, creator=None):
     """
-    Generate a rich text description of an experience including both the experience details
-    and comprehensive information about the creator.
+    Generate a simple text description of an experience for vector embedding.
     
-    This combined representation enables searching for experiences based on both
-    the experience itself and the characteristics of the person who created it.
+    Only use the experience_type field for vectorization to keep it simple and focused.
+    No creator information or other metadata is included in the vector.
     """
-    exp_parts = []
-    
-    # EXPERIENCE DETAILS
-    
-    # Basic experience info with stronger emphasis
+    # Only include the experience type (category)
     if experience.experience_type:
-        exp_parts.append(f"Experience type: {experience.experience_type}")
-    
-    if experience.location:
-        exp_parts.append(f"Location: {experience.location}")
-    
-    if experience.description:
-        exp_parts.append(f"Description: {experience.description}")
-    
-    # Add coordinates if available for better location matching
-    if experience.latitude and experience.longitude:
-        exp_parts.append(f"Coordinates: {experience.latitude}, {experience.longitude}")
-    
-    # CREATOR DETAILS (comprehensive profile)
-    if creator:
-        creator_parts = []
-        
-        if creator.name:
-            creator_parts.append(f"Creator name: {creator.name}")
-        
-        if creator.gender:
-            creator_parts.append(f"Creator gender: {creator.gender}")
-        
-        if creator.class_year:
-            creator_parts.append(f"Creator class year: {creator.class_year}")
-        
-        if creator.major:
-            creator_parts.append(f"Creator major: {creator.major}")
-        
-        if creator.interests:
-            creator_parts.append(f"Creator interests: {creator.interests}")
-        
-        # Add other profile fields if available
-        if hasattr(creator, 'bio') and creator.bio:
-            creator_parts.append(f"Creator bio: {creator.bio}")
-            
-        if hasattr(creator, 'hometown') and creator.hometown:
-            creator_parts.append(f"Creator hometown: {creator.hometown}")
-            
-        # Add creator's other experiences to provide more context
-        other_experiences = Experience.query.filter_by(user_id=creator.id).filter(Experience.id != experience.id).all()
-        if other_experiences:
-            other_exp_types = [exp.experience_type for exp in other_experiences if exp.experience_type]
-            unique_types = list(set(other_exp_types))
-            if unique_types:
-                creator_parts.append(f"Creator's other experience types: {', '.join(unique_types[:5])}")
-        
-        # Add the creator details to the experience parts
-        if creator_parts:
-            exp_parts.append("CREATOR PROFILE: " + " ".join(creator_parts))
-    
-    # Join all parts into a single text description
-    if exp_parts:
-        return " ".join(exp_parts)
+        return f"Experience type: {experience.experience_type}"
     else:
         return "No specific experience details"
 
@@ -302,50 +216,24 @@ def index_experience(experience, creator=None):
     """
     Index an experience in Pinecone for vector search.
     
-    This function creates a combined vector representation of both the experience and
-    its creator's profile, ensuring that personalized recommendation can consider
-    both the experience itself and the person who created it.
+    This simplified function creates a vector representation of only the experience type,
+    removing creator profile data and other complex metadata for streamlined matching.
     """
     if not pinecone_initialized or not pinecone_index:
         print(f"Experience {experience.id}: Pinecone not initialized. Cannot index experience.")
         return False
     
     try:
-        # Ensure we have the creator data for better vectorization
-        if not creator:
-            creator = User.query.get(experience.user_id)
-            if not creator:
-                print(f"Experience {experience.id}: Creator not found, experience vector may be incomplete")
-            else:
-                print(f"Experience {experience.id}: Found creator {creator.id} ({creator.name})")
-        
-        # Generate text description of the experience with creator details
-        text_description = get_experience_text(experience, creator)
+        # Generate simplified text description of the experience
+        text_description = get_experience_text(experience)
         print(f"Experience {experience.id}: Generated text description: {text_description[:100]}...")
         
-        # Create metadata for the experience
+        # Create minimal metadata for the experience
         metadata = {
             'id': experience.id,
             'user_id': experience.user_id,
             'experience_type': experience.experience_type,
-            'location': experience.location,
-            'description': experience.description if experience.description else "",
-            'created_at': experience.created_at.isoformat() if experience.created_at else "",
         }
-        
-        # Add creator metadata if available
-        if creator:
-            metadata.update({
-                'creator_name': creator.name if creator.name else "",
-                'creator_gender': creator.gender if creator.gender else "",
-                'creator_class_year': creator.class_year if creator.class_year else 0,
-                'creator_major': creator.major if creator.major else "",
-            })
-            # Add more creator metadata for better matches
-            if creator.hometown:
-                metadata['creator_hometown'] = creator.hometown
-            if creator.interests:
-                metadata['creator_interests'] = creator.interests
         
         print(f"Experience {experience.id}: Created metadata")
         
@@ -376,24 +264,6 @@ def index_experience(experience, creator=None):
             return True
         except Exception as e:
             print(f"Experience {experience.id}: Error in Pinecone upsert operation: {e}")
-            
-            # Additional debug - try a simple test vector to verify connectivity
-            try:
-                print(f"Experience {experience.id}: Trying a simpler test vector...")
-                # Create a simple test vector with the same dimension
-                test_vector = {
-                    "id": f"test_vector_{experience.id}",
-                    "values": [0.1] * 1024,  # 1024-dimensional vector
-                    "metadata": {
-                        "test": True,
-                        "text": "This is a test vector to verify Pinecone connectivity"
-                    }
-                }
-                test_result = pinecone_index.upsert(vectors=[test_vector])
-                print(f"Experience {experience.id}: Test vector upsert result: {test_result}")
-            except Exception as test_e:
-                print(f"Experience {experience.id}: Test vector also failed: {test_e}")
-            
             return False
             
     except Exception as e:
@@ -403,12 +273,12 @@ def index_experience(experience, creator=None):
 # Helper function to query Pinecone with user preferences
 def get_personalized_experiences(user, top_k=20):
     """
-    Query Pinecone with user preferences to get highly personalized experience recommendations.
+    Query Pinecone with user preferences to get personalized experience recommendations.
     
-    This function:
+    This simplified function:
     1. Uses the cached preference vector if available, or generates a new one if needed
-    2. Searches for experiences with similar embeddings, considering both experience and creator attributes
-    3. Returns a ranked list of experiences that best match the user's preferences
+    2. Searches for experiences with similar embeddings, considering only experience type
+    3. Returns a ranked list of experiences based on cosine similarity to the user's preferences
     """
     if not pinecone_initialized or not pinecone_index:
         print(f"User {user.id}: Pinecone not initialized. Cannot query for personalized experiences.")
@@ -462,7 +332,7 @@ def get_personalized_experiences(user, top_k=20):
         
         # Generate a new preference embedding if needed
         if need_new_embedding:
-            # Generate comprehensive text description of user preferences including swipe history
+            # Generate simplified text description of user preferences
             preference_text = get_user_preference_text(user)
             print(f"User {user.id}: Generated preference text: {preference_text[:100]}...")
             
@@ -484,27 +354,15 @@ def get_personalized_experiences(user, top_k=20):
                     db.session.rollback()
                     # Continue even if caching fails
         
-        # Filter to exclude experiences created by the user
-        # and also include any additional filtering based on user preferences
+        # Filter to exclude experiences created by the user - this is the only filter we need
         filter_conditions = {
             "user_id": {"$ne": user.id}  # Base filter: exclude user's own experiences
         }
         
-        # Add gender preference filter if specified
-        if user.gender_pref and user.gender_pref != "Any":
-            filter_conditions["creator_gender"] = user.gender_pref
-        
-        # Add class year preference filter if specified
-        if user.class_year_min_pref and user.class_year_max_pref:
-            filter_conditions["creator_class_year"] = {
-                "$gte": user.class_year_min_pref,
-                "$lte": user.class_year_max_pref
-            }
-        
         # For debugging, log the exact filter being used
         print(f"User {user.id}: Using Pinecone filter: {filter_conditions}")
         
-        # Query Pinecone for similar vectors with enhanced filtering
+        # Query Pinecone for similar vectors with minimal filtering
         try:
             print(f"User {user.id}: Querying Pinecone with preference embedding")
             query_results = pinecone_index.query(
@@ -538,17 +396,18 @@ def get_personalized_experiences(user, top_k=20):
                         'metadata': match['metadata']
                     })
             
-            # Take top_k matches after filtering
-            matches = matches[:top_k]
+            print(f"User {user.id}: After filtering already swiped experiences, {len(matches)} matches remain")
             
-            print(f"User {user.id}: Found {len(matches)} personalized experiences after filtering")
+            # Return the matches sorted by score (highest first) - using cosine similarity
+            # We don't need additional sorting here as Pinecone already returns sorted by similarity
             return matches
-        except Exception as query_e:
-            print(f"User {user.id}: Error in Pinecone query operation: {query_e}")
+            
+        except Exception as e:
+            print(f"User {user.id}: Error querying Pinecone: {e}")
             return None
             
     except Exception as e:
-        print(f"User {user.id}: Error querying Pinecone for personalized experiences: {e}")
+        print(f"User {user.id}: Error in get_personalized_experiences: {e}")
         return None
 
 # Auth Helper Functions
@@ -1430,11 +1289,10 @@ def get_recommendations(user_id):
 @login_required()
 def get_swipe_experiences(current_user_id=None):
     """
-    Return personalized experiences for the swipe interface based on user preferences
-    and previous behavior.
+    Return personalized experiences for the swipe interface based on user preferences.
     
-    This endpoint leverages Pinecone vector search to find experiences that closely match
-    the user's preference vector, combining experience attributes with creator profiles.
+    This simplified endpoint uses Pinecone vector search to find experiences that match
+    the user's preference vector based solely on experience type.
     
     Query parameters:
     - include_swiped: If set to "true", will include experiences the user has already swiped on,
@@ -1488,7 +1346,7 @@ def get_swipe_experiences(current_user_id=None):
         
         all_experiences = filtered_experiences
         
-        # Parse the user's experience_type preferences for direct matching
+        # Parse the user's experience_type preferences for direct matching and reason generation
         user_preferred_exp_types = []
         if user.experience_type_prefs:
             try:
@@ -1507,36 +1365,35 @@ def get_swipe_experiences(current_user_id=None):
         
         print(f"User {current_user_id} preferred experience types: {user_preferred_exp_types}")
             
-        # If pinecone is initialized, use it to rank experiences by vector similarity
+        # Use Pinecone for vector similarity search if available
         if pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
-            print(f"User {current_user_id}: Ranking experiences using preference vector")
+            print(f"User {current_user_id}: Using personalized experiences API for vector similarity ranking")
             
-            # Create a list to hold experiences with their scores
-            scored_experiences = []
+            # Get personalized experiences using the simplified vector approach
+            matches = get_personalized_experiences(user, top_k=100)  # Get more results to handle filtering
             
-            # Calculate vector similarity for each experience if possible
-            for exp in all_experiences:
-                # Check if experience is already swiped
-                already_swiped = exp.id in swiped_experience_ids
+            if matches:
+                print(f"User {current_user_id}: Found {len(matches)} matches from vector similarity search")
                 
-                # Get the creator of the experience
-                creator = User.query.get(exp.user_id)
-                if not creator:
-                    continue
+                # Create a dictionary of experiences by ID for quick lookup
+                experiences_dict = {exp.id: exp for exp in all_experiences}
                 
-                # Calculate base score based on various factors
-                base_score = 0.5  # Start with a neutral score
-                
-                # DIRECT PREFERENCE MATCHING (higher weight than vector similarity)
-                # Apply a significant boost if the experience type matches user preferences
-                preference_boost = 0.0
-                
-                if exp.experience_type and user_preferred_exp_types:
-                    if exp.experience_type in user_preferred_exp_types:
-                        # Strong boost for exact match on preferred experience type
-                        preference_boost += 0.3  # Major boost
-                        print(f"Experience {exp.id} ({exp.experience_type}) exact match with user preference, adding +0.3 boost")
-                    else:
+                # Process matches to create ordered list of experiences
+                ordered_experiences = []
+                for match in matches:
+                    exp_id = match.get('id')
+                    if exp_id in experiences_dict:
+                        exp = experiences_dict[exp_id]
+                        
+                        # Add match score and reason to the experience object
+                        exp.match_score = match.get('score', 0.5)
+                        
+                        # Generate a simple match reason based on type match
+                        if exp.experience_type in user_preferred_exp_types:
+                            exp.match_reason = f"Matches your preference for {exp.experience_type} experiences"
+                        else:
+                            exp.match_reason = "Experience you might like"
+                            
                         # Check for partial matches
                         for preferred_type in user_preferred_exp_types:
                             if preferred_type.lower() in exp.experience_type.lower() or exp.experience_type.lower() in preferred_type.lower():
@@ -1732,57 +1589,21 @@ def get_swipe_experiences(current_user_id=None):
 def get_match_reason(user, experience, metadata):
     """Generate a human-readable reason why this experience might be a good match for the user"""
     
-    reasons = []
-    
-    # Check for experience type match
+    # Only check for experience type match - simplify the matching
     if user.experience_type_prefs and experience.experience_type:
         try:
+            # Try as JSON object
             exp_prefs = json.loads(user.experience_type_prefs)
-            if exp_prefs.get(experience.experience_type, False):
-                reasons.append(f"You're interested in {experience.experience_type} experiences")
+            if isinstance(exp_prefs, dict) and exp_prefs.get(experience.experience_type, False):
+                return f"Matches your preference for {experience.experience_type} experiences"
         except (json.JSONDecodeError, TypeError):
-            pass
+            # Try as string (fallback)
+            if isinstance(user.experience_type_prefs, str):
+                if experience.experience_type in user.experience_type_prefs:
+                    return f"Matches your preference for {experience.experience_type} experiences"
     
-    # Check for creator gender match
-    creator = User.query.get(experience.user_id)
-    if creator and user.gender_pref and creator.gender and creator.gender == user.gender_pref:
-        reasons.append(f"Matches your gender preference: {creator.gender}")
-    
-    # Check for creator class year match
-    if creator and creator.class_year and user.class_year_min_pref and user.class_year_max_pref:
-        if user.class_year_min_pref <= creator.class_year <= user.class_year_max_pref:
-            reasons.append(f"Creator is class of {creator.class_year}")
-    
-    # Check for similar interests
-    if user.interests and creator and creator.interests:
-        user_interests = user.interests.lower().split(',')
-        creator_interests = creator.interests.lower().split(',')
-        common_interests = [i.strip() for i in user_interests if any(i.strip() in c.strip() for c in creator_interests)]
-        if common_interests:
-            shared = common_interests[0] if len(common_interests) == 1 else "similar interests"
-            reasons.append(f"You share {shared}")
-    
-    # If we have metadata from Pinecone with a high score
-    if metadata.get('experience_type') == experience.experience_type:
-        reasons.append(f"Based on your preferences for {experience.experience_type}")
-    
-    # Check swipe history patterns
-    liked_swipes = UserSwipe.query.filter_by(user_id=user.id, direction=True).all()
-    if liked_swipes:
-        liked_experience_ids = [swipe.experience_id for swipe in liked_swipes]
-        similar_liked = Experience.query.filter(
-            Experience.id.in_(liked_experience_ids),
-            Experience.experience_type == experience.experience_type
-        ).first()
-        if similar_liked:
-            reasons.append(f"Similar to experiences you've liked")
-    
-    # If no specific reasons found, provide a generic one
-    if not reasons:
-        return "Experience you might enjoy based on your profile"
-    
-    # Return the top reason
-    return reasons[0]
+    # Default reason
+    return "Experience you might like"
 
 # CAS Authentication routes
 @app.route('/api/cas/login', methods=['GET'])

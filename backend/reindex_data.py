@@ -17,6 +17,7 @@ import json
 from datetime import datetime
 import time
 import numpy as np
+from sqlalchemy import func
 
 # Add the backend directory to the path so we can import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,35 +33,23 @@ def reindex_experiences():
         print("\n===== REINDEXING EXPERIENCES =====")
         # Get all experiences
         experiences = Experience.query.all()
-        print(f"Found {len(experiences)} experiences to reindex")
+        print(f"Found {len(experiences)} experiences to process")
         
         success_count = 0
         error_count = 0
         
         for i, exp in enumerate(experiences):
-            print(f"\nProcessing experience {i+1}/{len(experiences)}: ID {exp.id}, Type: {exp.experience_type}, Location: {exp.location}")
+            print(f"\nProcessing experience {i+1}/{len(experiences)}: ID {exp.id}, Type: {exp.experience_type}")
             
             try:
-                # Get the creator
-                creator = User.query.get(exp.user_id)
-                if not creator:
-                    print(f"  Warning: Creator not found for experience {exp.id}")
-                    continue
+                # Use simplified indexing function that only uses experience type
+                result = index_experience(exp)
                 
-                print(f"  Creator: {creator.name} (ID: {creator.id})")
-                
-                # Reindex the experience
-                if pinecone_initialized:
-                    print(f"  Indexing in Pinecone...")
-                    result = index_experience(exp, creator)
-                    if result:
-                        print(f"  ✅ Successfully indexed experience {exp.id}")
-                        success_count += 1
-                    else:
-                        print(f"  ❌ Failed to index experience {exp.id}")
-                        error_count += 1
+                if result:
+                    print(f"  ✅ Successfully indexed experience {exp.id}")
+                    success_count += 1
                 else:
-                    print("  ⚠️ Pinecone not initialized, skipping indexing")
+                    print(f"  ❌ Failed to index experience {exp.id}")
                     error_count += 1
                 
                 # Add a small delay to avoid rate limiting
@@ -132,51 +121,53 @@ def test_retrieval():
     """Test retrieval of recommendations for a few users"""
     
     with app.app_context():
-        print("\n===== TESTING RECOMMENDATION RETRIEVAL =====")
+        print("\n===== TESTING VECTOR RETRIEVAL =====")
         
-        # Get a few users with preferences
-        users = User.query.filter(User.experience_type_prefs != None).limit(3).all()
+        # Test for a few random users with preference vectors
+        users = User.query.filter(User.preference_vector != None).order_by(func.random()).limit(3).all()
+        
         if not users:
-            print("No users with preferences found for testing")
+            print("No users with preference vectors found. Skipping retrieval test.")
             return
+            
+        print(f"Testing retrieval for {len(users)} random users")
         
         for user in users:
-            print(f"\nTesting recommendations for user {user.id} ({user.name})")
+            print(f"\nUser {user.id}: {user.name}")
+            
+            # Get user's experience type preferences
+            user_preferred_exp_types = []
+            if user.experience_type_prefs:
+                try:
+                    # Try as JSON
+                    exp_prefs = json.loads(user.experience_type_prefs)
+                    if isinstance(exp_prefs, dict):
+                        user_preferred_exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
+                    elif isinstance(exp_prefs, list):
+                        user_preferred_exp_types = exp_prefs
+                except:
+                    # Fallback
+                    if isinstance(user.experience_type_prefs, str):
+                        if ',' in user.experience_type_prefs:
+                            user_preferred_exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
+                        else:
+                            user_preferred_exp_types = [user.experience_type_prefs.strip()]
+            
+            print(f"  User's preferred experience types: {user_preferred_exp_types}")
             
             try:
-                # Parse user preferences
-                print(f"  Experience type preferences: {user.experience_type_prefs}")
-                
-                user_preferred_exp_types = []
-                if user.experience_type_prefs:
-                    try:
-                        exp_prefs = json.loads(user.experience_type_prefs)
-                        if isinstance(exp_prefs, dict):
-                            user_preferred_exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
-                        elif isinstance(exp_prefs, list):
-                            user_preferred_exp_types = exp_prefs
-                    except:
-                        pass
-                
-                print(f"  Parsed preferences: {user_preferred_exp_types}")
-                
                 if not pinecone_initialized:
-                    print("  ⚠️ Pinecone not initialized, cannot test vector retrieval")
+                    print("  ⚠️ Pinecone not initialized. Skipping test.")
                     continue
-                
-                # Check if user has preference vector
-                if not user.preference_vector:
-                    print(f"  ⚠️ User {user.id} has no preference vector, skipping retrieval test")
-                    continue
-                
-                # Get user's preference vector
+                    
+                # Get the user's preference vector
                 preference_embedding = json.loads(user.preference_vector)
                 print(f"  User has preference vector with dimension {len(preference_embedding)}")
                 
                 # Retrieve from Pinecone
                 print(f"  Querying Pinecone for similar experiences...")
                 
-                # Filter conditions
+                # Filter conditions - only exclude user's own experiences
                 filter_conditions = {
                     "user_id": {"$ne": user.id}  # Base filter: exclude user's own experiences
                 }
@@ -202,7 +193,7 @@ def test_retrieval():
                     if exp_id:
                         exp = Experience.query.get(exp_id)
                         if exp:
-                            match_reason = "Unknown"
+                            match_reason = "Based on vector similarity"
                             if exp.experience_type in user_preferred_exp_types:
                                 match_reason = f"Matches preference for {exp.experience_type} experiences"
                             
