@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,8 @@ const Swipe = () => {
   const [animationStep, setAnimationStep] = useState(0); // Track animation progress
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
+  const [hasCompletedCycle, setHasCompletedCycle] = useState(false); // Track if we've gone through all experiences once
+  const originalExperiencesRef = useRef([]); // Keep original experiences order for cycling
   const { user, authTokens } = useContext(AuthContext);
 
   const fetchExperiences = async () => {
@@ -42,11 +44,14 @@ const Swipe = () => {
       
       if (data && data.length > 0) {
         setExperiences(data);
+        // Store the original experiences order
+        originalExperiencesRef.current = [...data];
         setCurrentIndex(0);
+        setHasCompletedCycle(false);
       } else {
         // If no experiences are returned, just set an empty array
-        // This will trigger the "No more experiences" UI
         setExperiences([]);
+        originalExperiencesRef.current = [];
       }
     } catch (err) {
       console.error('Error fetching experiences:', err);
@@ -168,27 +173,55 @@ const Swipe = () => {
 
       // Give more time for the animation to complete visually before transitioning
       setTimeout(() => {
-        // Move to next experience
+        // Calculate the next index
         const nextIndex = currentIndex + 1;
-        setCurrentIndex(nextIndex);
+        
+        // Check if we're at the end of the experiences array
+        if (nextIndex >= experiences.length) {
+          // We've reached the end, cycle back to the beginning
+          console.log("Reached end of experiences, cycling back to beginning");
+          setCurrentIndex(0);
+          setHasCompletedCycle(true);
+          
+          // Optionally fetch fresh experiences in the background to mix things up
+          // but continue showing the original set in the meantime
+          fetchExperiences();
+        } else {
+          // Still have more experiences to show
+          setCurrentIndex(nextIndex);
+          
+          // If we're getting close to the end of the list, try to fetch more experiences
+          // but only if we haven't already completed a full cycle
+          if (!hasCompletedCycle && nextIndex >= experiences.length - 2) {
+            console.log("Getting close to the end, fetching more experiences");
+            fetchExperiences();
+          }
+        }
         
         // Reset the position and swipe direction
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
         setIsAnimating(false); // Reset animation state when complete
         
-        // Only try to fetch more experiences if we're not already at the end
-        // and if we're getting close to the end of the list
-        if (nextIndex < experiences.length && nextIndex >= experiences.length - 2) {
-          fetchExperiences();
-        }
       }, 350); // Reduced from 450ms to 350ms for faster transition
       
     } catch (err) {
       console.error('Error in swipe handling:', err);
       // Even if there's an error, we should still move to the next card
       setTimeout(() => {
-        setCurrentIndex(prev => prev + 1);
+        // Calculate the next index
+        const nextIndex = currentIndex + 1;
+        
+        // Check if we're at the end of the experiences array
+        if (nextIndex >= experiences.length) {
+          // We've reached the end, cycle back to the beginning
+          setCurrentIndex(0);
+          setHasCompletedCycle(true);
+        } else {
+          // Still have more experiences to show
+          setCurrentIndex(nextIndex);
+        }
+        
         setCurrentPosition({ x: 0, y: 0 });
         setSwipeDirection(null);
         setIsAnimating(false); // Reset animation state on error
@@ -199,6 +232,7 @@ const Swipe = () => {
   const handleRetry = () => {
     // Reset current index to 0 to avoid any out-of-bounds issues
     setCurrentIndex(0);
+    setHasCompletedCycle(false);
     // Fetch fresh experiences
     fetchExperiences();
   };
@@ -236,7 +270,7 @@ const Swipe = () => {
     );
   }
 
-  if (experiences.length === 0 || currentIndex >= experiences.length) {
+  if (experiences.length === 0) {
     return (
       <div className="py-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[80vh]">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto text-center">
@@ -245,8 +279,8 @@ const Swipe = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-3 text-orange-800">No more experiences</h2>
-          <p className="text-gray-600 mb-6">Looks like you've seen all available experiences! Check back later or create your own.</p>
+          <h2 className="text-2xl font-bold mb-3 text-orange-800">No experiences found</h2>
+          <p className="text-gray-600 mb-6">We couldn't find any experiences for you right now. Check back later or create your own.</p>
           <button 
             onClick={handleRetry}
             className="px-6 py-3 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
@@ -259,6 +293,15 @@ const Swipe = () => {
   }
 
   const currentExperience = experiences[currentIndex];
+  
+  // Display a message if we've gone through all experiences once
+  const cycleMessage = hasCompletedCycle ? (
+    <div className="text-center my-3">
+      <span className="bg-orange-100 text-orange-800 text-xs font-medium px-3 py-1 rounded-full cycle-indicator">
+        You've seen all available experiences
+      </span>
+    </div>
+  ) : null;
   
   // Calculate rotation and opacity based on swipe position
   const cardRotation = currentPosition.x * 0.06;
@@ -339,6 +382,9 @@ const Swipe = () => {
       */}
       
       <div className="max-w-md mx-auto px-4">
+        {/* Display cycle message at the top if we're showing repeated experiences */}
+        {cycleMessage}
+        
         {/* Swipe indicators - Like */}
         {!isInitialLoad && (
           <>
@@ -509,7 +555,10 @@ const Swipe = () => {
       
       <div className="max-w-md mx-auto mt-6 text-center px-4">
         <p className="text-sm text-orange-800">
-          Click the buttons to like or pass
+          {hasCompletedCycle 
+            ? "You've seen all experiences. Keep swiping to see them again!"
+            : "Click the buttons to like or pass"
+          }
         </p>
       </div>
     </div>

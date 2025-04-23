@@ -197,4 +197,15 @@
   .hinge-card {
     height: 500px;
   }
+}
+
+/* Add this new CSS for our cycle indicator badge */
+.cycle-indicator {
+  animation: fadeInPulse 0.5s ease-in-out;
+}
+
+@keyframes fadeInPulse {
+  0% { opacity: 0; transform: translateY(-10px); }
+  70% { opacity: 1; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
 } 
