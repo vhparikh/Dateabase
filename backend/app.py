@@ -1455,6 +1455,10 @@ def get_swipe_experiences(current_user_id=None):
     
     This endpoint leverages Pinecone vector search to find experiences that closely match
     the user's preference vector, combining experience attributes with creator profiles.
+    
+    Query parameters:
+    - include_swiped: If set to "true", will include experiences the user has already swiped on,
+                     enabling infinite scrolling when a user has seen all experiences.
     """
     try:
         # Get the current user
@@ -1462,9 +1466,12 @@ def get_swipe_experiences(current_user_id=None):
         if not user:
             return jsonify({'detail': 'User not found'}), 404
         
-        print(f"User {current_user_id}: Retrieving personalized swipe experiences")
+        # Check if we should include already swiped experiences (for infinite scrolling)
+        include_swiped = request.args.get('include_swiped', 'false').lower() == 'true'
         
-        # Get experiences the user has already swiped on to filter them out
+        print(f"User {current_user_id}: Retrieving personalized swipe experiences (include_swiped={include_swiped})")
+        
+        # Get experiences the user has already swiped on (for filtering or reference)
         swiped_experience_ids = [
             swipe.experience_id for swipe in 
             UserSwipe.query.filter_by(user_id=current_user_id).all()
@@ -1472,91 +1479,103 @@ def get_swipe_experiences(current_user_id=None):
         print(f"User {current_user_id}: Has already swiped on {len(swiped_experience_ids)} experiences")
         
         # Initialize experiences list
-        experiences = []
+        all_experiences = []
         
-        # Use Pinecone for personalized recommendations if available
-        if pinecone_initialized:
-            print(f"User {current_user_id}: Using Pinecone for personalized recommendations")
+        # Get all experiences except user's own
+        query = Experience.query.filter(Experience.user_id != current_user_id)
+        
+        # Apply filtering for already swiped experiences if not including them
+        if not include_swiped and swiped_experience_ids:
+            query = query.filter(~Experience.id.in_(swiped_experience_ids))
             
-            # Get personalized experiences from Pinecone based on rich user preferences
-            personalized_matches = get_personalized_experiences(user, top_k=50)  # Request more to have a buffer
+        # Get all potential experiences
+        all_experiences = query.all()
+        print(f"User {current_user_id}: Found {len(all_experiences)} total experiences to rank")
+        
+        # If pinecone is initialized, use it to rank experiences by vector similarity
+        if pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
+            print(f"User {current_user_id}: Ranking experiences using preference vector")
             
-            if personalized_matches and len(personalized_matches) > 0:
-                print(f"User {current_user_id}: Found {len(personalized_matches)} personalized matches from Pinecone")
+            # Create a list to hold experiences with their scores
+            scored_experiences = []
+            
+            # Calculate vector similarity for each experience if possible
+            for exp in all_experiences:
+                # Check if experience is already swiped
+                already_swiped = exp.id in swiped_experience_ids
                 
-                # Extract experience IDs from the matches
-                experience_ids = [match['id'] for match in personalized_matches]
+                # Get the creator of the experience
+                creator = User.query.get(exp.user_id)
+                if not creator:
+                    continue
                 
-                # Get experience details from the database
-                experiences = Experience.query.filter(
-                    Experience.id.in_(experience_ids),
-                    Experience.user_id != current_user_id  # Ensure we don't include user's own experiences
-                ).all()
-                
-                # Create a mapping for quick lookup of score and metadata
-                score_map = {match['id']: match['score'] for match in personalized_matches}
-                metadata_map = {match['id']: match['metadata'] for match in personalized_matches}
-                
-                # Create a dictionary to maintain the order from personalized_matches
-                ordered_experiences = {}
-                for exp in experiences:
-                    ordered_experiences[exp.id] = exp
-                
-                # Rebuild experiences list in the order of personalized_matches
-                experiences = []
-                for match in personalized_matches:
-                    exp_id = match['id']
-                    if exp_id in ordered_experiences:
-                        experiences.append(ordered_experiences[exp_id])
-                
-                print(f"User {current_user_id}: Retrieved {len(experiences)} personalized experiences from database")
-                
-                # Add match reason based on score and metadata
-                for i, exp in enumerate(experiences):
-                    exp.match_score = score_map.get(exp.id, 0)
-                    exp.match_reason = get_match_reason(user, exp, metadata_map.get(exp.id, {}))
-                    
-                    # For debugging, log the top experiences with their scores
-                    if i < 5:  # Only log the top 5 for brevity
-                        print(f"User {current_user_id}: Top match {i+1}: Experience {exp.id} ({exp.experience_type}) with score {exp.match_score:.4f}")
-                
-            else:
-                print(f"User {current_user_id}: No personalized matches found in Pinecone, falling back to fallback strategy")
+                # If the experience has a vector, calculate similarity
+                if hasattr(exp, 'vector') and exp.vector:
+                    # Calculate similarity between user preference and experience vector
+                    try:
+                        user_vector = np.array(json.loads(user.preference_vector))
+                        exp_vector = np.array(json.loads(exp.vector))
+                        
+                        # Calculate cosine similarity (or other similarity measure)
+                        similarity = np.dot(user_vector, exp_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(exp_vector))
+                        
+                        # For already swiped experiences, reduce the similarity slightly to prioritize new content
+                        if already_swiped:
+                            similarity *= 0.9  # Reduce score by 10% for already seen content
+                        
+                        # Add to scored experiences
+                        scored_experiences.append({
+                            'experience': exp,
+                            'score': float(similarity),
+                            'already_swiped': already_swiped,
+                            'reason': get_match_reason(user, exp, {})
+                        })
+                    except (ValueError, TypeError, json.JSONDecodeError) as e:
+                        print(f"Error calculating similarity for experience {exp.id}: {e}")
+                        # If vector calculation fails, still include with neutral score
+                        scored_experiences.append({
+                            'experience': exp,
+                            'score': 0.5,  # Neutral score
+                            'already_swiped': already_swiped,
+                            'reason': "New experience you might like"
+                        })
+                else:
+                    # For experiences without vectors, assign a neutral score
+                    scored_experiences.append({
+                        'experience': exp,
+                        'score': 0.5,  # Neutral score
+                        'already_swiped': already_swiped,
+                        'reason': "New experience you might like"
+                    })
+            
+            # Sort experiences by score (highest first)
+            scored_experiences.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Log some information about the ranking
+            print(f"User {current_user_id}: Ranked {len(scored_experiences)} experiences by preference similarity")
+            
+            # Prepare the final results
+            experiences = [item['experience'] for item in scored_experiences]
+            
+            # Add match scores and reasons to the experiences
+            for i, exp in enumerate(experiences):
+                matching_item = next((item for item in scored_experiences if item['experience'].id == exp.id), None)
+                if matching_item:
+                    exp.match_score = matching_item['score']
+                    exp.match_reason = matching_item['reason']
+                    exp.already_swiped = matching_item['already_swiped']
         else:
-            print(f"User {current_user_id}: Pinecone not initialized. Using fallback experience retrieval")
+            # If no vector ranking is possible, sort by recency
+            print(f"User {current_user_id}: No preference vector available, sorting by recency")
+            experiences = sorted(all_experiences, key=lambda x: x.created_at, reverse=True)
+            
+            # Add default scores and reasons
+            for exp in experiences:
+                exp.match_score = 0.5  # Default neutral score
+                exp.match_reason = "Recent experience you might like"
+                exp.already_swiped = exp.id in swiped_experience_ids
         
-        # Fallback if no or few personalized experiences were found
-        if not experiences or len(experiences) < 5:
-            print(f"User {current_user_id}: Using fallback strategy to get more experiences")
-            
-            # Get recent experiences - explicitly exclude already swiped IDs
-            fallback_query = Experience.query.filter(
-                Experience.user_id != current_user_id
-            )
-            
-            # Apply the filter for already swiped experiences if any
-            if swiped_experience_ids:
-                fallback_query = fallback_query.filter(
-                    ~Experience.id.in_(swiped_experience_ids)
-                )
-            
-            # Get the most recent experiences
-            fallback_experiences = fallback_query.order_by(Experience.created_at.desc()).limit(20).all()
-            
-            print(f"User {current_user_id}: Found {len(fallback_experiences)} fallback experiences")
-            
-            # Add them to the experiences list if not already there
-            for exp in fallback_experiences:
-                if not any(e.id == exp.id for e in experiences):
-                    exp.match_score = 0.5  # Neutral score for fallback experiences
-                    exp.match_reason = "New experience you might like"
-                    experiences.append(exp)
-            
-            print(f"User {current_user_id}: Added fallback experiences, now have {len(experiences)} total")
-        
-        # Final filtering of already swiped experiences (double-check)
-        experiences = [exp for exp in experiences if exp.id not in swiped_experience_ids]
-        print(f"User {current_user_id}: After final filtering, have {len(experiences)} experiences for swiping")
+        print(f"User {current_user_id}: Preparing {len(experiences)} experiences for response")
         
         result = []
         for exp in experiences:
@@ -1572,6 +1591,9 @@ def get_swipe_experiences(current_user_id=None):
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
+            
+            # Check if this is a swiped experience for the 'already_swiped' flag
+            already_swiped = hasattr(exp, 'already_swiped') and exp.already_swiped
             
             # Prepare result with match score and reason if available
             exp_data = {
@@ -1589,7 +1611,8 @@ def get_swipe_experiences(current_user_id=None):
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
                 'location_image': exp.location_image,
-                'created_at': exp.created_at.isoformat() if exp.created_at else None
+                'created_at': exp.created_at.isoformat() if exp.created_at else None,
+                'already_swiped': already_swiped  # Flag to indicate if this has been swiped before
             }
             
             # Add match score and reason if available

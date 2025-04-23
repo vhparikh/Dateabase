@@ -32,7 +32,11 @@ const Swipe = () => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/swipe-experiences`, {
+      // Add the include_swiped parameter when we've completed a cycle
+      // This will fetch experiences including those we've already swiped on
+      const includeSwipedParam = hasCompletedCycle ? '?include_swiped=true' : '';
+      
+      const response = await fetch(`${API_URL}/api/swipe-experiences${includeSwipedParam}`, {
         credentials: 'include'
       });
       
@@ -47,7 +51,7 @@ const Swipe = () => {
         // Store the original experiences order
         originalExperiencesRef.current = [...data];
         setCurrentIndex(0);
-        setHasCompletedCycle(false);
+        // Don't reset hasCompletedCycle flag here to keep track of when we've gone through all experiences
       } else {
         // If no experiences are returned, just set an empty array
         setExperiences([]);
@@ -322,64 +326,7 @@ const Swipe = () => {
 
   return (
     <div className="pt-6 pb-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[90vh]">
-      {/* Match modal - Commented out but preserved for future use
-      <AnimatePresence>
-        {false && (
-          <motion.div 
-            className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="p-6 text-center">
-                <div className="text-5xl mb-6">🎉</div>
-                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-start to-orange-end mb-4">It's a Match!</h3>
-                
-                <div className="flex justify-center items-center space-x-4 mb-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-orange-start to-orange-end flex items-center justify-center text-white text-2xl font-bold">
-                    {user.username?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  
-                  <div className="w-8 h-8 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                    </svg>
-                  </div>
-                  
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-orange-end to-orange-start flex items-center justify-center text-white text-2xl font-bold">
-                    M
-                  </div>
-                </div>
-                
-                <p className="text-gray-700 mb-6">You both want to try an experience at a location!</p>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    className="py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                  >
-                    Keep Swiping
-                  </button>
-                  
-                  <Link 
-                    to="/matches"
-                    className="py-3 px-4 bg-gradient-to-r from-orange-start to-orange-end rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all text-center"
-                  >
-                    View Matches
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      */}
+      {/* Match modal - Commented out but preserved for future use */}
       
       <div className="max-w-md mx-auto px-4">
         {/* Display cycle message at the top if we're showing repeated experiences */}
