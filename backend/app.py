@@ -1683,12 +1683,12 @@ def cas_callback():
             resp = None
             if needs_onboarding:
                 # Send to root with #/onboarding hash for client-side routing
-                resp = redirect(f"/?redirectTo=onboarding")
+                resp = redirect(f"/onboarding")
                 print(f"Redirecting new user to onboarding")
             else:
                 # For authenticated users with completed onboarding
                 target = callback_url.lstrip('/') if callback_url != '/' else 'swipe'
-                resp = redirect(f"/?redirectTo={target}")
+                resp = redirect(f"/{target}")
                 print(f"Redirecting authenticated user to {target}")
             
             # Set tokens in cookies for good measure
