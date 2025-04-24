@@ -1506,13 +1506,18 @@ def get_swipe_experiences(current_user_id=None):
                 print(f"User {current_user_id}: Skipping experience {exp.id} as creator no longer exists")
                 continue
                 
+            # Check if this is a swiped experience for the 'already_swiped' flag
+            already_swiped = hasattr(exp, 'already_swiped') and exp.already_swiped
+            
+            # Skip experiences that have already been swiped
+            if already_swiped:
+                print(f"User {current_user_id}: Skipping experience {exp.id} as it has already been swiped")
+                continue
+                
             # Clean up text data
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
-            
-            # Check if this is a swiped experience for the 'already_swiped' flag
-            already_swiped = hasattr(exp, 'already_swiped') and exp.already_swiped
             
             # Prepare result with match score and reason if available
             exp_data = {

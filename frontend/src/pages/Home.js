@@ -642,7 +642,7 @@ const Home = () => {
       });
       
       // Handle match
-      if (response.data && response.data.match) {
+      if (response.data && response.data.match_created) {
         // Format match data for display
         const matchData = {
           current_user: {
@@ -650,8 +650,8 @@ const Home = () => {
             id: user?.id || user?.sub
           },
           other_user: {
-            name: response.data.match.other_user?.username || 'Someone',
-            id: response.data.match.other_user?.id
+            name: response.data.match_user?.name || 'Someone',
+            id: response.data.match_user?.id
           },
           experience: {
             experience_type: swipedExperience.experience_type,
