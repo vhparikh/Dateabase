@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory, redirect, session, url_for
-from flask_wtf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import os
