@@ -59,11 +59,6 @@ export const checkStatus = () => {
   return api.get('/api/cas/status', { withCredentials: true });
 };
 
-// CAS Login
-export const casLogin = (callback_url = '/') => {
-  return api.get(`/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`, { withCredentials: true });
-};
-
 // CAS Logout
 export const casLogout = () => {
   return api.get('/api/cas/logout', { withCredentials: true });
