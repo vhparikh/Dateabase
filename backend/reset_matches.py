@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 def reset_match_tables():
     # Get the database URL from environment variables
@@ -28,13 +28,14 @@ def reset_match_tables():
         # Truncate the match and user_swipe tables
         print("Truncating Match and UserSwipe tables...")
         
-        # Execute truncate commands
-        connection.execute('TRUNCATE TABLE "match" CASCADE;')
-        connection.execute('TRUNCATE TABLE "user_swipe" CASCADE;')
+        # Execute truncate commands - using text() to make them executable
+        connection.execute(text('TRUNCATE TABLE "match" CASCADE;'))
+        connection.execute(text('TRUNCATE TABLE "user_swipe" CASCADE;'))
+        connection.commit()  # Commit the changes
         
         # Verify the tables are empty
-        match_count = connection.execute('SELECT COUNT(*) FROM "match";').scalar()
-        swipe_count = connection.execute('SELECT COUNT(*) FROM "user_swipe";').scalar()
+        match_count = connection.execute(text('SELECT COUNT(*) FROM "match";')).scalar()
+        swipe_count = connection.execute(text('SELECT COUNT(*) FROM "user_swipe";')).scalar()
         
         print(f"Verification: Match table has {match_count} rows")
         print(f"Verification: UserSwipe table has {swipe_count} rows")
