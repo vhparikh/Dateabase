@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSwipeExperiences } from '../services/api';
+import { getSwipeExperiences, createSwipe } from '../services/api';
 import './Swipe.css'; // Import the CSS file
 import { Link } from 'react-router-dom';
 
