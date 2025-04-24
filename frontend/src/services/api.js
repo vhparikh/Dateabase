@@ -11,9 +11,7 @@ const api = axios.create({
 
 // Utility to fetch CSRF token
 const getCSRFToken = async () => {
-  // Remove trailing '/api' if present for correct endpoint
-  const base = API_URL.replace(/\/api$/, '');
-  const res = await axios.get(`${base}/api/csrf-token`, { withCredentials: true });
+  const res = await api.get('/api/csrf-token', { withCredentials: true });
   return res.data.csrf_token;
 };
 
@@ -57,6 +55,11 @@ const apiDelete = async (url, config = {}) => {
 // Status:
 export const checkStatus = () => {
   return api.get('/api/cas/status', { withCredentials: true });
+};
+
+// CAS Login
+export const casLogin = (callback_url = '/') => {
+  return api.get(`/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`, { withCredentials: true });
 };
 
 // CAS Logout

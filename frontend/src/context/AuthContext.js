@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import { API_URL } from '../config';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, refreshToken, checkStatus, casLogout } from '../services/api';
+import { getCurrentUser, refreshToken, checkStatus, casLogin, casLogout } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -119,10 +118,9 @@ export const AuthProvider = ({ children }) => {
   // Initiate CAS login
   const loginWithCAS = async (callback_url = '/') => {
     try {
-      const response = await fetch(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`);
-      if (response.ok) {
-        const data = await response.json();
-        // Redirect to CAS login URL
+      const response = await casLogin(callback_url);
+      if (response.status === 200) {
+        const data = response.data;
         window.location.href = data.login_url;
         return true;
       }
