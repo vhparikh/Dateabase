@@ -1062,6 +1062,30 @@ const Matches = () => {
     if (user) {
       fetchMatches();
     }
+  }, [user, activeTab]);
+  
+  // Add another useEffect to periodically refresh the matches
+  useEffect(() => {
+    // Initial fetch with a small delay to ensure auth is ready
+    const initialFetchTimeout = setTimeout(() => {
+      if (user) {
+        console.log("Initial matches fetch");
+        fetchMatches();
+      }
+    }, 500);
+
+    // Set up regular polling for matches
+    const intervalId = setInterval(() => {
+      if (user) {
+        console.log("Polling for new matches");
+        fetchMatches();
+      }
+    }, 30000); // Poll every 30 seconds
+    
+    return () => {
+      clearTimeout(initialFetchTimeout);
+      clearInterval(intervalId);
+    };
   }, [user]);
   
   return (

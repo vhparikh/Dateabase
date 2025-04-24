@@ -638,30 +638,37 @@ const Home = () => {
       const response = await axios.post(`${API_URL}/api/swipes`, {
         user_id: user?.id || user?.sub,
         experience_id: experienceId,
-        direction: directionBool
+        is_like: directionBool
       });
+      
+      console.log('Swipe response:', response.data);
       
       // Handle match
       if (response.data && response.data.match_created) {
-        // Format match data for display
-        const matchData = {
-          current_user: {
-            name: user?.username || 'You',
-            id: user?.id || user?.sub
-          },
-          other_user: {
-            name: response.data.match_user?.name || 'Someone',
-            id: response.data.match_user?.id
-          },
-          experience: {
-            experience_type: swipedExperience.experience_type,
-            description: swipedExperience.description,
-            location: swipedExperience.location
-          }
-        };
-        
-        setMatchDetails(matchData);
-        setShowMatch(true);
+        try {
+          // Format match data for display
+          const matchData = {
+            current_user: {
+              name: user?.name || user?.username || 'You',
+              id: user?.id || user?.sub
+            },
+            other_user: {
+              name: response.data.match_user?.name || 'Someone',
+              id: response.data.match_user?.id
+            },
+            experience: {
+              experience_type: swipedExperience.experience_type,
+              description: swipedExperience.description,
+              location: swipedExperience.location
+            }
+          };
+          
+          console.log('Match created:', matchData);
+          setMatchDetails(matchData);
+          setShowMatch(true);
+        } catch (matchErr) {
+          console.error('Error formatting match data:', matchErr);
+        }
       }
     } catch (err) {
       console.error('Error recording swipe:', err);

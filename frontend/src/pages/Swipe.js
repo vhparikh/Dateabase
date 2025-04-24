@@ -172,6 +172,17 @@ const Swipe = () => {
         throw new Error(errorData.detail || 'Failed to record swipe');
       }
 
+      // Parse the response to check if a match was created
+      const responseData = await response.json();
+      console.log("Swipe response:", responseData);
+
+      // Check if a match was created
+      if (responseData && responseData.match_created) {
+        console.log("Match created:", responseData.match_id);
+        // You could show a match notification here if desired
+        // or navigate to the matches page
+      }
+
       // Give more time for the animation to complete visually before transitioning
       setTimeout(() => {
         // Calculate the next index
