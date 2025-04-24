@@ -147,8 +147,15 @@ export const createSwipe = (swipeData) => {
   return apiPost('/api/swipes', swipeData);
 };
 
-export const getSwipeExperiences = () => {
-  return api.get('/api/swipe-experiences', { withCredentials: true });
+export const getSwipeExperiences = async () => {
+  const response = await fetch('/api/swipe-experiences', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+  return response;
 };
 
 // Recommendation endpoints
