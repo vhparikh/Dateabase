@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { API_URL } from '../config';
+import { updateCurrentUser } from '../services/api';
 
 const Preferences = () => {
   const navigate = useNavigate();
@@ -125,27 +125,15 @@ const Preferences = () => {
         interests_prefs: JSON.stringify(formData.interests_prefs)
       };
       
-      const response = await fetch(`${API_URL}/api/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(apiFormData)
-      });
-      
-      if (response.ok) {
-        const updatedUserData = await response.json();
-        // Update the user in context
+      try {
+        const { data: updatedUserData } = await updateCurrentUser(apiFormData);
         setUser(updatedUserData);
         setSaveSuccess(true);
-        // Redirect to profile after a short delay
         setTimeout(() => {
           navigate('/profile');
         }, 1200);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to update preferences');
+      } catch (error) {
+        setError(error.response?.data?.detail || 'Failed to update preferences');
       }
     } catch (err) {
       console.error('Error saving preferences:', err);

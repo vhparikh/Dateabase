@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
+import { getCurrentUser, refreshToken, checkStatus, casLogin, casLogout } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -35,40 +35,25 @@ export const AuthProvider = ({ children }) => {
       setAuthLoading(true);
       try {
         // Check if the user is authenticated with CAS
-        const response = await fetch(`${API_URL}/api/cas/status`, {
-          credentials: 'include' // Important for session cookies
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setCasAuthenticated(data.authenticated);
-          
+        // Check CAS authentication status
+        const casStatusResponse = await checkStatus();
+        if (casStatusResponse.status === 200) {
+          setCasAuthenticated(casStatusResponse.data.authenticated);
+
           // If authenticated, load user profile
-          if (data.authenticated) {
-            const profileResponse = await fetch(`${API_URL}/api/users/me`, {
-              credentials: 'include'
-            });
-            
-            if (profileResponse.ok) {
-              const profileData = await profileResponse.json();
+          if (casStatusResponse.data.authenticated) {
+            const profileResponse = await getCurrentUser();
+            if (profileResponse.status === 200) {
+              const profileData = profileResponse.data;
               console.log('User profile loaded');
               setUser(profileData);
-              
+
               // Generate tokens if needed
               if (!authTokens) {
-                const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  credentials: 'include',
-                  body: JSON.stringify({})
-                });
-                
-                if (tokenResponse.ok) {
-                  const tokenData = await tokenResponse.json();
-                  setAuthTokens(tokenData);
-                  localStorage.setItem('authTokens', JSON.stringify(tokenData));
+                const tokenResponse = await refreshToken({});
+                if (tokenResponse.status === 200) {
+                  setAuthTokens(tokenResponse.data);
+                  localStorage.setItem('authTokens', JSON.stringify(tokenResponse.data));
                 }
               }
             }
@@ -133,10 +118,9 @@ export const AuthProvider = ({ children }) => {
   // Initiate CAS login
   const loginWithCAS = async (callback_url = '/') => {
     try {
-      const response = await fetch(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`);
-      if (response.ok) {
-        const data = await response.json();
-        // Redirect to CAS login URL
+      const response = await casLogin(callback_url);
+      if (response.status === 200) {
+        const data = response.data;
         window.location.href = data.login_url;
         return true;
       }
@@ -154,12 +138,10 @@ export const AuthProvider = ({ children }) => {
       const needsOnboarding = params?.get('needs_onboarding') === 'true';
       
       // First, check if the user is authenticated with CAS
-      const statusResponse = await fetch(`${API_URL}/api/cas/status`, {
-        credentials: 'include'
-      });
+      const statusResponse = await checkStatus();
       
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
+      if (statusResponse.status === 200) {
+        const statusData = await statusResponse.data;
         
         if (statusData.authenticated) {
           setCasAuthenticated(true);
@@ -169,15 +151,10 @@ export const AuthProvider = ({ children }) => {
           
           if (userProfile) {
             // Generate access token
-            const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({})
-            });
+            const tokenResponse = await refreshToken({});
             
-            if (tokenResponse.ok) {
-              const tokenData = await tokenResponse.json();
+            if (tokenResponse.status === 200) {
+              const tokenData = await tokenResponse.data;
               setAuthTokens(tokenData);
               localStorage.setItem('authTokens', JSON.stringify(tokenData));
             }
@@ -206,22 +183,16 @@ export const AuthProvider = ({ children }) => {
   const logoutUser = async () => {
     try {
       // Logout from backend session
-      const response = await fetch(`${API_URL}/api/cas/logout`, {
-        credentials: 'include'
-      });
-      
+      const response = await casLogout();
       // Clear local storage and state
       localStorage.removeItem('authTokens');
       setAuthTokens(null);
       setUser(null);
       setCasAuthenticated(false);
-      
       // Get the CAS logout URL from response
-      if (response.ok) {
-        const data = await response.json();
-        return data;  // Return data containing logout_url
+      if (response.status === 200) {
+        return response.data;  // Return data containing logout_url
       }
-      
       return true;
     } catch (error) {
       console.error('Error logging out:', error);

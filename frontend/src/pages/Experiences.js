@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { getExperiences } from '../services/api';
+import { getExperiences, createExperience, updateExperience, deleteExperience, checkInappropriateContent } from '../services/api';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -330,23 +330,8 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   };
 
   const isInappropriate = async (text) => {
-    console.log('Checking for inappropriate content:', text);
     try {
-      const response = await fetch(`${API_URL}/api/check-inappropriate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data.is_inappropriate;
+      return await checkInappropriateContent(text);
     } catch (error) {
       console.error("Error checking inappropriate content:", error);
       // Fallback: if error, assume not inappropriate
@@ -595,14 +580,8 @@ const Experiences = () => {
     const fetchExperiences = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/my-experiences`, {
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch experiences');
-        }
-        const data = await response.json();
-        setExperiences(data);
+        const data = await getExperiences();
+        setExperiences(data.data || data); // handle axios .data wrapper
         setError('');
       } catch (err) {
         console.error('Error fetching experiences:', err);
@@ -611,9 +590,8 @@ const Experiences = () => {
         setLoading(false);
       }
     };
-
     fetchExperiences();
-  }, [API_URL]);
+  }, []);
 
   const handleAddExperience = () => {
     setCurrentExperience(null);
@@ -635,72 +613,32 @@ const Experiences = () => {
       // Real API call for saving with session authentication
       if (experienceData.id) {
         // PUT request for updating an experience
-        const response = await fetch(`${API_URL}/api/experiences/${experienceData.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(experienceData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Failed to update experience');
-        }
-        
-        const data = await response.json();
-        console.log('Experience updated successfully:', data);
-        if (data) {
+        const { data } = await updateExperience(experienceData.id, experienceData);
+        if (data && data.experience) {
           setExperiences(prev => prev.map(exp => 
             exp.id === experienceData.id ? data.experience : exp
           ));
         }
       } else {
         // POST request for creating a new experience
-        console.log('Creating new experience');
-        const response = await fetch(`${API_URL}/api/experiences`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(experienceData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Failed to create experience');
-        }
-        
-        const data = await response.json();
-        console.log('Experience created successfully:', data);
-        if (data) {
+        const { data } = await createExperience(experienceData);
+        if (data && data.experience) {
           setExperiences(prev => [data.experience, ...prev]);
         }
       }
       
       // Refresh experiences after save
-      const fetchExperiences = async () => {
-        try {
-          setLoading(true);
-          const response = await fetch(`${API_URL}/api/my-experiences`, {
-            credentials: 'include'
-          });
-          if (!response.ok) {
-            throw new Error('Failed to fetch experiences');
-          }
-          const data = await response.json();
-          setExperiences(data);
-          setError('');
-        } catch (err) {
-          console.error('Error fetching experiences:', err);
-          setError('Failed to fetch experiences. Please try again later.');
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchExperiences();
+      try {
+        setLoading(true);
+        const data = await getExperiences();
+        setExperiences(data.data || data);
+        setError('');
+      } catch (err) {
+        console.error('Error fetching experiences:', err);
+        setError('Failed to fetch experiences. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
       
       setIsModalOpen(false);
       setLoading(false);
@@ -720,40 +658,20 @@ const Experiences = () => {
       setLoading(true);
       
       // Make DELETE request to delete the experience
-      const response = await fetch(`${API_URL}/api/experiences/${experienceId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete experience');
-      }
-      
+      await deleteExperience(experienceId);
       // Refresh experiences after successful deletion
-      const fetchExperiences = async () => {
-        try {
-          setLoading(true);
-          const response = await fetch(`${API_URL}/api/my-experiences`, {
-            credentials: 'include'
-          });
-          if (!response.ok) {
-            throw new Error('Failed to fetch experiences');
-          }
-          const data = await response.json();
-          setExperiences(data);
-          setError('');
-        } catch (err) {
-          console.error('Error fetching experiences:', err);
-          setError('Failed to fetch experiences. Please try again later.');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchExperiences();
+      try {
+        setLoading(true);
+        const data = await getExperiences();
+        setExperiences(data.data || data);
+        setError('');
+      } catch (err) {
+        console.error('Error fetching experiences:', err);
+        setError('Failed to fetch experiences. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
       setDeleteModal({ isOpen: false, experienceId: null });
-      setLoading(false);
     } catch (err) {
       console.error('Error deleting experience:', err);
       setError('Failed to delete experience. Please try again.');

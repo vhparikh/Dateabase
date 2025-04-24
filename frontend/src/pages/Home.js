@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
-import axios from 'axios';
+import { createSwipe, getMatches, getRecommendations } from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
@@ -558,16 +558,14 @@ const Home = () => {
         setMatchesLoading(false);
         return;
       }
+
+      const { data: response } = await getMatches(user?.id || user?.sub);
       
-      const response = await axios.get(`${API_URL}/api/matches/${user?.id || user?.sub}`, {
-        withCredentials: true
-      });
-      
-      if (response.data && Array.isArray(response.data)) {
-        setMatches(response.data.slice(0, 3)); // Only show up to 3 matches
-      } else if (response.data && response.data.matches) {
+      if (response && Array.isArray(response)) {
+        setMatches(response.slice(0, 3)); // Only show up to 3 matches
+      } else if (response && response.matches) {
         // Handle case where matches are nested in an object
-        setMatches(response.data.matches.slice(0, 3));
+        setMatches(response.matches.slice(0, 3));
       } else {
         setMatches([]);
       }
@@ -593,13 +591,10 @@ const Home = () => {
         return;
       }
       
-      const url = `${API_URL}/api/recommendations/${user?.id || user?.sub}`;
-      const response = await axios.get(url, {
-        withCredentials: true
-      });
+      const { data: response } = await getRecommendations(user?.id || user?.sub);
       
-      if (response.data && Array.isArray(response.data)) {
-        const fetchedExperiences = response.data;
+      if (response && Array.isArray(response)) {
+        const fetchedExperiences = response;
         setExperiences(fetchedExperiences);
         setPopularExperiences(fetchedExperiences);
         setVisibleExperiences(fetchedExperiences);
@@ -635,14 +630,14 @@ const Home = () => {
       const directionBool = direction === 'right';
       
       // Call API to record swipe
-      const response = await axios.post(`${API_URL}/api/swipes`, {
+      const { data: response } = await createSwipe({
         user_id: user?.id || user?.sub,
         experience_id: experienceId,
         direction: directionBool
       });
       
       // Handle match
-      if (response.data && response.data.match) {
+      if (response && response.match) {
         // Format match data for display
         const matchData = {
           current_user: {
@@ -650,8 +645,8 @@ const Home = () => {
             id: user?.id || user?.sub
           },
           other_user: {
-            name: response.data.match.other_user?.username || 'Someone',
-            id: response.data.match.other_user?.id
+            name: response.match.other_user?.username || 'Someone',
+            id: response.match.other_user?.id
           },
           experience: {
             experience_type: swipedExperience.experience_type,

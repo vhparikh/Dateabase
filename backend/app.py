@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory, redirect, session, url_for
+from flask_wtf import CSRFProtect, generate_csrf
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import os
@@ -72,6 +73,8 @@ app = Flask(__name__,
            static_folder='../frontend/build',  # Path to the React build directory
            static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
+# Set up CSRF protection
+CSRFProtect(app)
 
 # Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
@@ -473,6 +476,11 @@ def get_current_user_id():
         return None
     
     return user.id
+
+# CSRF Token Route
+@app.route('/api/csrf-token', methods=['GET'])
+def get_csrf_token():
+    return jsonify({'csrf_token': generate_csrf()})
 
 # Auth Routes
 @app.route('/api/register', methods=['POST'])

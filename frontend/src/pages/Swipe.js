@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSwipeExperiences } from '../services/api';
 import './Swipe.css'; // Import the CSS file
 import { Link } from 'react-router-dom';
 
@@ -32,15 +33,13 @@ const Swipe = () => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/swipe-experiences`, {
-        credentials: 'include'
-      });
+      const response = await getSwipeExperiences();
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to fetch experiences: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data && data.length > 0) {
         console.log(`Received ${data.length} experiences from API`);
@@ -154,18 +153,11 @@ const Swipe = () => {
       if (!currentExperience) return;
       
       // Send swipe to backend
-      const response = await fetch(`${API_URL}/api/swipes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const response = await createSwipe({
           user_id: user.id,
           experience_id: currentExperience.id,
           is_like: isLike
-        })
-      });
+        });
 
       if (!response.ok) {
         const errorData = await response.json();

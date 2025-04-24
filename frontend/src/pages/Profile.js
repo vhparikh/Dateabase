@@ -1,12 +1,11 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { getExperiences, getCurrentUser } from '../services/api';
+import { getExperiences, getCurrentUser, getUserImages } from '../services/api';
 import ProfileImageUpload from '../components/ProfileImageUpload';
-import { API_URL } from '../config';
 
 const Profile = () => {
-  const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
+  const { user, logoutUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [userExperiences, setUserExperiences] = useState([]);
   const [userProfile, setUserProfile] = useState(user); // Initialize with current context user
@@ -24,13 +23,10 @@ const Profile = () => {
         
         // Fetch user images
         try {
-          const imagesResponse = await fetch(`${API_URL}/api/users/images`, {
-            method: 'GET',
-            credentials: 'include'
-          });
+          const imagesResponse = await getUserImages();
           
           if (imagesResponse.ok) {
-            const imagesData = await imagesResponse.json();
+            const imagesData = imagesResponse.data;
             // Update user profile with images
             setUserProfile({
               ...response.data,

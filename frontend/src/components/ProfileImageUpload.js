@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../config';
+import { getUserImages, uploadUserImage, deleteUserImage, setImageAsProfile, updateCurrentUser } from '../services/api';
 
 const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
   const [images, setImages] = useState([]);
@@ -17,16 +17,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/images`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch images');
-      }
-      
-      const data = await response.json();
+      const data = await getUserImages();
       setImages(data);
     } catch (err) {
       console.error('Error fetching user images:', err);
@@ -73,18 +64,8 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // If we already have maxImages, the backend will replace the oldest one
       
       // Upload the image
-      const response = await fetch(`${API_URL}/api/users/images`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to upload image');
-      }
-      
-      const data = await response.json();
+      const data = await uploadUserImage(formData);
+      // data.image is expected in the same format as before
       
       // Update the images state with the new image
       setImages(prevImages => {
@@ -96,18 +77,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // If this is going to be the main profile image (position 0), update the profile_image field
       if (data.image.position === 0) {
         try {
-          const updateProfileResponse = await fetch(`${API_URL}/api/me`, {
-            method: 'PUT',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ profile_image: data.image.url })
-          });
-          
-          if (!updateProfileResponse.ok) {
-            console.error('Failed to update profile image URL');
-          }
+          await updateCurrentUser({ profile_image: data.image.url });
         } catch (err) {
           console.error('Error updating profile image URL:', err);
         }
@@ -137,15 +107,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/images/${imageId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete image');
-      }
+      await deleteUserImage(imageId);
       
       // Remove the deleted image from state
       setImages(prevImages => prevImages.filter(img => img.id !== imageId));
@@ -168,34 +130,11 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/images/${imageId}/set-position`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ position: 0 })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update image position');
-      }
+      await setImageAsProfile(imageId);
       
       // Also update the user's profile_image field to use this as the main profile image
       try {
-        const updateProfileResponse = await fetch(`${API_URL}/api/me`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ profile_image: image.url })
-        });
-        
-        if (!updateProfileResponse.ok) {
-          console.error('Failed to update profile image URL, but position was updated');
-        }
+        await updateCurrentUser({ profile_image: image.url });
       } catch (err) {
         console.error('Error updating profile image URL:', err);
       }

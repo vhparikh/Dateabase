@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { API_URL } from '../config';
+import { refreshToken } from '../services/api';
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -167,69 +167,6 @@ const Onboarding = () => {
     }
   };
 
-  const skipOnboarding = async () => {
-    setLoading(true);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/users/complete-onboarding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({})
-      });
-
-      if (response.ok) {
-        // Successfully completed onboarding
-        const data = await response.json();
-        
-        // Ensure we have valid authentication tokens
-        const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({})
-        });
-            
-        if (tokenResponse.ok) {
-          console.log('Successfully refreshed authentication tokens after skipping onboarding');
-          // Force reload user profile with updated info to ensure authentication state is current
-          const userProfile = await loadUserProfile();
-          
-          // If we got the user profile but onboarding_completed is still false,
-          // manually update it to ensure AppWrapper doesn't redirect back to onboarding
-          if (userProfile && userProfile.onboarding_completed === false) {
-            console.log('Forcing update of onboarding status in user context');
-            setUser({
-              ...userProfile,
-              onboarding_completed: true
-            });
-          }
-          
-          // Store a flag in localStorage for redundancy
-          window.localStorage.setItem('onboardingCompleted', 'true');
-          
-          // Use window.location for a hard redirect to avoid routing issues
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 300);
-        } else {
-          console.error('Failed to refresh tokens after skipping onboarding');
-          setError('Authentication error. Please try logging in again.');
-        }
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to complete onboarding');
-      }
-    } catch (err) {
-      console.error('Error skipping onboarding:', err);
-      setError('An error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Function to complete onboarding with server
   const completeOnboarding = async () => {
     setLoading(true);
@@ -277,16 +214,9 @@ const Onboarding = () => {
       console.log('Submitting onboarding data:', userData);
       
       // Make API call to complete onboarding
-      const response = await fetch(`${API_URL}/api/users/complete-onboarding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',  // Important for CAS authentication
-        body: JSON.stringify(userData)
-      });
+      const response = await completeOnboarding(userData);
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         const errorData = await response.json();
         console.error('Onboarding completion failed:', errorData);
         setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
@@ -294,23 +224,15 @@ const Onboarding = () => {
         return false;
       }
       
-      const data = await response.json();
-      console.log('Onboarding completed successfully:', data);
+      console.log('Onboarding completed successfully:', response);
       
       // Get fresh tokens after completing onboarding
       console.log('Refreshing tokens after onboarding completion...');
-      const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({})
-      });
+      const tokenResponse = await refreshToken({});
       
-      if (tokenResponse.ok) {
+      if (tokenResponse.status === 200) {
         // Parse and store the tokens
-        const tokenData = await tokenResponse.json();
+        const tokenData = tokenResponse.data;
         console.log('Token refresh successful');
         
         // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
