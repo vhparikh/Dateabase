@@ -64,7 +64,8 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // If we already have maxImages, the backend will replace the oldest one
       
       // Upload the image
-      const data = await uploadUserImage(formData);
+      const response = await uploadUserImage(formData);
+      const data = response.data
       // data.image is expected in the same format as before
       
       // Update the images state with the new image

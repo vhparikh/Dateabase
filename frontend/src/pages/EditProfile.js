@@ -287,21 +287,10 @@ const EditProfile = () => {
       
       console.log('Submitting profile update with data:', userData);
       
-      // Construct full API URL - ensure it ends with /api/me
-      const fullUrl = `${API_URL}/api/me`;
-      console.log('Request URL:', fullUrl);
-      
       try {
         // Make direct API call to update user using axios instead of the service
-        const response = await axios({
-          method: 'PUT', 
-          url: fullUrl,
-          data: userData,
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
+
+        const response = await updateCurrentUser(userData);
         
         console.log('Profile update response:', response);
         

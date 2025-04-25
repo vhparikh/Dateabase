@@ -159,8 +159,8 @@ const Swipe = () => {
           is_like: isLike
         });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (response.status !== 200) {
+        const errorData = response.data;
         throw new Error(errorData.detail || 'Failed to record swipe');
       }
 
