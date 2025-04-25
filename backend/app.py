@@ -2253,6 +2253,10 @@ def serve_experiences():
 def serve_matches():
     return app.send_static_file('index.html')
 
+@app.route('/onboarding')
+def serve_onboarding():
+    return app.send_static_file('index.html')
+
 # Profile Image Management API Endpoints
 @app.route('/api/users/images', methods=['POST'])
 @login_required()
