@@ -93,7 +93,7 @@ export const updateCurrentUser = (userData) => {
   return apiPut('/api/me', userData, { headers: {'Content-Type': 'application/json'}});
 };
 
-export const completeOnboarding = (userData) => {
+export const completeOnboardingForm = (userData) => {
   return apiPost('/api/users/complete-onboarding', userData);
 };
 
