@@ -633,11 +633,11 @@ const Home = () => {
       const { data: response } = await createSwipe({
         user_id: user?.id || user?.sub,
         experience_id: experienceId,
-        direction: directionBool
+        is_like: directionBool
       });
       
       // Handle match
-      if (response && response.match) {
+      if (response && response.match_created) {
         // Format match data for display
         const matchData = {
           current_user: {
@@ -645,8 +645,8 @@ const Home = () => {
             id: user?.id || user?.sub
           },
           other_user: {
-            name: response.match.other_user?.username || 'Someone',
-            id: response.match.other_user?.id
+            name: response.match_user?.name || 'Someone',
+            id: response.match_user?.id
           },
           experience: {
             experience_type: swipedExperience.experience_type,
