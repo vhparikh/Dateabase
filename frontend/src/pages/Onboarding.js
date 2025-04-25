@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { refreshToken } from '../services/api';
+import { refreshToken, completeOnboardingForm } from '../services/api';
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -214,10 +214,10 @@ const Onboarding = () => {
       console.log('Submitting onboarding data:', userData);
       
       // Make API call to complete onboarding
-      const response = await completeOnboarding(userData);
+      const response = await completeOnboardingForm(userData);
       
       if (response.status !== 200) {
-        const errorData = await response.json();
+        const errorData = await response.data;
         console.error('Onboarding completion failed:', errorData);
         setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
         setLoading(false);
