@@ -74,7 +74,7 @@ app = Flask(__name__,
            static_url_path='')  # Empty string makes the static assets available at the root URL
 CORS(app, supports_credentials=True)
 # Set up CSRF protection
-# CSRFProtect(app)
+CSRFProtect(app)
 
 # Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
