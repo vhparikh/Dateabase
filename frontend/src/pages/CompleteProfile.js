@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { updateUser } from '../services/api';
 import { API_URL } from '../config';
 
 const CompleteProfile = () => {
@@ -99,21 +100,12 @@ const CompleteProfile = () => {
     
     try {
       // Update user profile
-      const response = await fetch(`${API_URL}/api/users/${user.sub}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authTokens.access}`
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      const data = await response.json();
+      const response = await updateUser(user.sub, formData, { headers: {'Content-Type': 'application/json','Authorization': `Bearer ${authTokens.access}`}})
       
       if (response.status === 200) {
         navigate('/');
       } else {
-        setError(data.detail || 'Failed to update profile. Please try again.');
+        setError(response.data.detail || 'Failed to update profile. Please try again.');
       }
     } catch (err) {
       console.error('Profile update error:', err);

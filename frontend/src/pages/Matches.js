@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../config';
+import { getUserProfile, getMatches, acceptMatches, rejectMatches } from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
@@ -23,15 +22,13 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/${userId}/profile`, {
-        credentials: 'include'
-      });
+      const response = await getUserProfile(userId);
       
       if (!response.ok) {
         throw new Error('Failed to fetch user profile');
       }
       
-      const data = await response.json();
+      const data = response.data;
       setUserProfile(data);
     } catch (err) {
       console.error('Error fetching user profile:', err);
@@ -976,18 +973,13 @@ const Matches = () => {
         throw new Error('User not authenticated');
       }
       
-      const response = await fetch(`${API_URL}/api/matches/${user.id}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      const response = await getMatches(user.id);
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to fetch matches: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response.data;
       console.log('Matches data:', data);
       
       // Set the matches by category
@@ -1012,15 +1004,9 @@ const Matches = () => {
     try {
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/matches/${matchId}/accept`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      const response = await acceptMatches(matchId);
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to accept match: ${response.status}`);
       }
       
@@ -1037,15 +1023,9 @@ const Matches = () => {
     try {
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/matches/${matchId}/reject`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      const response = await rejectMatches(matchId);
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to reject match: ${response.status}`);
       }
       
@@ -1062,30 +1042,6 @@ const Matches = () => {
     if (user) {
       fetchMatches();
     }
-  }, [user, activeTab]);
-  
-  // Add another useEffect to periodically refresh the matches
-  useEffect(() => {
-    // Initial fetch with a small delay to ensure auth is ready
-    const initialFetchTimeout = setTimeout(() => {
-      if (user) {
-        console.log("Initial matches fetch");
-        fetchMatches();
-      }
-    }, 500);
-
-    // Set up regular polling for matches
-    const intervalId = setInterval(() => {
-      if (user) {
-        console.log("Polling for new matches");
-        fetchMatches();
-      }
-    }, 30000); // Poll every 30 seconds
-    
-    return () => {
-      clearTimeout(initialFetchTimeout);
-      clearInterval(intervalId);
-    };
   }, [user]);
   
   return (

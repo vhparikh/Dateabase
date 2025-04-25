@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { API_URL } from '../config';
+import { getUser, getUserProfile } from '../services/api';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { Autocomplete } from '@react-google-maps/api';
 
@@ -87,11 +87,10 @@ const CreateExperience = () => {
         try {
           const userId = user?.id || user?.sub;
           // Use fetch instead of axios directly
-          const response = await fetch(`${API_URL}/users/${userId}`);
-          const data = await response.json();
+          const response = await getUser(userId)
           
-          if (data && data.profile_image) {
-            setUserProfileImage(data.profile_image);
+          if (response.data && response.data.profile_image) {
+            setUserProfileImage(response.data.profile_image);
           } else {
             // Use placeholder or generated avatar if no profile image
             setUserProfileImage(`https://ui-avatars.com/api/?name=${user.username || 'User'}&background=orange&color=fff`);
@@ -225,16 +224,9 @@ const CreateExperience = () => {
   const createExperience = async (experienceData) => {
     try {
       // Use fetch directly with credentials: 'include' to ensure cookies are sent
-      const response = await fetch(`${API_URL}/api/experiences`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(experienceData)
-      });
+      const response = await createExperience(experienceData);
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to create experience');
       }

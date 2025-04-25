@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSwipeExperiences, createSwipe } from '../services/api';
 import './Swipe.css'; // Import the CSS file
 import { Link } from 'react-router-dom';
 
@@ -32,15 +33,13 @@ const Swipe = () => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/swipe-experiences`, {
-        credentials: 'include'
-      });
+      const response = await getSwipeExperiences();
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to fetch experiences: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data && data.length > 0) {
         console.log(`Received ${data.length} experiences from API`);
@@ -154,33 +153,15 @@ const Swipe = () => {
       if (!currentExperience) return;
       
       // Send swipe to backend
-      const response = await fetch(`${API_URL}/api/swipes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const response = await createSwipe({
           user_id: user.id,
           experience_id: currentExperience.id,
           is_like: isLike
-        })
-      });
+        });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to record swipe');
-      }
-
-      // Parse the response to check if a match was created
-      const responseData = await response.json();
-      console.log("Swipe response:", responseData);
-
-      // Check if a match was created
-      if (responseData && responseData.match_created) {
-        console.log("Match created:", responseData.match_id);
-        // You could show a match notification here if desired
-        // or navigate to the matches page
       }
 
       // Give more time for the animation to complete visually before transitioning
