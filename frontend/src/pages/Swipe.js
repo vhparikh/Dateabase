@@ -107,7 +107,7 @@ const Swipe = () => {
   const [animationStep, setAnimationStep] = useState(0); // Track animation progress
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
-  const [showLoopToast, setShowLoopToast] = useState(false); // Track if we've looped through all experiences
+  const [allExperiencesCompleted, setAllExperiencesCompleted] = useState(false); // Track if user has swiped through all experiences
   const originalExperiencesRef = useRef([]); // Keep original experiences order for cycling
   const { user, authTokens } = useContext(AuthContext);
 
@@ -115,6 +115,13 @@ const Swipe = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Reset the current state when fetching new experiences
+      setExperiences([]);
+      setCurrentIndex(0);
+      setCurrentPosition({ x: 0, y: 0 });
+      setSwipeDirection(null);
+      setAnimationStep(0);
       
       // Check if user is logged in
       if (!user?.id) {
@@ -142,7 +149,7 @@ const Swipe = () => {
         setCurrentIndex(0);
       } else {
         // If no experiences are returned, but we've completed a cycle, we should try again with include_swiped=true
-        console.log("No experiences found, trying again with include_swiped=true");
+        console.log("No experiences found, showing empty state");
         setExperiences([]);
         originalExperiencesRef.current = [];
       }
@@ -278,18 +285,14 @@ const Swipe = () => {
         // Calculate the next index
         let nextIndex = currentIndex + 1;
         
-        // Check if we're at the end of the experiences array
+        // Check if we've reached the end of available experiences
         if (experiences.length === 0) {
-          // We've reached the end, cycle back to the beginning
-          console.log("Reached end of experiences, cycling back to beginning");
-          setCurrentIndex(0);
-          setShowLoopToast(true);
-          setTimeout(() => setShowLoopToast(false), 1500);
+          // No experiences at all
+          setAllExperiencesCompleted(true);
         } else if (nextIndex >= experiences.length) {
-          // Loop back to start, show toast
-          setShowLoopToast(true);
-          setTimeout(() => setShowLoopToast(false), 1500);
-          setCurrentIndex(0);
+          // Reached the end of available experiences
+          setAllExperiencesCompleted(true);
+          console.log("Reached end of experiences, showing completion message");
         } else {
           // Still have more experiences to show
           setCurrentIndex(nextIndex);
@@ -304,22 +307,19 @@ const Swipe = () => {
       
     } catch (err) {
       console.error('Error in swipe handling:', err);
-      // Even if there's an error, we should still move to the next card
+      // Even if there's an error, we should still move to the next card if possible
       setTimeout(() => {
         // Calculate the next index
         let nextIndex = currentIndex + 1;
         
-        // Check if we're at the end of the experiences array
+        // Check if we've reached the end of available experiences
         if (experiences.length === 0) {
-          // We've reached the end, cycle back to the beginning
-          setCurrentIndex(0);
-          setShowLoopToast(true);
-          setTimeout(() => setShowLoopToast(false), 1500);
+          // No experiences at all
+          setAllExperiencesCompleted(true);
         } else if (nextIndex >= experiences.length) {
-          // Loop back to start, show toast
-          setShowLoopToast(true);
-          setTimeout(() => setShowLoopToast(false), 1500);
-          setCurrentIndex(0);
+          // Reached the end of available experiences
+          setAllExperiencesCompleted(true);
+          console.log("Reached end of experiences, showing completion message");
         } else {
           // Still have more experiences to show
           setCurrentIndex(nextIndex);
@@ -335,6 +335,8 @@ const Swipe = () => {
   const handleRetry = () => {
     // Reset current index to 0 to avoid any out-of-bounds issues
     setCurrentIndex(0);
+    // Reset the completed state
+    setAllExperiencesCompleted(false);
     console.log("User clicked retry - resetting and fetching fresh experiences");
     // Fetch fresh experiences
     fetchExperiences();
@@ -368,6 +370,36 @@ const Swipe = () => {
           >
             Try Again
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (allExperiencesCompleted) {
+    return (
+      <div className="py-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[80vh]">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-3 text-orange-800">You've seen all available experiences!</h2>
+          <p className="text-gray-600 mb-6">Please check back later for new ones. You can also create your own experiences for others to discover.</p>
+          <div className="flex flex-col space-y-3">
+            <button 
+              onClick={handleRetry}
+              className="px-6 py-3 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
+            >
+              Check for New Experiences
+            </button>
+            <Link
+              to="/experiences"
+              className="px-6 py-3 bg-white text-orange-500 border border-orange-500 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+            >
+              Create an Experience
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -416,12 +448,6 @@ const Swipe = () => {
 
   return (
     <div className="pt-6 pb-8 bg-gradient-to-br from-orange-50 to-orange-100 min-h-[90vh]">
-      {showLoopToast && (
-        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg font-semibold animate-bounce">
-          You've seen all experiences! Starting over...
-        </div>
-      )}
-      
       <div className="max-w-md mx-auto px-4">
         {/* Swipe indicators - Like */}
         {!isInitialLoad && (
@@ -593,10 +619,7 @@ const Swipe = () => {
       
       <div className="max-w-md mx-auto mt-6 text-center px-4">
         <p className="text-sm text-orange-800">
-          {experiences.length === 0 
-            ? "You've seen all experiences. Keep swiping to see them again!"
-            : "Click the buttons to like or pass"
-          }
+          Click the buttons to like or pass
         </p>
       </div>
     </div>

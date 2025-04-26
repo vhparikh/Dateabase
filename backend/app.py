@@ -1378,19 +1378,23 @@ def get_swipe_experiences(current_user_id=None):
         
         print(f"User {current_user_id}: Retrieving personalized swipe experiences")
         
-        # Get experiences the user has already swiped on (for reference only)
+        # Get experiences the user has already swiped on
         swiped_experience_ids = [
             swipe.experience_id for swipe in 
             UserSwipe.query.filter_by(user_id=current_user_id).all()
         ]
         print(f"User {current_user_id}: Has already swiped on {len(swiped_experience_ids)} experiences")
         
-        # Get all experiences except user's own
-        all_experiences = Experience.query.filter(Experience.user_id != current_user_id).all()
-        print(f"User {current_user_id}: Found {len(all_experiences)} total experiences")
+        # Get all experiences except user's own and filter out already swiped experiences
+        all_experiences = Experience.query.filter(
+            Experience.user_id != current_user_id,
+            ~Experience.id.in_(swiped_experience_ids) if swiped_experience_ids else True
+        ).all()
+        
+        print(f"User {current_user_id}: Found {len(all_experiences)} unswiped experiences")
         
         if len(all_experiences) == 0:
-            print(f"User {current_user_id}: No experiences found at all")
+            print(f"User {current_user_id}: No unswiped experiences found")
             return jsonify([]), 200
         
         # Parse the user's experience_type preferences for direct matching and reason generation
@@ -1417,6 +1421,7 @@ def get_swipe_experiences(current_user_id=None):
             print(f"User {current_user_id}: Using personalized experiences API for vector similarity ranking")
             
             # Get personalized experiences using the simplified vector approach
+            # Note: We'll still filter out swiped experiences later
             matches = get_personalized_experiences(user, top_k=100)  # Get more results
             
             # Initialize scored_experiences
@@ -1432,6 +1437,7 @@ def get_swipe_experiences(current_user_id=None):
                 ordered_experiences = []
                 for match in matches:
                     exp_id = match.get('id')
+                    # Only include experiences that haven't been swiped on
                     if exp_id in experiences_dict:
                         exp = experiences_dict[exp_id]
                         
@@ -1443,9 +1449,7 @@ def get_swipe_experiences(current_user_id=None):
                             exp.match_reason = f"Matches your preference for {exp.experience_type} experiences"
                         else:
                             exp.match_reason = "Experience you might like"
-                            
-                        # Mark if already swiped based on the already_swiped flag from the match
-                        exp.already_swiped = match.get('already_swiped', exp.id in swiped_experience_ids)
+                        
                         ordered_experiences.append(exp)
                 
                 # Use the ordered experiences from vector search
@@ -1459,7 +1463,6 @@ def get_swipe_experiences(current_user_id=None):
                         exp = experiences_dict[exp_id]
                         exp.match_score = 0.3  # Lower baseline score for non-vector matches
                         exp.match_reason = "Other experience you might like"
-                        exp.already_swiped = exp.id in swiped_experience_ids
                         experiences.append(exp)
             else:
                 # If there are no matches from vector search, use basic matching
@@ -1469,7 +1472,6 @@ def get_swipe_experiences(current_user_id=None):
                 for exp in all_experiences:
                     # Starting score
                     score = 0.5  # Neutral
-                    already_swiped = exp.id in swiped_experience_ids
                     
                     # Match on experience type preferences only
                     if exp.experience_type and user_preferred_exp_types:
@@ -1485,7 +1487,6 @@ def get_swipe_experiences(current_user_id=None):
                     scored_experiences.append({
                         'experience': exp,
                         'score': score,
-                        'already_swiped': already_swiped,
                         'reason': match_reason
                     })
                 
@@ -1502,7 +1503,6 @@ def get_swipe_experiences(current_user_id=None):
                         if matching_item:
                             exp.match_score = matching_item['score']
                             exp.match_reason = matching_item['reason']
-                            exp.already_swiped = matching_item['already_swiped']
                     else:
                         # If we still have no experiences after all attempts, initialize an empty list
                         experiences = []
@@ -1515,7 +1515,6 @@ def get_swipe_experiences(current_user_id=None):
             for exp in all_experiences:
                 # Starting score
                 score = 0.5  # Neutral
-                already_swiped = exp.id in swiped_experience_ids
                 
                 # Get the creator
                 creator = User.query.get(exp.user_id)
@@ -1533,10 +1532,6 @@ def get_swipe_experiences(current_user_id=None):
                                 score += 0.2  # Moderate boost for partial match
                                 break
                 
-                # Reduce score for already seen content to prioritize new content
-                if already_swiped:
-                    score *= 0.8
-                
                 # Create match reason
                 match_reason = "Experience you might like"
                 if exp.experience_type and exp.experience_type in user_preferred_exp_types:
@@ -1545,7 +1540,6 @@ def get_swipe_experiences(current_user_id=None):
                 scored_experiences.append({
                     'experience': exp,
                     'score': score,
-                    'already_swiped': already_swiped,
                     'reason': match_reason
                 })
             
@@ -1561,7 +1555,6 @@ def get_swipe_experiences(current_user_id=None):
                 if matching_item:
                     exp.match_score = matching_item['score']
                     exp.match_reason = matching_item['reason']
-                    exp.already_swiped = matching_item['already_swiped']
         
         print(f"User {current_user_id}: Preparing {len(experiences)} experiences for response")
         
@@ -1580,9 +1573,6 @@ def get_swipe_experiences(current_user_id=None):
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
-            # Check if this is a swiped experience for the 'already_swiped' flag
-            already_swiped = hasattr(exp, 'already_swiped') and exp.already_swiped
-            
             # Prepare result with match score and reason if available
             exp_data = {
                 'id': exp.id,
@@ -1599,8 +1589,7 @@ def get_swipe_experiences(current_user_id=None):
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
                 'location_image': exp.location_image,
-                'created_at': exp.created_at.isoformat() if exp.created_at else None,
-                'already_swiped': already_swiped  # Flag to indicate if this has been swiped before
+                'created_at': exp.created_at.isoformat() if exp.created_at else None
             }
             
             # Add match score and reason if available
