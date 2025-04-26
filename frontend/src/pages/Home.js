@@ -305,221 +305,6 @@ const NoMoreExperiences = ({ refresh }) => {
   );
 };
 
-const MatchModal = ({ match, onClose }) => {
-  const [currentSection, setCurrentSection] = useState(0);
-  const [locationImage, setLocationImage] = useState(null);
-  
-  // Create sections for Hinge-like profile
-  const profileSections = [
-    {
-      type: 'match',
-      title: "It's a Match!",
-      content: `You and ${match.other_user.name} both want to experience ${match.experience.experience_type}!`
-    },
-    {
-      type: 'profile',
-      title: 'About',
-      content: match.other_user.name
-    },
-    {
-      type: 'location',
-      title: match.experience.experience_type,
-      content: match.experience.location,
-      description: match.experience.description,
-      image: locationImage
-    }
-  ];
-  
-  useEffect(() => {
-    // Get location image from Unsplash
-    if (match.experience.location) {
-      setLocationImage(`https://source.unsplash.com/random/800x600/?${match.experience.location.replace(/\s+/g, '+')}`);
-    }
-  }, [match.experience.location]);
-  
-  const navigateSection = (direction) => {
-    if (direction === 'next') {
-      setCurrentSection((prev) => 
-        prev === profileSections.length - 1 ? 0 : prev + 1
-      );
-    } else {
-      setCurrentSection((prev) => 
-        prev === 0 ? profileSections.length - 1 : prev - 1
-      );
-    }
-  };
-  
-  const openGoogleMaps = () => {
-    if (match.experience.latitude && match.experience.longitude) {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${match.experience.latitude},${match.experience.longitude}`, '_blank');
-    } else {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.experience.location)}`, '_blank');
-    }
-  };
-  
-  const renderProfileSection = (section, index) => {
-    switch (section.type) {
-      case 'match':
-        return (
-          <div className="text-center py-8 px-4">
-            <div className="w-20 h-20 mx-auto bg-orange-gradient rounded-full flex items-center justify-center mb-6">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-gray-800">{section.title}</h2>
-            <p className="text-gray-600">{section.content}</p>
-            
-            <div className="flex items-center justify-center mt-6 space-x-3">
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xl font-bold">
-                  {match.current_user.name.charAt(0)}
-                </div>
-                <p className="mt-2 text-sm font-medium text-gray-600">{match.current_user.name}</p>
-              </div>
-              
-              <div className="w-10 flex items-center justify-center">
-                <svg className="w-8 h-8 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd"></path>
-                </svg>
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xl font-bold">
-                  {match.other_user.name.charAt(0)}
-                </div>
-                <p className="mt-2 text-sm font-medium text-gray-600">{match.other_user.name}</p>
-              </div>
-            </div>
-          </div>
-        );
-        
-      case 'profile':
-        return (
-          <div className="px-4 py-6">
-            <div className="mb-6 text-center">
-              <div className="w-24 h-24 mx-auto rounded-full bg-orange-gradient flex items-center justify-center mb-4 text-white text-3xl font-bold">
-                {match.other_user.name.charAt(0)}
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800">{match.other_user.name}</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-500 mb-1">About the match</div>
-                <div className="text-gray-800">
-                  This person also wants to experience {match.experience.experience_type} at {match.experience.location}.
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-        
-      case 'location':
-        return (
-          <div className="px-4 py-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">{section.title}</h3>
-            
-            {/* Location image */}
-            <div className="relative rounded-lg overflow-hidden mb-4">
-              <div className="aspect-video bg-gray-200">
-                {locationImage ? (
-                  <img 
-                    src={locationImage} 
-                    alt={section.content} 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-orange-50 text-orange-800">
-                    {section.content}
-                  </div>
-                )}
-              </div>
-              
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              
-              <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                <div className="text-xs uppercase tracking-wide mb-1">Location</div>
-                <div className="text-xl font-bold">{section.content}</div>
-                
-                <button 
-                  onClick={openGoogleMaps}
-                  className="mt-2 flex items-center text-xs font-medium bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full px-3 py-1.5 transition-colors"
-                >
-                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                  </svg>
-                  View on Google Maps
-                </button>
-              </div>
-            </div>
-            
-            {/* Description */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <div className="text-sm text-gray-500 mb-1">Description</div>
-              <div className="text-gray-800">
-                {section.description || "No description provided."}
-              </div>
-            </div>
-          </div>
-        );
-        
-      default:
-        return null;
-    }
-  };
-  
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-md animate-scale-in">
-        {/* Close button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 z-50 bg-white/80 rounded-full p-1 shadow-md text-gray-700 hover:text-gray-900"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        
-        {/* Content */}
-        <div className="relative">
-          {/* Current section */}
-          {renderProfileSection(profileSections[currentSection], currentSection)}
-          
-          {/* Navigation dots */}
-          <div className="flex justify-center space-x-1 py-3 border-t border-gray-100">
-            {profileSections.map((_, index) => (
-              <button 
-                key={index} 
-                onClick={() => setCurrentSection(index)}
-                className={`w-2 h-2 rounded-full ${index === currentSection ? 'bg-orange-500' : 'bg-gray-300'}`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-        
-        {/* Action buttons */}
-        <div className="flex border-t border-gray-200">
-          <button 
-            onClick={onClose}
-            className="flex-1 py-4 text-gray-600 hover:bg-gray-50 transition-colors font-medium"
-          >
-            Maybe Later
-          </button>
-          <button 
-            onClick={onClose}
-            className="flex-1 py-4 bg-orange-gradient text-white font-medium hover:opacity-90 transition-opacity"
-          >
-            Send Message
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Home = () => {
   const navigate = useNavigate();
   const handleCreateExperienceClick = () => {
@@ -532,8 +317,6 @@ const Home = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showMatch, setShowMatch] = useState(false);
-  const [matchDetails, setMatchDetails] = useState(null);
   
   // States for matches section
   const [matches, setMatches] = useState([]);
@@ -636,32 +419,14 @@ const Home = () => {
       
       // Call API to record swipe
       const response = await axios.post(`${API_URL}/api/swipes`, {
-        user_id: user?.id || user?.sub,
         experience_id: experienceId,
-        direction: directionBool
+        is_like: directionBool
       });
       
-      // Handle match
+      // Remove match modal functionality
       if (response.data && response.data.match) {
-        // Format match data for display
-        const matchData = {
-          current_user: {
-            name: user?.username || 'You',
-            id: user?.id || user?.sub
-          },
-          other_user: {
-            name: response.data.match.other_user?.username || 'Someone',
-            id: response.data.match.other_user?.id
-          },
-          experience: {
-            experience_type: swipedExperience.experience_type,
-            description: swipedExperience.description,
-            location: swipedExperience.location
-          }
-        };
-        
-        setMatchDetails(matchData);
-        setShowMatch(true);
+        console.log('Match created with ID:', response.data.match.id);
+        // No longer show match modal
       }
     } catch (err) {
       console.error('Error recording swipe:', err);
@@ -714,15 +479,7 @@ const Home = () => {
         </div>
       </section>
       
-      {/* Match Modal */}
-      <AnimatePresence>
-        {showMatch && matchDetails && (
-          <MatchModal
-            match={matchDetails}
-            onClose={() => setShowMatch(false)}
-          />
-        )}
-      </AnimatePresence>
+      {/* Remove Match Modal */}
     </div>
   );
 };

@@ -5,6 +5,98 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './Swipe.css'; // Import the CSS file
 import { Link } from 'react-router-dom';
 
+const renderProfileSection = (section, index) => {
+  switch (section.type) {
+    case 'match':
+      return (
+        <div className="text-center py-8 px-4">
+          <div className="w-20 h-20 mx-auto bg-orange-gradient rounded-full flex items-center justify-center mb-6">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">{section.title}</h2>
+          <p className="text-gray-600">{section.content}</p>
+          
+          <div className="flex items-center justify-center mt-6 space-x-3">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xl font-bold">
+                Y
+              </div>
+              <p className="mt-2 text-sm font-medium text-gray-600">You</p>
+            </div>
+            
+            <div className="w-10 flex items-center justify-center">
+              <svg className="w-8 h-8 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd"></path>
+              </svg>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xl font-bold">
+                {section.content.charAt(4)}
+              </div>
+              <p className="mt-2 text-sm font-medium text-gray-600">{section.content.split(' ')[1]}</p>
+            </div>
+          </div>
+        </div>
+      );
+      
+    case 'profile':
+      return (
+        <div className="px-4 py-6">
+          <div className="mb-6 text-center">
+            <div className="w-24 h-24 mx-auto rounded-full bg-orange-gradient flex items-center justify-center mb-4 text-white text-3xl font-bold">
+              {section.content.charAt(0)}
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800">{section.content}</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm text-gray-500 mb-1">About the match</div>
+              <div className="text-gray-800">
+                This person also wants to experience the location you swiped on.
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+      
+    case 'location':
+      return (
+        <div className="h-96 relative">
+          {section.image ? (
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{backgroundImage: `url(${section.image})`}}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
+            </div>
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-t from-black to-orange-200"></div>
+          )}
+          
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+            <h3 className="text-2xl font-bold mb-2">{section.title}</h3>
+            <div className="flex items-center mb-4">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p>{section.content}</p>
+            </div>
+            
+            <p className="text-white/80">{section.description}</p>
+          </div>
+        </div>
+      );
+    
+    default:
+      return null;
+  }
+};
+
 const Swipe = () => {
   const [experiences, setExperiences] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -161,7 +253,6 @@ const Swipe = () => {
         },
         credentials: 'include',
         body: JSON.stringify({
-          user_id: user.id,
           experience_id: currentExperience.id,
           is_like: isLike
         })
@@ -170,6 +261,16 @@ const Swipe = () => {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to record swipe');
+      }
+      
+      // Parse response data
+      const responseData = await response.json();
+      console.log('Swipe response:', responseData);
+      
+      // Remove the match modal functionality
+      if (responseData && responseData.match) {
+        console.log('Match created with ID:', responseData.match.id, 'with user:', responseData.match.other_user.username);
+        // No longer show the match modal
       }
 
       // Give more time for the animation to complete visually before transitioning
@@ -320,7 +421,6 @@ const Swipe = () => {
           You've seen all experiences! Starting over...
         </div>
       )}
-      {/* Match modal - Commented out but preserved for future use */}
       
       <div className="max-w-md mx-auto px-4">
         {/* Swipe indicators - Like */}

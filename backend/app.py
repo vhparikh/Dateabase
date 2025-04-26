@@ -1048,18 +1048,43 @@ def record_swipe(current_user_id=None):
     """
     data = request.json
     
+    print(f"DEBUG: record_swipe called with data: {data} and user_id: {current_user_id}")
+    
     # Validate required fields
     if not data or 'experience_id' not in data or 'is_like' not in data:
+        print(f"DEBUG: Missing required fields in data: {data}")
         return jsonify({'detail': 'Missing required fields'}), 400
     
     try:
         experience_id = data['experience_id']
         is_like = data['is_like']
         
+        print(f"DEBUG: Processing swipe - user: {current_user_id}, exp: {experience_id}, is_like: {is_like}")
+        
         # Check if experience exists
         experience = Experience.query.get(experience_id)
         if not experience:
+            print(f"DEBUG: Experience {experience_id} not found")
             return jsonify({'detail': 'Experience not found'}), 404
+        
+        print(f"DEBUG: Experience found, creator_id: {experience.user_id}")
+        
+        # Get the creator of the experience
+        creator_id = experience.user_id
+        
+        # Skip match checking if the creator is the same as the current user
+        if creator_id == current_user_id:
+            print(f"DEBUG: User is the creator, skipping match")
+            # Still record the swipe if needed
+            if not UserSwipe.query.filter_by(user_id=current_user_id, experience_id=experience_id).first():
+                new_swipe = UserSwipe(user_id=current_user_id, experience_id=experience_id, direction=is_like)
+                db.session.add(new_swipe)
+                db.session.commit()
+                print(f"DEBUG: Created new swipe for user's own experience")
+            return jsonify({
+                'detail': 'Swipe recorded successfully',
+                'match_created': False
+            })
         
         # Check if the user has already swiped on this experience
         existing_swipe = UserSwipe.query.filter_by(
@@ -1067,14 +1092,19 @@ def record_swipe(current_user_id=None):
             experience_id=experience_id
         ).first()
         
+        swipe_updated = False
         if existing_swipe:
-            # If the swipe direction is the same, just return success
-            if existing_swipe.direction == is_like:
+            print(f"DEBUG: Found existing swipe: id={existing_swipe.id}, direction={existing_swipe.direction}")
+            # If the swipe direction is different, update it
+            if existing_swipe.direction != is_like:
+                existing_swipe.direction = is_like
+                db.session.commit()
+                swipe_updated = True
+                print(f"DEBUG: Updated existing swipe to direction={is_like}")
+            elif not is_like:
+                # If user is disliking again, just return
                 return jsonify({'detail': 'Swipe already recorded', 'match_created': False}), 200
-            
-            # Otherwise, update the swipe direction
-            existing_swipe.direction = is_like
-            db.session.commit()
+            # If user is liking again, continue to check for matches
         else:
             # Record new swipe
             new_swipe = UserSwipe(
@@ -1084,11 +1114,12 @@ def record_swipe(current_user_id=None):
             )
             db.session.add(new_swipe)
             db.session.commit()
+            print(f"DEBUG: Created new swipe id={new_swipe.id}")
         
         # Invalidate the cached preference vector since the user has new swipe data
         try:
             user = User.query.get(current_user_id)
-            if user and user.preference_vector:
+            if user and user.preference_vector and (not existing_swipe or swipe_updated):
                 print(f"User {current_user_id}: Invalidating preference vector after new swipe")
                 user.preference_vector_updated_at = datetime.utcnow()  # Keep the vector but mark it as needing update
                 db.session.commit()
@@ -1098,67 +1129,83 @@ def record_swipe(current_user_id=None):
         
         # If user liked (swiped right), check for a match
         if is_like:
-            # Get the creator of the experience
-            creator_id = experience.user_id
+            print(f"DEBUG: User liked experience, checking for match. Creator_id: {creator_id}")
             
-            # Skip match checking if the creator is the same as the current user
-            if creator_id == current_user_id:
+            # Check for existing match between these users for this experience
+            existing_match = Match.query.filter(
+                ((Match.user1_id == current_user_id) & (Match.user2_id == creator_id) |
+                (Match.user1_id == creator_id) & (Match.user2_id == current_user_id)),
+                Match.experience_id == experience_id
+            ).first()
+            
+            if existing_match:
+                print(f"DEBUG: Found existing match id={existing_match.id}, status={existing_match.status}")
                 return jsonify({
-                    'detail': 'Swipe recorded successfully',
-                    'match_created': False
+                    'detail': 'Match already exists',
+                    'match_created': False,
+                    'match': {
+                        'id': existing_match.id,
+                        'status': existing_match.status,
+                        'other_user': {
+                            'id': creator_id,
+                            'username': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
+                        }
+                    }
                 })
             
-            # Check if creator has liked any of this user's experiences
-            user_experiences = Experience.query.filter_by(user_id=current_user_id).all()
-            user_experience_ids = [exp.id for exp in user_experiences]
+            # Create a pending match immediately when a user swipes right
+            new_match = Match(
+                user1_id=current_user_id,  # The user who swiped
+                user2_id=creator_id,       # The creator of the experience
+                experience_id=experience_id,
+                status='pending'
+            )
+            db.session.add(new_match)
+            db.session.commit()
             
-            if user_experience_ids:
-                creator_likes = UserSwipe.query.filter(
-                    UserSwipe.user_id == creator_id,
-                    UserSwipe.experience_id.in_(user_experience_ids),
-                    UserSwipe.direction == True
-                ).first()
-                
-                if creator_likes:
-                    # Create a match
-                    new_match = Match(
-                        user1_id=current_user_id,
-                        user2_id=creator_id,
-                        experience_id=experience_id,
-                        status='pending'
-                    )
-                    db.session.add(new_match)
-                    db.session.commit()
-                    
-                    # Return success with match info
-                    return jsonify({
-                        'detail': 'Swipe recorded successfully',
-                        'match_created': True,
-                        'match_id': new_match.id,
-                        'match_user': {
-                            'id': creator_id,
-                            'name': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
-                        }
-                    })
+            print(f"DEBUG: Match created id={new_match.id} between user {current_user_id} and user {creator_id} for experience {experience_id}")
+            
+            # Return success with match info
+            return jsonify({
+                'detail': 'Swipe recorded successfully',
+                'match_created': True,
+                'match': {
+                    'id': new_match.id,
+                    'other_user': {
+                        'id': creator_id,
+                        'username': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
+                    }
+                }
+            })
         
         # Return success without match
+        print(f"DEBUG: Swipe recorded successfully, no match created (dislike or other reason)")
         return jsonify({
             'detail': 'Swipe recorded successfully',
             'match_created': False
         })
         
     except Exception as e:
-        print(f"Error recording swipe: {e}")
+        print(f"DEBUG: Error recording swipe: {e}")
+        import traceback
+        traceback.print_exc()  # Print full stack trace
         db.session.rollback()
         return jsonify({'detail': str(e)}), 500
 
 @app.route('/api/matches/<int:user_id>', methods=['GET'])
 def get_matches(user_id):
     try:
+        print(f"DEBUG: get_matches called for user_id: {user_id}")
+        
         # Get both confirmed and pending matches for this user
         all_matches = Match.query.filter(
             (Match.user1_id == user_id) | (Match.user2_id == user_id)
         ).all()
+        
+        print(f"DEBUG: Found {len(all_matches)} total matches for user_id: {user_id}")
+        
+        # Use sets to track which combinations we've already processed to avoid duplicates
+        processed_combinations = set()
         
         confirmed_matches = []
         pending_received = []  # Matches where user is the experience owner and needs to accept
@@ -1170,8 +1217,26 @@ def get_matches(user_id):
             other_user = User.query.get(other_user_id)
             experience = Experience.query.get(match.experience_id)
             
+            print(f"DEBUG: Processing match_id: {match.id}, status: {match.status}, experience_id: {match.experience_id}")
+            print(f"DEBUG: Match is between user1_id: {match.user1_id} and user2_id: {match.user2_id}")
+            
             if not other_user or not experience:
+                print(f"DEBUG: Skipping match_id: {match.id} - missing other_user or experience")
                 continue
+            
+            # Create a unique key for this match combination to avoid duplicates
+            # We sort the user IDs to ensure (user1, user2) and (user2, user1) create the same key
+            match_key = (min(user_id, other_user_id), max(user_id, other_user_id), experience.id)
+            
+            # Skip if we've already processed this combination
+            if match_key in processed_combinations:
+                print(f"DEBUG: Skipping duplicate match combination: {match_key}")
+                continue
+                
+            # Add to processed set
+            processed_combinations.add(match_key)
+            
+            print(f"DEBUG: Experience owner_id: {experience.user_id}")
             
             match_data = {
                 'match_id': match.id,
@@ -1199,23 +1264,35 @@ def get_matches(user_id):
             
             # Categorize the match
             if match.status == 'confirmed':
+                print(f"DEBUG: Match {match.id} is confirmed - adding to confirmed_matches")
                 confirmed_matches.append(match_data)
             elif match.status == 'pending':
                 # If user is the experience owner, they need to accept/reject
                 if experience.user_id == user_id:
+                    print(f"DEBUG: Match {match.id} is pending and user is experience owner - adding to pending_received")
                     pending_received.append(match_data)
                 else:
                     # User sent the like
+                    print(f"DEBUG: Match {match.id} is pending and user is not experience owner - adding to pending_sent")
                     pending_sent.append(match_data)
+            
+            print(f"DEBUG: categorized match {match.id} correctly")
+        
+        print(f"DEBUG: Returning {len(confirmed_matches)} confirmed, {len(pending_received)} pending_received, {len(pending_sent)} pending_sent matches")
         
         # Return categorized matches
-        return jsonify({
+        result = {
             'confirmed': confirmed_matches,
             'pending_received': pending_received,
             'pending_sent': pending_sent
-        })
+        }
+        
+        print(f"DEBUG: Final match counts - confirmed: {len(confirmed_matches)}, pending_received: {len(pending_received)}, pending_sent: {len(pending_sent)}")
+        return jsonify(result)
     except Exception as e:
-        print(f"Error fetching matches: {e}")
+        print(f"ERROR: Error fetching matches: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/recommendations/<int:user_id>', methods=['GET'])
