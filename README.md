@@ -165,3 +165,45 @@ This script will:
 - **Semantic Search**: Uses vector similarity to find experiences that match user preferences
 - **Automatic Indexing**: New experiences are automatically indexed for recommendations
 - **Fallback Mechanism**: If no personalized matches found, shows recent experiences 
+
+## Experience Image Management
+
+Two scripts have been created to help manage and update experience images using the Google Maps Places API:
+
+### 1. `update_images_script.py`
+
+This script fetches high-quality images for experiences using Google Maps Places API and place IDs. 
+It handles multiple images, prioritizes the most relevant ones, and updates the database accordingly.
+
+To run locally:
+```
+./update_images_script.py
+```
+
+Features:
+- Queries Google Maps Places API using experience place IDs
+- Fetches high-quality images for each experience
+- Selects the most relevant images based on the experience type
+- Handles API rate limiting and error conditions
+- Updates experience images in the database
+
+### 2. `run_update_images.py`
+
+This wrapper script facilitates running the image update process directly on Heroku.
+
+To run:
+```
+./run_update_images.py
+```
+
+Features:
+- Checks for Heroku CLI installation and authentication
+- Verifies access to the Heroku app
+- Pushes the update script to Heroku
+- Executes the image update process on Heroku
+- Provides detailed error reporting and process logging
+
+Prerequisites:
+- Heroku CLI installed
+- Heroku account with access to the app
+- Heroku ps:copy plugin installed 
