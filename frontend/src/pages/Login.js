@@ -1,10 +1,11 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 
 const Login = () => {
   const [error, setError] = useState('');
   const [casLoading, setCasLoading] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   
   const { loginWithCAS } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -32,6 +33,11 @@ const Login = () => {
     } finally {
       setCasLoading(false);
     }
+  };
+  
+  // Toggle privacy policy modal
+  const togglePrivacyModal = () => {
+    setShowPrivacyModal(!showPrivacyModal);
   };
   
   // Only Princeton CAS login is available now
@@ -92,9 +98,12 @@ const Login = () => {
             {/* Only Princeton CAS login is available */}
             
             <div className="text-center mt-4">
-              <Link to="/" className="text-orange-600 hover:text-orange-500 font-medium">
-                Back to Home
-              </Link>
+              <button 
+                onClick={togglePrivacyModal}
+                className="text-orange-600 hover:text-orange-500 font-medium"
+              >
+                Privacy Policy
+              </button>
             </div>
           </div>
         </div>
@@ -105,6 +114,39 @@ const Login = () => {
           </p>
         </div>
       </div>
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button 
+              onClick={togglePrivacyModal}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <h3 className="text-xl font-bold mb-4 text-gray-800">Privacy Policy</h3>
+            
+            <div className="text-gray-700">
+              <p className="mb-4">
+                By enrolling in this application, you acknowledge that you are a Princeton undergraduate student. 
+                Other members of the Princeton community are not permitted to use this application, to ensure a safe environment. 
+                Violations of this policy may result in serious consequences with Princeton administration.
+              </p>
+            </div>
+            
+            <button
+              onClick={togglePrivacyModal}
+              className="mt-6 w-full px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
