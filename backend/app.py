@@ -766,45 +766,23 @@ def update_user(user_id):
 @login_required()
 def create_experience(current_user_id=None):
     """Create a new experience and optionally index it in Pinecone"""
-    print(f"Creating experience for user ID: {current_user_id}")
     
-    # Check if we received JSON data
-    if not request.is_json:
-        print("Error: Request does not contain JSON data")
-        return jsonify({'detail': 'Request must be JSON'}), 400
-        
+    # Validate and extract required fields
     data = request.json
-    print(f"Received data: {data}")
-    
-    if not data:
-        return jsonify({'detail': 'No data provided'}), 400
-    
-    required_fields = ['experience_type', 'location']
-    for field in required_fields:
-        if field not in data:
-            print(f"Missing required field: {field}")
-            return jsonify({'detail': f'Missing required field: {field}'}), 400
-            
-    # Use authenticated user's ID instead of passing it in the request
-    user = User.query.get(current_user_id)
-    if not user:
-        print(f"User not found with ID: {current_user_id}")
-        return jsonify({'detail': 'User not found'}), 404
-    
-    print(f"Creating experience for user: {user.username}")
-    
-    # Clean up input data to prevent duplication
-    experience_type = data['experience_type'].strip() if data['experience_type'] else ''
-    location = data['location'].strip() if data['location'] else ''
+    experience_type = data.get('experience_type', '').strip()
+    location = data.get('location', '').strip()
     description = data.get('description', '').strip()
-    
-    # Handle new fields
     latitude = data.get('latitude')
     longitude = data.get('longitude')
-    place_id = data.get('place_id', '').strip() if data.get('place_id') else None
-    location_image = data.get('location_image', '').strip() if data.get('location_image') else None
+    place_id = data.get('place_id')
+    place_name = data.get('place_name')
+    location_image = data.get('location_image', '')
     
-    print(f"Creating experience with type: {experience_type}, location: {location}")
+    # Validate required fields
+    if not experience_type:
+        return jsonify({'detail': 'Experience type is required'}), 400
+    if not location:
+        return jsonify({'detail': 'Location is required'}), 400
     
     try:
         # Create and save the experience first
@@ -816,6 +794,7 @@ def create_experience(current_user_id=None):
             latitude=latitude,
             longitude=longitude,
             place_id=place_id,
+            place_name=place_name,
             location_image=location_image
         )
         db.session.add(new_experience)
@@ -836,6 +815,7 @@ def create_experience(current_user_id=None):
                 'latitude': new_experience.latitude,
                 'longitude': new_experience.longitude,
                 'place_id': new_experience.place_id,
+                'place_name': new_experience.place_name,
                 'location_image': new_experience.location_image,
                 'created_at': new_experience.created_at.isoformat() if new_experience.created_at else None
             }
@@ -1010,6 +990,8 @@ def update_experience(experience_id, current_user_id=None):
             experience.longitude = data['longitude']
         if 'place_id' in data:
             experience.place_id = data['place_id']
+        if 'place_name' in data:
+            experience.place_name = data['place_name']
         if 'location_image' in data:
             experience.location_image = data['location_image']
             
@@ -1034,6 +1016,7 @@ def update_experience(experience_id, current_user_id=None):
                 'latitude': experience.latitude,
                 'longitude': experience.longitude,
                 'place_id': experience.place_id,
+                'place_name': experience.place_name,
                 'location_image': experience.location_image,
                 'created_at': experience.created_at.isoformat() if experience.created_at else None
             }
