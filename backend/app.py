@@ -2557,6 +2557,38 @@ def get_user_full_profile(user_id):
         print(f"Error getting user profile: {e}")
         return jsonify({'detail': str(e)}), 500
 
+@app.route('/api/users/<int:user_id>/contact', methods=['GET'])
+@login_required()
+def get_user_contact_info(user_id, current_user_id=None):
+    """Get a user's contact information for matches."""
+    try:
+        # Get the user
+        user = User.query.get_or_404(user_id)
+        
+        # Check if users are matched (security check)
+        match_exists = Match.query.filter(
+            ((Match.user1_id == current_user_id) & (Match.user2_id == user_id) |
+             (Match.user1_id == user_id) & (Match.user2_id == current_user_id)) &
+            (Match.status == 'confirmed')
+        ).first()
+        
+        if not match_exists:
+            return jsonify({'detail': 'You can only view contact information for confirmed matches'}), 403
+        
+        # Return contact information
+        return jsonify({
+            'id': user.id,
+            'name': user.name,
+            'netid': user.netid,
+            'class_year': user.class_year,
+            'profile_image': user.profile_image,
+            'phone_number': user.phone_number,
+            'preferred_email': user.preferred_email
+        })
+    except Exception as e:
+        print(f"Error getting user contact info: {e}")
+        return jsonify({'detail': str(e)}), 500
+
 # Create database tables (moved from before_first_request decorator)
 def create_tables():
     with app.app_context():

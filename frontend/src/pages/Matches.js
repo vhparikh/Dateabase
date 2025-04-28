@@ -266,6 +266,39 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
 
 // ContactInfoModal component for displaying a user's contact information
 const ContactInfoModal = ({ user, isOpen, onClose }) => {
+  const [contactInfo, setContactInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && user) {
+      fetchContactInfo();
+    }
+  }, [isOpen, user]);
+
+  const fetchContactInfo = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/api/users/${user.id}/contact`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch contact information');
+      }
+      
+      const data = await response.json();
+      setContactInfo(data);
+    } catch (err) {
+      console.error('Error fetching contact info:', err);
+      setError('Failed to load contact information. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   if (!isOpen) return null;
   
   return (
@@ -284,108 +317,128 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
         </div>
         
         <div className="p-6">
-          <div className="flex items-center mb-6">
-            <div className="w-12 h-12 rounded-full overflow-hidden mr-4">
-              <img 
-                src={user.profile_image || `https://ui-avatars.com/api/?name=${user.name}&background=orange&color=fff`} 
-                alt={user.name} 
-                className="w-full h-full object-cover"
-              />
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-4 border-b-4 border-orange-500"></div>
             </div>
-            <div>
-              <h3 className="font-bold text-lg text-gray-800">{user.name}</h3>
-              <p className="text-gray-600">Class of {user.class_year || 'N/A'}</p>
+          ) : error ? (
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md" role="alert">
+              <p>{error}</p>
+              <button 
+                onClick={fetchContactInfo} 
+                className="mt-2 px-4 py-2 bg-orange-500 text-white rounded-lg"
+              >
+                Try Again
+              </button>
             </div>
-          </div>
-          
-          <div className="space-y-4">
-            {/* Email */}
-            <div className="bg-orange-50 rounded-lg p-4">
-              <div className="flex items-center mb-2">
-                <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <h4 className="font-medium text-gray-800">Email</h4>
+          ) : contactInfo ? (
+            <>
+              <div className="flex items-center mb-6">
+                <div className="w-12 h-12 rounded-full overflow-hidden mr-4">
+                  <img 
+                    src={contactInfo.profile_image || `https://ui-avatars.com/api/?name=${contactInfo.name}&background=orange&color=fff`} 
+                    alt={contactInfo.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800">{contactInfo.name}</h3>
+                  <p className="text-gray-600">Class of {contactInfo.class_year || 'N/A'}</p>
+                </div>
               </div>
               
-              {/* Render Princeton email if no preferred email is available */}
-              {(() => {
-                if (user.preferred_email && user.preferred_email.trim() !== '') {
-                  return (
-                    <p className="text-gray-700 font-medium">
-                      {user.preferred_email.trim()}
-                    </p>
-                  );
-                } else if (user.netid && user.netid.trim() !== '') {
-                  const princetonEmail = `${user.netid.trim()}@princeton.edu`;
-                  return (
-                    <p className="text-gray-700 font-medium">
-                      {princetonEmail}
-                      <span className="block text-xs text-gray-500 mt-1">
-                        Princeton email address
-                      </span>
-                    </p>
-                  );
-                } else {
-                  return (
-                    <p className="text-gray-700">
-                      Not available
-                    </p>
-                  );
-                }
-              })()}
-              
-              {/* Open email app button */}
-              {(() => {
-                let emailAddress = null;
+              <div className="space-y-4">
+                {/* Email */}
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <h4 className="font-medium text-gray-800">Email</h4>
+                  </div>
+                  
+                  {(() => {
+                    if (contactInfo.preferred_email && contactInfo.preferred_email.trim() !== '') {
+                      return (
+                        <p className="text-gray-700 font-medium">
+                          {contactInfo.preferred_email.trim()}
+                        </p>
+                      );
+                    } else if (contactInfo.netid && contactInfo.netid.trim() !== '') {
+                      const princetonEmail = `${contactInfo.netid.trim()}@princeton.edu`;
+                      return (
+                        <p className="text-gray-700 font-medium">
+                          {princetonEmail}
+                          <span className="block text-xs text-gray-500 mt-1">
+                            Princeton email address
+                          </span>
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <p className="text-gray-700">
+                          Not available
+                        </p>
+                      );
+                    }
+                  })()}
+                  
+                  {(() => {
+                    let emailAddress = null;
+                    
+                    if (contactInfo.preferred_email && contactInfo.preferred_email.trim() !== '') {
+                      emailAddress = contactInfo.preferred_email.trim();
+                    } else if (contactInfo.netid && contactInfo.netid.trim() !== '') {
+                      emailAddress = `${contactInfo.netid.trim()}@princeton.edu`;
+                    }
+                    
+                    if (emailAddress) {
+                      return (
+                        <a 
+                          href={`mailto:${emailAddress}`}
+                          className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Open in mail app
+                        </a>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 
-                if (user.preferred_email && user.preferred_email.trim() !== '') {
-                  emailAddress = user.preferred_email.trim();
-                } else if (user.netid && user.netid.trim() !== '') {
-                  emailAddress = `${user.netid.trim()}@princeton.edu`;
-                }
-                
-                if (emailAddress) {
-                  return (
+                {/* Phone Number */}
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <h4 className="font-medium text-gray-800">Phone Number</h4>
+                  </div>
+                  <p className="text-gray-700 font-medium">
+                    {contactInfo.phone_number ? contactInfo.phone_number : 'Not given'}
+                  </p>
+                  {contactInfo.phone_number && (
                     <a 
-                      href={`mailto:${emailAddress}`}
+                      href={`tel:${contactInfo.phone_number.replace(/\D/g, '')}`}
                       className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
-                      Open in mail app
+                      Call
                     </a>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-            
-            {/* Phone Number */}
-            <div className="bg-orange-50 rounded-lg p-4">
-              <div className="flex items-center mb-2">
-                <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <h4 className="font-medium text-gray-800">Phone Number</h4>
+                  )}
+                </div>
               </div>
-              <p className="text-gray-700">
-                {user.phone_number || 'Not provided'}
-              </p>
-              {user.phone_number && (
-                <a 
-                  href={`tel:${user.phone_number.replace(/\D/g, '')}`}
-                  className="mt-2 text-sm text-orange-600 hover:text-orange-800 inline-flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  Call
-                </a>
-              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <p className="text-gray-500">No contact information available</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
