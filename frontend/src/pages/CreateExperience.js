@@ -145,11 +145,13 @@ const CreateExperience = () => {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || place.name || '';
+      const placeName = place.name || '';
       
       // Setup initial form data with location info
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
+        place_name: placeName,
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -172,7 +174,7 @@ const CreateExperience = () => {
       
       // If we couldn't get a Google photo, fetch from Unsplash
       if (shouldFetchImage) {
-        const locationForImage = formattedAddress.split(',')[0].trim();
+        const locationForImage = placeName || formattedAddress.split(',')[0].trim();
         imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
       }
       

@@ -175,7 +175,7 @@ const ExperienceCard = ({ experience, onSwipe, style, zIndex = 0 }) => {
             
             {/* Location name overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-3 text-white font-medium">
-              {experience.location || "Princeton"}
+              {experience.place_name || experience.location}
             </div>
           </div>
           
@@ -201,7 +201,7 @@ const ExperienceCard = ({ experience, onSwipe, style, zIndex = 0 }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
               </svg>
-              {experience.location || 'Princeton University'}
+              {experience.place_name ? experience.location : 'Princeton University'}
             </div>
             
             <p className="text-gray-600 text-sm mb-4">

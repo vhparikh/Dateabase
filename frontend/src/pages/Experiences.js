@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { getExperiences } from '../services/api';
 import { API_URL } from '../config';
@@ -28,88 +28,64 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
 
   const [gradient] = useState(randomGradient());
   const [locationImage, setLocationImage] = useState(experience.location_image || null);
-  
-  // Load a location image if needed and save it back to the experience
-  useEffect(() => {
-    if (!locationImage && experience.location && experience.id) {
-      const locationForImage = experience.location.split(',')[0].trim();
-      const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-      setLocationImage(imageUrl);
-      
-      // Save the image URL back to the experience in the backend
-      fetch(`${API_URL}/api/experiences/${experience.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          location_image: imageUrl
-        })
-      }).catch(error => {
-        console.error('Error saving location image:', error);
-      });
+  const staticMapUrl = useMemo(() => {
+    if (experience.latitude && experience.longitude) {
+      return `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=16&size=400x200&maptype=roadmap&markers=color:red%7C${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
     }
-  }, [experience.id, experience.location, locationImage]);
-  
-  // Open Google Maps directions in a new tab
-  const openDirections = () => {
-    if (experience.place_id) {
-      // Use place_id if available for better directions
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}&query_place_id=${experience.place_id}`;
-      window.open(url, '_blank');
-    } else if (experience.latitude && experience.longitude) {
-      // Fall back to coordinates if place_id is not available
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`;
-      window.open(url, '_blank');
-    } else {
-      // Fall back to location name
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(experience.location)}`;
-      window.open(url, '_blank');
-    }
+    return null;
+  }, [experience.latitude, experience.longitude]);
+
+  // Handle error loading image
+  const handleImageError = () => {
+    setLocationImage(null);
   };
   
-  // Generate a static map URL if coordinates are available
-  const staticMapUrl = experience.latitude && experience.longitude
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=14&size=400x200&markers=color:red%7C${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`
-    : null;
+  // Open Google Maps for directions
+  const openDirections = () => {
+    let url;
+    if (experience.latitude && experience.longitude) {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`;
+    } else {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(experience.location)}`;
+    }
+    window.open(url, '_blank');
+  };
 
   return (
     <motion.div 
-      className="rounded-xl overflow-hidden shadow-card bg-white"
       variants={cardVariants}
       initial="initial"
       animate="animate"
       exit="exit"
-      transition={{ duration: 0.3 }}
+      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
     >
-      {/* Image or gradient header */}
-      <div className="relative h-48">
+      <div className="h-40 overflow-hidden relative">
         {locationImage ? (
           <img 
-            src={locationImage}
-            alt={experience.location}
+            src={locationImage} 
+            alt={experience.place_name || experience.location}
             className="w-full h-full object-cover"
+            onError={handleImageError}
           />
         ) : (
-          <div className={`w-full h-full bg-gradient-to-r ${gradient} flex items-center justify-center`}>
-            <span className="text-white text-2xl font-bold px-4 text-center">{experience.experience_type}</span>
+          <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center p-4`}>
+            <span className="text-white font-bold text-xl text-center">
+              {experience.experience_type}
+            </span>
           </div>
         )}
         
-        {/* Overlay with location and type */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white p-4">
-          <span className="bg-orange-500/80 text-white text-xs px-2 py-1 rounded-full uppercase tracking-wide font-semibold backdrop-blur-sm">
+        {/* Experience type badge */}
+        <div className="absolute top-3 left-3">
+          <span className="bg-orange-500 text-white text-xs uppercase tracking-wider px-2 py-1 rounded-full font-semibold shadow-md">
             {experience.experience_type}
           </span>
-          <h3 className="text-xl font-bold mt-2">{experience.location}</h3>
         </div>
       </div>
       
-      {/* Content section */}
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-bold text-gray-800">{experience.experience_type}</h3>
+          <h3 className="text-lg font-bold text-gray-800">{experience.place_name || experience.location}</h3>
           
           {!readOnly && (
             <div className="flex items-center space-x-1">
@@ -143,7 +119,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>{experience.location}</span>
+            <span>{experience.place_name ? experience.location : ''}</span>
           </div>
           <button 
             onClick={openDirections}
@@ -191,6 +167,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     latitude: null,
     longitude: null,
     place_id: '',
+    place_name: '',
     location_image: '',
     is_active: true
   });
@@ -230,6 +207,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         latitude: experience.latitude || null,
         longitude: experience.longitude || null,
         place_id: experience.place_id || '',
+        place_name: experience.place_name || '',
         location_image: experience.location_image || '',
         is_active: experience.is_active !== undefined ? experience.is_active : true
       });
@@ -252,6 +230,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         latitude: null,
         longitude: null,
         place_id: '',
+        place_name: '',
         location_image: '',
         is_active: true
       });
@@ -281,11 +260,13 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       const formattedAddress = place.formatted_address || place.name || '';
+      const placeName = place.name || '';
       
       // Create updated form data
       const updatedFormData = {
         ...formData,
         location: formattedAddress,
+        place_name: placeName,
         latitude: lat,
         longitude: lng,
         place_id: place.place_id || null
@@ -308,7 +289,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       
       // If we couldn't get a Google photo, fetch from Unsplash
       if (shouldFetchImage) {
-        const locationForImage = formattedAddress.split(',')[0].trim();
+        const locationForImage = placeName || formattedAddress.split(',')[0].trim();
         imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
       }
       
