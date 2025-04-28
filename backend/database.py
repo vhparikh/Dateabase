@@ -72,6 +72,7 @@ class Experience(db.Model):
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     place_id = db.Column(db.String(255), nullable=True)
+    place_name = db.Column(db.String(200), nullable=True)
     location_image = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
