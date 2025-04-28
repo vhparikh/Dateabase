@@ -20,7 +20,9 @@ db.init_app(app)
 with app.app_context():
     try:
         # Add place_name column
-        db.engine.execute(text('ALTER TABLE experience ADD COLUMN IF NOT EXISTS place_name TEXT'))
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE experience ADD COLUMN IF NOT EXISTS place_name TEXT'))
+            conn.commit()
         print("Successfully added place_name column to experience table")
     except Exception as e:
         print(f"Error during migration: {e}") 
