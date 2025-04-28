@@ -18,7 +18,11 @@ from sqlalchemy import text
 # Import at the top of the file with other imports
 from .fix_images_route import fix_images_bp
 
-# Add this line where other blueprints are registered
+# Create the app first before registering blueprints
+app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
+CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+
+# Now register the blueprint after app is defined
 app.register_blueprint(fix_images_bp)
 
 # Embedding function using Cohere API
@@ -74,12 +78,6 @@ except ImportError:
 from functools import wraps
 
 # Setup Flask app with proper static folder configuration for production deployment
-app = Flask(__name__, 
-           static_folder='../frontend/build',  # Path to the React build directory
-           static_url_path='')  # Empty string makes the static assets available at the root URL
-CORS(app, supports_credentials=True)
-
-# Set up app configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 # Set session type for CAS auth
 app.config['SESSION_TYPE'] = 'filesystem'
