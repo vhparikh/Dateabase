@@ -15,6 +15,12 @@ import json
 import cohere  # Import Cohere client
 from sqlalchemy import text
 
+# Import at the top of the file with other imports
+from .fix_images_route import fix_images_bp
+
+# Add this line where other blueprints are registered
+app.register_blueprint(fix_images_bp)
+
 # Embedding function using Cohere API
 def get_embedding(text):
     """Generate embeddings using Cohere's embedding API"""
