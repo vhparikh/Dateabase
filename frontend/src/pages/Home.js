@@ -33,13 +33,33 @@ const ExperienceCard = ({ experience, onSwipe, style, zIndex = 0 }) => {
   
   // Load location image on component mount
   useEffect(() => {
+    // Only set the image once and don't change it unless the experience changes
     if (experience.location_image) {
       setLocationImage(experience.location_image);
-    } else if (experience.location) {
-      // Fallback to Unsplash if no location image is provided
-      setLocationImage(`https://source.unsplash.com/random/800x600/?${experience.location.replace(/\s+/g, '+')}`);
+    } else if (experience.location && !locationImage) {
+      // Only fetch from Unsplash if we don't already have an image
+      const imageUrl = `https://source.unsplash.com/random/800x600/?${experience.location.replace(/\s+/g, '+')}`;
+      setLocationImage(imageUrl);
+      
+      // If we're fetching a fallback image, let's save it back to the experience
+      // This way, we won't fetch a new random image every time
+      if (experience.id) {
+        fetch(`${API_URL}/api/experiences/${experience.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            ...experience,
+            location_image: imageUrl
+          })
+        }).catch(error => {
+          console.error('Error saving location image:', error);
+        });
+      }
     }
-  }, [experience.location, experience.location_image]);
+  }, [experience.id, experience.location, experience.location_image]);
   
   // Handle touch/mouse events for swiping
   const handleTouchStart = (e) => {

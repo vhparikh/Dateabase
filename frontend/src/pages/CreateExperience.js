@@ -108,32 +108,24 @@ const CreateExperience = () => {
   
   // Fetch a location image when location changes
   useEffect(() => {
-    if (formData.place_id && formData.location) {
-      // Try to get a place photo using the Google Places API
-      const fetchPlacePhoto = async () => {
-        try {
-          // Since we can't directly call the Google API from the frontend due to CORS,
-          // we'll use Unsplash as a fallback for images
-          setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
-          
-          // Set the location image in form data too for submission
-          setFormData(prevData => ({
-            ...prevData,
-            location_image: `https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`
-          }));
-        } catch (err) {
-          console.error('Error fetching place photo:', err);
-          // Fallback to Unsplash
-          setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
-        }
+    // Only fetch a new image if we have a location and don't already have an image
+    if (formData.location && formData.location.length > 3 && !formData.location_image && !backgroundImage) {
+      const fetchLocationImage = async () => {
+        // Create a consistent image URL based on the location
+        const locationForImage = formData.location.split(',')[0].trim();
+        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+        
+        // Store the image URL both in the UI state and the form data for submission
+        setBackgroundImage(imageUrl);
+        setFormData(prevData => ({
+          ...prevData,
+          location_image: imageUrl
+        }));
       };
       
-      fetchPlacePhoto();
-    } else if (formData.location && formData.location.length > 3) {
-      // Fallback to Unsplash if we don't have a place_id
-      setBackgroundImage(`https://source.unsplash.com/random/800x600/?${formData.location.replace(/\s+/g, '+')}`);
+      fetchLocationImage();
     }
-  }, [formData.location, formData.place_id]);
+  }, [formData.location, formData.location_image, backgroundImage]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -163,27 +155,30 @@ const CreateExperience = () => {
         place_id: place.place_id || null
       };
       
-      // Try to get a better location image from Google Maps if available
+      // Get a location image and add it to the form data
+      let imageUrl = '';
+      let shouldFetchImage = true;
+      
+      // First try to get a Google Maps photo if available
       if (place.photos && place.photos.length > 0) {
         try {
-          const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
-          updatedFormData.location_image = photoUrl;
-          setBackgroundImage(photoUrl);
+          imageUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+          shouldFetchImage = false;
         } catch (error) {
           console.error('Error getting place photo:', error);
-          // Fallback to Unsplash with a more targeted search
-          const locationForImage = formattedAddress.split(',')[0].trim();
-          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-          updatedFormData.location_image = imageUrl;
-          setBackgroundImage(imageUrl);
+          shouldFetchImage = true;
         }
-      } else {
-        // Fallback to Unsplash with a more targeted search term
-        const locationForImage = formattedAddress.split(',')[0].trim();
-        const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-        updatedFormData.location_image = imageUrl;
-        setBackgroundImage(imageUrl);
       }
+      
+      // If we couldn't get a Google photo, fetch from Unsplash
+      if (shouldFetchImage) {
+        const locationForImage = formattedAddress.split(',')[0].trim();
+        imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+      }
+      
+      // Set the location image in form data for submission
+      updatedFormData.location_image = imageUrl;
+      setBackgroundImage(imageUrl);
       
       setFormData(updatedFormData);
       setMapCenter({

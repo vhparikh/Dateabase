@@ -417,6 +417,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [activeExperience, setActiveExperience] = useState(experiences[0]);
   const [showMap, setShowMap] = useState(false);
+  const [locationImages, setLocationImages] = useState({});
 
   // Google Maps configuration
   const mapContainerStyle = {
@@ -435,6 +436,65 @@ const GroupedMatchCard = ({ user, experiences }) => {
     zoomControl: true,
   };
 
+  // Load location images on component mount
+  useEffect(() => {
+    const loadImages = async () => {
+      const images = {...locationImages};
+      const imagesToUpdate = [];
+      
+      for (const exp of experiences) {
+        if (exp.experience.location_image) {
+          // Use the existing image if available
+          images[exp.experience.id] = exp.experience.location_image;
+        } else if (exp.experience.location && !images[exp.experience.id]) {
+          // Only fetch a new image if we don't already have one for this experience
+          const locationForImage = exp.experience.location.split(',')[0].trim();
+          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          images[exp.experience.id] = imageUrl;
+          
+          // Keep track of experiences whose images need to be updated in the backend
+          imagesToUpdate.push({
+            experienceId: exp.experience.id,
+            imageUrl
+          });
+        }
+      }
+      
+      setLocationImages(images);
+      
+      // Update experience location_image in the backend to avoid fetching new random images on reload
+      for (const item of imagesToUpdate) {
+        try {
+          await fetch(`${API_URL}/api/experiences/${item.experienceId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              location_image: item.imageUrl
+            })
+          });
+          
+          // Update the active experience image if it was just updated
+          if (activeExperience.experience.id === item.experienceId) {
+            setActiveExperience(prev => ({
+              ...prev,
+              experience: {
+                ...prev.experience,
+                location_image: item.imageUrl
+              }
+            }));
+          }
+        } catch (error) {
+          console.error('Error saving location image:', error);
+        }
+      }
+    };
+    
+    loadImages();
+  }, [experiences]);
+
   const openGoogleMaps = () => {
     if (activeExperience.experience.latitude && activeExperience.experience.longitude) {
       window.open(`https://www.google.com/maps/search/?api=1&query=${activeExperience.experience.latitude},${activeExperience.experience.longitude}`, '_blank');
@@ -447,10 +507,10 @@ const GroupedMatchCard = ({ user, experiences }) => {
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
       {/* User Profile Header */}
       <div className="relative">
-        {activeExperience.experience.location_image ? (
+        {locationImages[activeExperience.experience.id] ? (
           <div className="h-40 overflow-hidden">
             <img
-              src={activeExperience.experience.location_image}
+              src={locationImages[activeExperience.experience.id]}
               alt={activeExperience.experience.location}
               className="w-full h-full object-cover"
             />
@@ -597,7 +657,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
           userId={user.id}
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-          backgroundImage={activeExperience.experience.location_image}
+          backgroundImage={locationImages[activeExperience.experience.id]}
         />
       )}
       
@@ -621,16 +681,50 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
   
   // Load location images on component mount
   useEffect(() => {
-    const images = {};
-    experiences.forEach(exp => {
-      if (exp.experience.location_image) {
-        images[exp.experience.id] = exp.experience.location_image;
-      } else if (exp.experience.location) {
-        // Fallback to Unsplash if no location image is provided
-        images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${exp.experience.location.replace(/\s+/g, '+')}`;
+    const loadImages = async () => {
+      const images = {...locationImages};
+      const imagesToUpdate = [];
+      
+      for (const exp of experiences) {
+        if (exp.experience.location_image) {
+          // Use the existing image if available
+          images[exp.experience.id] = exp.experience.location_image;
+        } else if (exp.experience.location && !images[exp.experience.id]) {
+          // Only fetch a new image if we don't already have one for this experience
+          const locationForImage = exp.experience.location.split(',')[0].trim();
+          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          images[exp.experience.id] = imageUrl;
+          
+          // Keep track of experiences whose images need to be updated in the backend
+          imagesToUpdate.push({
+            experienceId: exp.experience.id,
+            imageUrl
+          });
+        }
       }
-    });
-    setLocationImages(images);
+      
+      setLocationImages(images);
+      
+      // Update experience location_image in the backend to avoid fetching new random images on reload
+      for (const item of imagesToUpdate) {
+        try {
+          await fetch(`${API_URL}/api/experiences/${item.experienceId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              location_image: item.imageUrl
+            })
+          });
+        } catch (error) {
+          console.error('Error saving location image:', error);
+        }
+      }
+    };
+    
+    loadImages();
     
     // Set the first experience as expanded by default
     if (experiences.length > 0 && !expandedExperience) {
@@ -781,16 +875,50 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
   
   // Load location images on component mount
   useEffect(() => {
-    const images = {};
-    experiences.forEach(exp => {
-      if (exp.experience.location_image) {
-        images[exp.experience.id] = exp.experience.location_image;
-      } else if (exp.experience.location) {
-        // Fallback to Unsplash if no location image is provided
-        images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${exp.experience.location.replace(/\s+/g, '+')}`;
+    const loadImages = async () => {
+      const images = {...locationImages};
+      const imagesToUpdate = [];
+      
+      for (const exp of experiences) {
+        if (exp.experience.location_image) {
+          // Use the existing image if available
+          images[exp.experience.id] = exp.experience.location_image;
+        } else if (exp.experience.location && !images[exp.experience.id]) {
+          // Only fetch a new image if we don't already have one for this experience
+          const locationForImage = exp.experience.location.split(',')[0].trim();
+          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          images[exp.experience.id] = imageUrl;
+          
+          // Keep track of experiences whose images need to be updated in the backend
+          imagesToUpdate.push({
+            experienceId: exp.experience.id,
+            imageUrl
+          });
+        }
       }
-    });
-    setLocationImages(images);
+      
+      setLocationImages(images);
+      
+      // Update experience location_image in the backend to avoid fetching new random images on reload
+      for (const item of imagesToUpdate) {
+        try {
+          await fetch(`${API_URL}/api/experiences/${item.experienceId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              location_image: item.imageUrl
+            })
+          });
+        } catch (error) {
+          console.error('Error saving location image:', error);
+        }
+      }
+    };
+    
+    loadImages();
     
     // Set the first experience as expanded by default
     if (experiences.length > 0 && !expandedExperience) {

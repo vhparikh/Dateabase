@@ -27,6 +27,30 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   };
 
   const [gradient] = useState(randomGradient());
+  const [locationImage, setLocationImage] = useState(experience.location_image || null);
+  
+  // Load a location image if needed and save it back to the experience
+  useEffect(() => {
+    if (!locationImage && experience.location && experience.id) {
+      const locationForImage = experience.location.split(',')[0].trim();
+      const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+      setLocationImage(imageUrl);
+      
+      // Save the image URL back to the experience in the backend
+      fetch(`${API_URL}/api/experiences/${experience.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          location_image: imageUrl
+        })
+      }).catch(error => {
+        console.error('Error saving location image:', error);
+      });
+    }
+  }, [experience.id, experience.location, locationImage]);
   
   // Open Google Maps directions in a new tab
   const openDirections = () => {
@@ -61,9 +85,9 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
     >
       {/* Image or gradient header */}
       <div className="relative h-48">
-        {experience.location_image ? (
+        {locationImage ? (
           <img 
-            src={experience.location_image}
+            src={locationImage}
             alt={experience.location}
             className="w-full h-full object-cover"
           />
@@ -267,22 +291,29 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         place_id: place.place_id || null
       };
       
-      // Try to get a location image from Google Maps if available
+      // Get a location image and add it to the form data
+      let imageUrl = '';
+      let shouldFetchImage = true;
+      
+      // First try to get a Google Maps photo if available
       if (place.photos && place.photos.length > 0) {
         try {
-          const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
-          updatedFormData.location_image = photoUrl;
+          imageUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+          shouldFetchImage = false;
         } catch (error) {
           console.error('Error getting place photo:', error);
-          // Fallback to Unsplash
-          const locationForImage = formattedAddress.split(',')[0].trim();
-          updatedFormData.location_image = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          shouldFetchImage = true;
         }
-      } else {
-        // Fallback to Unsplash for image
-        const locationForImage = formattedAddress.split(',')[0].trim();
-        updatedFormData.location_image = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
       }
+      
+      // If we couldn't get a Google photo, fetch from Unsplash
+      if (shouldFetchImage) {
+        const locationForImage = formattedAddress.split(',')[0].trim();
+        imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+      }
+      
+      // Set the location image in form data for submission
+      updatedFormData.location_image = imageUrl;
       
       setFormData(updatedFormData);
       
