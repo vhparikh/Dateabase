@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, send_from_directory, redirect, sessio
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import os
-import google.generativeai as genai
 import json
 from sqlalchemy import text
 
@@ -33,21 +32,13 @@ app.register_blueprint(image_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(gemini_bp)
 
-from .utils.auth_utils import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
 from .database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-from .utils.recommender_utils import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
-import backend.utils.recommender_utils
 
 # Setup Flask app with proper static folder configuration for production deployment
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 # Set session type for CAS auth
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-
-# # Configure Gemini API key
-# GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-# if GEMINI_API_KEY:
-#     genai.configure(api_key=GEMINI_API_KEY)
 
 # Initialize the database with our app
 init_db(app)
@@ -94,39 +85,6 @@ def add_preference_vector_columns(app):
 
 # Add preference vector caching columns
 add_preference_vector_columns(app)
-    
-# API endpoint to check for inappropriate content using Gemini
-# @app.route('/api/check-inappropriate', methods=['POST'])
-# def check_inappropriate():
-#     # Get the text content from the request
-#     data = request.json
-#     text = data.get('text', '')
-    
-#     if not text:
-#         return jsonify({'is_inappropriate': False, 'error': 'No text provided'}), 400
-    
-#     try:
-#         # Check if Gemini API is configured
-#         if not GEMINI_API_KEY:
-#             return jsonify({'is_inappropriate': False, 'error': 'Gemini API not configured'}), 500
-        
-#         # Use Gemini to check for inappropriate content
-#         model = genai.GenerativeModel(model_name="gemini-2.0-flash")
-#         prompt = f"Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with \"true\" or \"false\".\n\nText: \"{text}\""
-        
-#         result = model.generate_content(prompt)
-#         output = result.text.strip().lower()
-        
-#         # Log the result for debugging
-#         print(f"Gemini check result for text: '{text[:30]}...' => {output}")
-        
-#         # Return the result
-#         return jsonify({'is_inappropriate': output == 'true'})
-    
-#     except Exception as e:
-#         print(f"Error checking inappropriate content: {str(e)}")
-#         # Fallback: if error, assume not inappropriate
-#         return jsonify({'is_inappropriate': False, 'error': str(e)}), 500
 
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
