@@ -42,7 +42,7 @@ app.register_blueprint(image_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(gemini_bp)
 
-from .database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
+from .database import db, init_db, User, Experience, Match, UserSwipe, UserImage
 
 # Setup Flask app with proper static folder configuration for production deployment
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
