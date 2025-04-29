@@ -513,7 +513,7 @@ def create_experience(current_user_id=None):
         }
         
         # Try to index the experience, but don't let indexing failure affect the response
-        if recommender.pinecone_initialized:
+        if backend.recommender.pinecone_initialized:
             # Do the indexing in a try-except block that can't affect the main response
             try:
                 print(f"Attempting to index experience {new_experience.id} in Pinecone...")
@@ -618,10 +618,10 @@ def delete_experience(experience_id, current_user_id=None):
             return jsonify({'detail': 'You can only delete your own experiences'}), 403
         
         # First, delete the experience from Pinecone if it's initialized
-        if recommender.pinecone_initialized and recommender.pinecone_index:
+        if backend.recommender.pinecone_initialized and backend.recommender.pinecone_index:
             try:
                 # Delete the experience from Pinecone index
-                recommender.pinecone_index.delete(ids=[f"exp_{experience_id}"])
+                backend.recommender.pinecone_index.delete(ids=[f"exp_{experience_id}"])
                 print(f"Deleted experience {experience_id} from Pinecone index")
             except Exception as e:
                 print(f"Error deleting from Pinecone: {e}")
@@ -692,7 +692,7 @@ def update_experience(experience_id, current_user_id=None):
         user = User.query.get(current_user_id)
         
         # Update the experience in Pinecone for vector search
-        if recommender.pinecone_initialized:
+        if backend.recommender.pinecone_initialized:
             index_experience(experience, user)
             print(f"Experience {experience.id} updated in Pinecone index")
         
@@ -1097,7 +1097,7 @@ def get_swipe_experiences(current_user_id=None):
         print(f"User {current_user_id} preferred experience types: {user_preferred_exp_types}")
             
         # Use Pinecone for vector similarity search if available
-        if recommender.pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
+        if backend.recommender.pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
             print(f"User {current_user_id}: Using personalized experiences API for vector similarity ranking")
             
             # Get personalized experiences using the simplified vector approach
@@ -1612,7 +1612,7 @@ def get_or_update_current_user():
                     preference_text = get_user_preference_text(user)
                     print(f"User {user.id}: Generated new preference text: {preference_text[:100]}...")
                     
-                    if recommender.pinecone_initialized:
+                    if backend.recommender.pinecone_initialized:
                         # Get embedding for the preference text
                         preference_embedding = get_embedding(preference_text)
                         print(f"User {user.id}: Generated new preference embedding with dimension {len(preference_embedding)}")
@@ -1643,7 +1643,7 @@ def get_or_update_current_user():
                 print(f"User {user.id} updated their preferences. Personalized recommendations will be refreshed.")
                 
                 # Pre-warm the personalized recommendations by querying Pinecone
-                if recommender.pinecone_initialized:
+                if backend.recommender.pinecone_initialized:
                     try:
                         # This won't be stored but will help with performance when the user goes to swipe
                         personalized_matches = get_personalized_experiences(user, top_k=50)
