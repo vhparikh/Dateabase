@@ -5,10 +5,10 @@ import json
 import pinecone
 
 try:
-    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
+    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage
 except ImportError:
     # Fall back to package import (for Heroku)
-    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
+    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage
 
 # Configure Pinecone
 PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY', '')
