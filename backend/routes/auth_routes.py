@@ -140,26 +140,31 @@ def cas_callback():
         # For production environment (Heroku) - CRITICAL FIX: Always redirect to root with hash params to avoid 404s
         if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
             # In SPAs on Heroku, we need to redirect to the root and let React Router handle it
-            redirect_url = f"{frontend_url}/#/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}"
+            redirect_url = f"{frontend_url}/#/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
             print(f"Redirecting to: {redirect_url}")
             return redirect(redirect_url)
         else:
             # In development, redirect to the React dev server
-            redirect_url = f"{frontend_url}/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}"
+            redirect_url = f"{frontend_url}/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
             print(f"Redirecting to: {redirect_url}")
             return redirect(redirect_url)
             
     except Exception as e:
         print(f"Error in CAS callback: {e}")
         # Determine frontend URL for error redirect
-        if 'herokuapp.com' in request.host:
+        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
             scheme = request.headers.get('X-Forwarded-Proto', 'https')
             frontend_url = f"{scheme}://{request.host}"
         else:
             frontend_url = request.headers.get('Origin', 'http://localhost:3000')
             
+        # Include more detailed error information
+        error_message = str(e)
+        error_type = type(e).__name__
+        
         # Redirect to login page with error message
-        error_redirect = f"{frontend_url}/login?error={quote('Authentication failed: ' + str(e))}"
+        error_redirect = f"{frontend_url}/login?error={quote(f'Authentication failed ({error_type}): {error_message}')}"
+        print(f"Redirecting to error URL: {error_redirect}")
         return redirect(error_redirect)
 
 @auth_bp.route('/api/cas/logout', methods=['GET'])

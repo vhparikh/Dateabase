@@ -16,9 +16,15 @@ const CASCallback = () => {
         const params = new URLSearchParams(location.search);
         const ticket = params.get('ticket');
         const callbackUrl = params.get('callback_url') || '/';
+        const needsOnboarding = params.get('needs_onboarding') === 'true';
+        const casSuccess = params.get('cas_success') === 'true';
 
-        if (!ticket) {
-          setError('No CAS ticket found in the URL');
+        // If ticket is present, we're coming directly from CAS
+        // If no ticket but needs_onboarding is set, we're coming from backend redirect
+        // If cas_success is true, we're coming from backend redirect
+        if (!ticket && !casSuccess) {
+          console.error('No CAS ticket or success parameters found in URL');
+          setError('Authentication information missing. Please try logging in again.');
           setLoading(false);
           return;
         }

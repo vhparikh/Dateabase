@@ -115,6 +115,16 @@ export const AuthProvider = ({ children }) => {
     try {
       // Get needs_onboarding from URL params if available
       const needsOnboarding = params?.get('needs_onboarding') === 'true';
+      const casSuccess = params?.get('cas_success') === 'true';
+      
+      // If we have cas_success=true, we know the backend has already authenticated the user
+      // This happens when redirected from the backend CAS callback
+      if (casSuccess) {
+        console.log('Authentication already confirmed by backend');
+        setCasAuthenticated(true);
+      } else if (!ticket) {
+        console.warn('No CAS ticket and no success confirmation found');
+      }
       
       // First, check if the user is authenticated with CAS
       const statusResponse = await fetch(`${API_URL}/api/cas/status`, {
@@ -141,7 +151,11 @@ export const AuthProvider = ({ children }) => {
               needs_onboarding: redirectToOnboarding
             };
           }
+        } else {
+          console.error('Backend reports user is not authenticated');
         }
+      } else {
+        console.error('Failed to check authentication status with backend');
       }
       
       return { success: false, message: 'Authentication failed' };
