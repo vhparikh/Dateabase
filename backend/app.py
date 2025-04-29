@@ -24,6 +24,7 @@ from .fix_images_route import fix_images_bp
 from .experience_routes import experience_bp
 from .swipe_routes import swipe_bp
 from .auth_routes import auth_bp
+from .match_routes import match_bp
 
 # Create the app first before registering blueprints
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
@@ -34,7 +35,7 @@ app.register_blueprint(fix_images_bp)
 app.register_blueprint(experience_bp)
 app.register_blueprint(swipe_bp)
 app.register_blueprint(auth_bp)
-
+app.register_blueprint(match_bp)
 try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
