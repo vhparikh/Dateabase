@@ -4,7 +4,7 @@ from functools import wraps
 from datetime import datetime
 
 # Import login_required decorator
-from .app import login_required
+from .auth_utils import login_required
 
 # Import database models
 try:
