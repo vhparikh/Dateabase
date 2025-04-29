@@ -1,5 +1,8 @@
 from functools import wraps
-from flask import jsonify, session
+from flask import jsonify, session, current_app
+from datetime import datetime, timedelta
+import jwt
+from .database import User
 
 def login_required():
     def decorator(f):
@@ -36,3 +39,39 @@ def login_required():
             return f(*args, **kwargs)
         return decorated_function
     return decorator 
+
+# Auth Helper Functions
+def generate_token(user_id):
+    payload = {
+        'exp': datetime.utcnow() + timedelta(days=1),
+        'iat': datetime.utcnow(),
+        'sub': user_id
+    }
+    return jwt.encode(
+        payload,
+        current_app.config['SECRET_KEY'],
+        algorithm='HS256'
+    )
+
+def decode_token(token):
+    try:
+        payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+        return payload['sub']
+    except jwt.ExpiredSignatureError:
+        return 'Signature expired. Please log in again.'
+    except jwt.InvalidTokenError:
+        return 'Invalid token. Please log in again.'
+
+# Get current user ID from session
+def get_current_user_id():
+    if not session.get('user_info'):
+        return None
+    
+    user_info = session.get('user_info')
+    netid = user_info.get('user', '')
+    
+    user = User.query.filter_by(netid=netid).first()
+    if not user:
+        return None
+    
+    return user.id
