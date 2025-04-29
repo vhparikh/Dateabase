@@ -7,7 +7,7 @@ import re
 import requests
 from flask import Blueprint, jsonify
 from urllib.parse import urlparse
-from .database import db, Experience
+from ..database import db, Experience
 import time
 from functools import wraps
 from flask import request

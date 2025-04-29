@@ -10,14 +10,14 @@ import json
 from sqlalchemy import text
 
 # Import auth utility functions
-from .auth_utils import login_required
+from .utils.auth_utils import login_required
 
 # Import blueprints
-from .fix_images_route import fix_images_bp
-from .experience_routes import experience_bp
-from .swipe_routes import swipe_bp
-from .auth_routes import auth_bp
-from .match_routes import match_bp
+from .routes.fix_images_route import fix_images_bp
+from .routes.experience_routes import experience_bp
+from .routes.swipe_routes import swipe_bp
+from .routes.auth_routes import auth_bp
+from .routes.match_routes import match_bp
 
 # Create the app first before registering blueprints
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
@@ -33,14 +33,14 @@ try:
     # Try local import first (for local development)
     from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
     from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from recommender import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
-    import recommender
+    from backend.utils.recommender_utils import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
+    import backend.utils.recommender_utils as recommender_utils
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
     from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from backend.recommender import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
-    import backend.recommender
+    from backend.utils.recommender_utils import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
+    import backend.utils.recommender_utils
 
 # Setup Flask app with proper static folder configuration for production deployment
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
@@ -216,7 +216,7 @@ def update_user(user_id):
                 preference_text = get_user_preference_text(user)
                 print(f"User {user.id}: Generated new preference text: {preference_text[:100]}...")
                 
-                if backend.recommender.pinecone_initialized:
+                if backend.utils.recommender_utils.pinecone_initialized:
                     # Get embedding for the preference text
                     preference_embedding = get_embedding(preference_text)
                     print(f"User {user.id}: Generated new preference embedding with dimension {len(preference_embedding)}")
@@ -404,7 +404,7 @@ def get_or_update_current_user():
                     preference_text = get_user_preference_text(user)
                     print(f"User {user.id}: Generated new preference text: {preference_text[:100]}...")
                     
-                    if backend.recommender.pinecone_initialized:
+                    if backend.utils.recommender_utils.pinecone_initialized:
                         # Get embedding for the preference text
                         preference_embedding = get_embedding(preference_text)
                         print(f"User {user.id}: Generated new preference embedding with dimension {len(preference_embedding)}")
@@ -435,7 +435,7 @@ def get_or_update_current_user():
                 print(f"User {user.id} updated their preferences. Personalized recommendations will be refreshed.")
                 
                 # Pre-warm the personalized recommendations by querying Pinecone
-                if backend.recommender.pinecone_initialized:
+                if backend.utils.recommender_utils.pinecone_initialized:
                     try:
                         # This won't be stored but will help with performance when the user goes to swipe
                         personalized_matches = get_personalized_experiences(user, top_k=50)

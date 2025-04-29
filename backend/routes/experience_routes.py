@@ -4,19 +4,19 @@ from functools import wraps
 from datetime import datetime
 
 # Import login_required decorator
-from .auth_utils import login_required
+from ..utils.auth_utils import login_required
 
 # Import database models
 try:
     # Try local import first (for local development)
     from database import db, User, Experience, Match, UserSwipe
-    from recommender import index_experience
-    import recommender
+    from backend.utils.recommender_utils import index_experience
+    import backend.utils.recommender_utils as recommender_utils
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.database import db, User, Experience, Match, UserSwipe
-    from backend.recommender import index_experience
-    import backend.recommender
+    from backend.utils.recommender_utils import index_experience
+    import backend.utils.recommender_utils
 
 # Create Blueprint
 experience_bp = Blueprint('experience_routes', __name__)
@@ -81,7 +81,7 @@ def create_experience(current_user_id=None):
         }
         
         # Try to index the experience, but don't let indexing failure affect the response
-        if backend.recommender.pinecone_initialized:
+        if backend.utils.recommender_utils.pinecone_initialized:
             # Do the indexing in a try-except block that can't affect the main response
             try:
                 print(f"Attempting to index experience {new_experience.id} in Pinecone...")
@@ -186,10 +186,10 @@ def delete_experience(experience_id, current_user_id=None):
             return jsonify({'detail': 'You can only delete your own experiences'}), 403
         
         # First, delete the experience from Pinecone if it's initialized
-        if backend.recommender.pinecone_initialized and backend.recommender.pinecone_index:
+        if backend.utils.recommender_utils.pinecone_initialized and backend.utils.recommender_utils.pinecone_index:
             try:
                 # Delete the experience from Pinecone index
-                backend.recommender.pinecone_index.delete(ids=[f"exp_{experience_id}"])
+                backend.utils.recommender_utils.pinecone_index.delete(ids=[f"exp_{experience_id}"])
                 print(f"Deleted experience {experience_id} from Pinecone index")
             except Exception as e:
                 print(f"Error deleting from Pinecone: {e}")
@@ -260,7 +260,7 @@ def update_experience(experience_id, current_user_id=None):
         user = User.query.get(current_user_id)
         
         # Update the experience in Pinecone for vector search
-        if backend.recommender.pinecone_initialized:
+        if backend.utils.recommender_utils.pinecone_initialized:
             index_experience(experience, user)
             print(f"Experience {experience.id} updated in Pinecone index")
         

@@ -7,20 +7,19 @@ import os
 import secrets
 from urllib.parse import quote_plus, urlencode, quote
 
-from .auth_utils import login_required, decode_token
-from .auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+from ..utils.auth_utils import login_required, decode_token, validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
 
 # Import database models
 try:
     # Try local import first (for local development)
     from database import db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from recommender import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import recommender
+    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
+    import backend.utils.recommender_utils as recommender_utils
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.database import db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from backend.recommender import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import backend.recommender
+    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
+    import backend.utils.recommender_utils
 
 auth_bp = Blueprint('auth_routes', __name__)
 

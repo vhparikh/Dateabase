@@ -4,19 +4,19 @@ from functools import wraps
 from datetime import datetime
 
 # Import login_required decorator
-from .auth_utils import login_required
+from ..utils.auth_utils import login_required
 
 # Import database models
 try:
     # Try local import first (for local development)
     from database import db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from recommender import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import recommender
+    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
+    import backend.utils.recommender_utils as recommender_utils
 except ImportError:
     # Fall back to package import (for Heroku)
     from backend.database import db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from backend.recommender import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import backend.recommender
+    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
+    import backend.utils.recommender_utils
 
 swipe_bp = Blueprint('swipe_routes', __name__)
 
@@ -233,7 +233,7 @@ def get_swipe_experiences(current_user_id=None):
         print(f"User {current_user_id} preferred experience types: {user_preferred_exp_types}")
             
         # Use Pinecone for vector similarity search if available
-        if backend.recommender.pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
+        if backend.utils.recommender_utils.pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
             print(f"User {current_user_id}: Using personalized experiences API for vector similarity ranking")
             
             # Get personalized experiences using the simplified vector approach
