@@ -10,19 +10,6 @@ export const useAuth = () => useContext(AuthContext);
 export default AuthContext;
 
 export const AuthProvider = ({ children }) => {
-  const [authTokens, setAuthTokens] = useState(() => {
-    const savedTokens = localStorage.getItem('authTokens');
-    if (savedTokens) {
-      try {
-        return JSON.parse(savedTokens);
-      } catch (e) {
-        console.error('Error parsing auth tokens from localStorage:', e);
-      }
-    }
-    // Return null instead of fallback tokens
-    return null;
-  });
-  
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
@@ -53,44 +40,20 @@ export const AuthProvider = ({ children }) => {
               const profileData = await profileResponse.json();
               console.log('User profile loaded');
               setUser(profileData);
-              
-              // Generate tokens if needed
-              if (!authTokens) {
-                const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  credentials: 'include',
-                  body: JSON.stringify({})
-                });
-                
-                if (tokenResponse.ok) {
-                  const tokenData = await tokenResponse.json();
-                  setAuthTokens(tokenData);
-                  localStorage.setItem('authTokens', JSON.stringify(tokenData));
-                }
-              }
             }
           } else {
-            // Not authenticated with CAS, clear any stored tokens
+            // Not authenticated with CAS, clear user data
             console.log('Not authenticated with CAS, redirecting to login');
             setUser(null);
-            setAuthTokens(null);
-            localStorage.removeItem('authTokens');
           }
         } else {
           // Failed to check authentication status
           console.log('Failed to check authentication status');
           setUser(null);
-          setAuthTokens(null);
-          localStorage.removeItem('authTokens');
         }
       } catch (err) {
         console.error('Auth status check error:', err);
         setUser(null);
-        setAuthTokens(null);
-        localStorage.removeItem('authTokens');
       } finally {
         setLoading(false);
         setAuthLoading(false);
@@ -168,20 +131,6 @@ export const AuthProvider = ({ children }) => {
           const userProfile = await loadUserProfile();
           
           if (userProfile) {
-            // Generate access token
-            const tokenResponse = await fetch(`${API_URL}/api/token/refresh`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({})
-            });
-            
-            if (tokenResponse.ok) {
-              const tokenData = await tokenResponse.json();
-              setAuthTokens(tokenData);
-              localStorage.setItem('authTokens', JSON.stringify(tokenData));
-            }
-            
             // Check if onboarding is needed (from URL param or user profile)
             const needsOnboardingFromProfile = userProfile.onboarding_completed === false;
             const redirectToOnboarding = needsOnboarding || needsOnboardingFromProfile;
@@ -210,9 +159,7 @@ export const AuthProvider = ({ children }) => {
         credentials: 'include'
       });
       
-      // Clear local storage and state
-      localStorage.removeItem('authTokens');
-      setAuthTokens(null);
+      // Clear state
       setUser(null);
       setCasAuthenticated(false);
       
@@ -231,8 +178,6 @@ export const AuthProvider = ({ children }) => {
 
   const contextData = {
     user,
-    authTokens,
-    setAuthTokens,
     setUser,
     loading,
     authLoading,

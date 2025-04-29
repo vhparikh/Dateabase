@@ -2,8 +2,18 @@ from flask import Flask, request, jsonify, send_from_directory, redirect, sessio
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import os
+import secrets
+import google.generativeai as genai
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+from urllib.parse import quote_plus, urlencode, quote
+import pinecone
+import numpy as np
 import json
+import cohere  # Import Cohere client
 from sqlalchemy import text
+from functools import wraps
 
 # Import auth utility functions
 from .utils.auth_utils import login_required
