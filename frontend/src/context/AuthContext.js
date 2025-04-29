@@ -168,8 +168,12 @@ export const AuthProvider = ({ children }) => {
   // Logout from CAS and the application
   const logoutUser = async () => {
     try {
+      // Determine our current frontend URL for redirecting after CAS logout
+      const currentUrl = window.location.origin;
+      const loginUrl = `${currentUrl}/login`;
+      
       // Logout from backend session
-      const response = await fetch(`${API_URL}/api/cas/logout`, {
+      const response = await fetch(`${API_URL}/api/cas/logout?frontend_url=${encodeURIComponent(currentUrl)}`, {
         credentials: 'include'
       });
       
@@ -180,13 +184,15 @@ export const AuthProvider = ({ children }) => {
       // Get the CAS logout URL from response
       if (response.ok) {
         const data = await response.json();
+        console.log('Logout successful, received logout URL:', data.logout_url);
         return data;  // Return data containing logout_url
       }
       
-      return true;
+      return { logout_url: loginUrl }; // Fallback to direct login URL
     } catch (error) {
       console.error('Error logging out:', error);
-      return false;
+      // Even on error, try to redirect to login
+      return { logout_url: window.location.origin + '/login' };
     }
   };
 

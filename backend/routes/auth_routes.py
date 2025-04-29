@@ -178,14 +178,18 @@ def cas_logout():
         frontend_url = request.args.get('frontend_url', '')
         
         if not frontend_url:
-            if 'herokuapp.com' in request.host:
+            if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
                 scheme = request.headers.get('X-Forwarded-Proto', 'https')
                 frontend_url = f"{scheme}://{request.host}"
             else:
                 frontend_url = request.headers.get('Origin', 'http://localhost:3000')
         
-        # Generate CAS logout URL
-        logout_url = f"{_CAS_URL}logout?service={quote(frontend_url)}"
+        # Add /login to the frontend URL to ensure redirection to login page
+        login_url = f"{frontend_url}/login"
+        print(f"Setting CAS logout service URL to: {login_url}")
+        
+        # Generate CAS logout URL with specific redirect to login page
+        logout_url = f"{_CAS_URL}logout?service={quote(login_url)}"
         
         return jsonify({
             'message': 'Logged out successfully',

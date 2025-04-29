@@ -81,9 +81,14 @@ const Profile = () => {
     try {
       const result = await logoutUser();
       if (result && result.logout_url) {
+        console.log('Redirecting to CAS logout URL with redirect to login page:', result.logout_url);
+        // Add a local redirect first to ensure we clean up local state
+        localStorage.removeItem('lastAuthenticated'); // Clear any auth timestamps
+        
         // Redirect to CAS logout URL which will then redirect back to login page
         window.location.href = result.logout_url;
       } else {
+        console.log('No logout URL returned, redirecting directly to login page');
         // Fallback to just redirecting to login page
         navigate('/login');
       }
