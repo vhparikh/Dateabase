@@ -29,6 +29,7 @@ def create_experience(current_user_id=None):
     # Validate and extract required fields
     data = request.json
     experience_type = data.get('experience_type', '').strip()
+    experience_name = data.get('experience_name', '').strip()  # Get the custom name
     location = data.get('location', '').strip()
     description = data.get('description', '').strip()
     latitude = data.get('latitude')
@@ -48,6 +49,7 @@ def create_experience(current_user_id=None):
         new_experience = Experience(
             user_id=current_user_id,
             experience_type=experience_type,
+            experience_name=experience_name,  # Save the custom name
             location=location,
             description=description,
             latitude=latitude,
@@ -69,6 +71,7 @@ def create_experience(current_user_id=None):
                 'id': new_experience.id,
                 'user_id': new_experience.user_id,
                 'experience_type': new_experience.experience_type,
+                'experience_name': new_experience.experience_name,  # Include in response
                 'location': new_experience.location,
                 'description': new_experience.description,
                 'latitude': new_experience.latitude,
@@ -119,6 +122,7 @@ def get_experiences(current_user_id=None):
             creator = User.query.get(exp.user_id)
             # Clean strings to prevent any duplication
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            experience_name = exp.experience_name.strip() if exp.experience_name else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
@@ -127,11 +131,13 @@ def get_experiences(current_user_id=None):
                 'user_id': exp.user_id,
                 'creator_name': creator.name if creator else 'Unknown',
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
+                'place_name': exp.place_name,
                 'location_image': exp.location_image,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None
             })
@@ -151,6 +157,7 @@ def get_my_experiences(current_user_id=None):
         for exp in experiences:
             # Clean strings to prevent any duplication
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            experience_name = exp.experience_name.strip() if exp.experience_name else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
@@ -158,11 +165,13 @@ def get_my_experiences(current_user_id=None):
                 'id': exp.id,
                 'user_id': exp.user_id,
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
+                'place_name': exp.place_name,
                 'location_image': exp.location_image,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None
             })
@@ -239,6 +248,8 @@ def update_experience(experience_id, current_user_id=None):
         # Update fields if they exist in the request
         if 'experience_type' in data:
             experience.experience_type = data['experience_type'].strip()
+        if 'experience_name' in data:
+            experience.experience_name = data['experience_name'].strip()
         if 'location' in data:
             experience.location = data['location'].strip()
         if 'description' in data:
@@ -270,6 +281,7 @@ def update_experience(experience_id, current_user_id=None):
                 'id': experience.id,
                 'user_id': experience.user_id,
                 'experience_type': experience.experience_type,
+                'experience_name': experience.experience_name,
                 'location': experience.location,
                 'description': experience.description,
                 'latitude': experience.latitude,

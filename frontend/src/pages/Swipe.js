@@ -532,18 +532,17 @@ const Swipe = () => {
             {/* Card Info Section */}
             <div className="card-info-section">
               <h2 className="text-3xl font-bold text-white mb-1">
-                {currentExperience.place_name || currentExperience.location}
+                {currentExperience.experience_name || currentExperience.place_name || currentExperience.location}
               </h2>
               
-              {currentExperience.place_name && (
-                <p className="text-white/90 text-base mb-2">
-                  <svg className="inline-block w-4 h-4 mr-1 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                  </svg>
-                  {currentExperience.location}
-                </p>
-              )}
+              {/* Always show the location below the name */}
+              <p className="text-white/90 text-base mb-2">
+                <svg className="inline-block w-4 h-4 mr-1 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                {currentExperience.location}
+              </p>
               
               <div className="creator-info mb-3">
                 <div className="flex items-center">

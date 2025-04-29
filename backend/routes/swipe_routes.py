@@ -344,34 +344,34 @@ def get_swipe_experiences(current_user_id=None):
                 
             # Clean up text data
             experience_type = exp.experience_type.strip() if exp.experience_type else ''
+            experience_name = exp.experience_name.strip() if exp.experience_name else ''
             location = exp.location.strip() if exp.location else ''
             description = exp.description.strip() if exp.description else ''
             
-            # Prepare result with match score and reason if available
-            exp_data = {
+            # Prepare creator information
+            creator_name = creator.name if creator else 'Unknown'
+            creator_netid = creator.netid if creator else ''
+            creator_profile_image = creator.profile_image if creator else None
+            
+            result.append({
                 'id': exp.id,
                 'user_id': exp.user_id,
-                'creator_name': creator.name if creator else 'Unknown',
-                'creator_netid': creator.netid if creator else '',
-                'creator_profile_image': creator.profile_image if creator else None,
-                'creator_class_year': creator.class_year if creator else None,  # Add class year for UI display
-                'creator_major': creator.major if creator else None,  # Add major for UI display
+                'creator_name': creator_name,
+                'creator_netid': creator_netid,
+                'creator_profile_image': creator_profile_image,
                 'experience_type': experience_type,
+                'experience_name': experience_name,
                 'location': location,
                 'description': description,
                 'latitude': exp.latitude,
                 'longitude': exp.longitude,
                 'place_id': exp.place_id,
+                'place_name': exp.place_name,
                 'location_image': exp.location_image,
-                'created_at': exp.created_at.isoformat() if exp.created_at else None
-            }
-            
-            # Add match score and reason if available
-            if hasattr(exp, 'match_score'):
-                exp_data['match_score'] = float(exp.match_score)  # Convert to float to ensure it's JSON serializable
-                exp_data['match_reason'] = getattr(exp, 'match_reason', "Experience you might like")
-            
-            result.append(exp_data)
+                'created_at': exp.created_at.isoformat() if exp.created_at else None,
+                'match_score': getattr(exp, 'match_score', 0.5),
+                'match_reason': getattr(exp, 'match_reason', 'Experience you might like')
+            })
         
         print(f"User {current_user_id}: Returning {len(result)} experiences for swiping")
         return jsonify(result)

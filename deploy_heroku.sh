@@ -33,10 +33,14 @@ python backend/migrations/reset_onboarding.py
 echo -e "${YELLOW}Adding new Hinge-like fields to the database...${NC}"
 python backend/migrations/add_hinge_like_fields.py
 
+# Add experience_name field to the database
+echo -e "${YELLOW}Adding experience_name field to the Experience table...${NC}"
+python backend/migrations/add_experience_name_field.py
+
 # Commit the changes
 echo -e "${YELLOW}Committing changes...${NC}"
 git add .
-git commit -m "Update onboarding to Hinge-like experience with new fields"
+git commit -m "Add experience_name field for custom experience names"
 
 # Push to Heroku
 echo -e "${YELLOW}Pushing to Heroku...${NC}"
@@ -46,6 +50,7 @@ git push heroku main
 echo -e "${YELLOW}Running migrations on Heroku...${NC}"
 heroku run python backend/migrations/reset_onboarding.py
 heroku run python backend/migrations/add_hinge_like_fields.py
+heroku run python backend/migrations/add_experience_name_field.py
 
 echo -e "${GREEN}Deployment completed! The app should be live with the new changes.${NC}"
 echo -e "${YELLOW}You can check the app at:${NC} $(heroku info -s | grep web_url | cut -d= -f2)" 

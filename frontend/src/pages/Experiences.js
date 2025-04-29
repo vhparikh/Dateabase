@@ -6,105 +6,124 @@ import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
-// Experience card component with orange gradient theme
+// Experience card component
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
-  const cardVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 }
-  };
-
-  // Generate a random gradient for the background if no image
+  // Function to get a random gradient
   const randomGradient = () => {
     const gradients = [
-      'from-orange-400 to-red-500',
-      'from-orange-300 to-orange-600',
-      'from-amber-400 to-orange-500', 
-      'from-yellow-400 to-orange-500',
-      'from-orange-400 to-pink-500',
+      'from-orange-500 to-amber-500',
+      'from-orange-400 to-orange-600',
+      'from-amber-400 to-red-400',
+      'from-orange-300 to-orange-500'
     ];
     return gradients[Math.floor(Math.random() * gradients.length)];
   };
-
-  const [gradient] = useState(randomGradient());
-  const [locationImage, setLocationImage] = useState(experience.location_image || null);
-  const staticMapUrl = useMemo(() => {
+  
+  // Generate Google Maps Static Map URL for small preview
+  const [staticMapUrl, setStaticMapUrl] = useState(null);
+  
+  useEffect(() => {
+    // Only generate map URL if coordinates are available
     if (experience.latitude && experience.longitude) {
-      return `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=16&size=400x200&maptype=roadmap&markers=color:red%7C${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/staticmap?center=${experience.latitude},${experience.longitude}&zoom=14&size=400x200&markers=color:orange%7C${experience.latitude},${experience.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+      setStaticMapUrl(url);
+    } else {
+      setStaticMapUrl(null);
     }
-    return null;
-  }, [experience.latitude, experience.longitude]);
-
-  // Handle error loading image
-  const handleImageError = () => {
-    setLocationImage(null);
+  }, [experience]);
+  
+  // Function to change badge color based on experience type
+  const badgeColor = (type) => {
+    const colors = {
+      'Restaurant': 'bg-red-100 text-red-700',
+      'Cafe': 'bg-orange-100 text-orange-700',
+      'Bar': 'bg-purple-100 text-purple-700',
+      'Park': 'bg-green-100 text-green-700',
+      'Museum': 'bg-blue-100 text-blue-700',
+      'Theater': 'bg-indigo-100 text-indigo-700',
+      'Concert': 'bg-pink-100 text-pink-700',
+      'Hiking': 'bg-teal-100 text-teal-700',
+      'Beach': 'bg-cyan-100 text-cyan-700',
+      'Shopping': 'bg-amber-100 text-amber-700',
+      'Sports': 'bg-lime-100 text-lime-700',
+      'Festival': 'bg-fuchsia-100 text-fuchsia-700',
+      'Class': 'bg-yellow-100 text-yellow-700',
+      'Club': 'bg-violet-100 text-violet-700'
+    };
+    return colors[type] || 'bg-gray-100 text-gray-700';
   };
   
-  // Open Google Maps for directions
-  const openDirections = () => {
-    let url;
-    if (experience.latitude && experience.longitude) {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`;
-    } else {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(experience.location)}`;
-    }
-    window.open(url, '_blank');
+  // Handle image error
+  const handleImageError = () => {
+    // Fallback to a default image based on the experience type
+    return `https://source.unsplash.com/featured/?${encodeURIComponent(experience.experience_type || 'experience')}`;
   };
-
+  
+  // Function to open Google Maps directions
+  const openDirections = () => {
+    if (experience.latitude && experience.longitude) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`);
+    } else {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}`);
+    }
+  };
+  
   return (
     <motion.div 
-      variants={cardVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
+      className="w-full bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
     >
-      <div className="h-40 overflow-hidden relative">
-        {locationImage ? (
+      {/* Card image */}
+      <div className="h-48 bg-gray-200 relative overflow-hidden">
+        {experience.location_image ? (
           <img 
-            src={locationImage} 
-            alt={experience.place_name || experience.location}
+            src={experience.location_image} 
+            alt={experience.location}
             className="w-full h-full object-cover"
-            onError={handleImageError}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = handleImageError();
+            }}
           />
         ) : (
-          <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center p-4`}>
-            <span className="text-white font-bold text-xl text-center">
-              {experience.experience_type}
+          <div className={`w-full h-full bg-gradient-to-r ${randomGradient()} flex items-center justify-center p-4`}>
+            <span className="text-white text-xl font-medium text-center">
+              {experience.experience_type || 'Experience'}
             </span>
           </div>
         )}
         
         {/* Experience type badge */}
-        <div className="absolute top-3 left-3">
-          <span className="bg-orange-500 text-white text-xs uppercase tracking-wider px-2 py-1 rounded-full font-semibold shadow-md">
-            {experience.experience_type}
+        <div className="absolute top-2 left-2">
+          <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${experience.experience_type ? badgeColor(experience.experience_type) : 'bg-gray-100 text-gray-800'}`}>
+            {experience.experience_type || 'Other'}
           </span>
         </div>
       </div>
       
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-bold text-gray-800">{experience.place_name || experience.location}</h3>
+          <h3 className="text-lg font-bold text-gray-800">{experience.experience_name || experience.place_name || experience.location}</h3>
           
           {!readOnly && (
             <div className="flex items-center space-x-1">
               <button 
                 onClick={() => onEdit(experience)}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="text-blue-600 hover:text-blue-800 transition-colors"
                 aria-label="Edit"
               >
-                <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
-              
               <button 
                 onClick={() => onDelete(experience.id)}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="text-red-600 hover:text-red-800 transition-colors"
                 aria-label="Delete"
               >
-                <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
@@ -162,6 +181,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
 const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const [formData, setFormData] = useState({
     experience_type: '',
+    experience_name: '',
     location: '',
     description: '',
     latitude: null,
@@ -202,6 +222,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       setFormData({
         id: experience.id,
         experience_type: experience.experience_type || '',
+        experience_name: experience.experience_name || '',
         location: experience.location || '',
         description: experience.description || '',
         latitude: experience.latitude || null,
@@ -225,6 +246,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       // Reset form for new experience
       setFormData({
         experience_type: '',
+        experience_name: '',
         location: '',
         description: '',
         latitude: null,
@@ -415,6 +437,24 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
             </select>
             {errors.experience_type && (
               <p className="text-red-500 text-xs mt-1">{errors.experience_type}</p>
+            )}
+          </div>
+          
+          {/* Experience Name */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Experience Name
+            </label>
+            <input
+              type="text"
+              name="experience_name"
+              value={formData.experience_name}
+              onChange={handleChange}
+              placeholder="Give your experience a memorable name"
+              className={`w-full px-3 py-2 border ${errors.experience_name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
+            />
+            {errors.experience_name && (
+              <p className="text-red-500 text-xs mt-1">{errors.experience_name}</p>
             )}
           </div>
           
