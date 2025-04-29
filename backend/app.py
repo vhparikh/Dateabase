@@ -17,6 +17,7 @@ from .routes.auth_routes import auth_bp
 from .routes.match_routes import match_bp
 from .routes.image_routes import image_bp
 from .routes.user_routes import user_bp
+from .routes.gemini_routes import gemini_bp
 
 # Create the app first before registering blueprints
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
@@ -30,6 +31,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(match_bp)
 app.register_blueprint(image_bp)
 app.register_blueprint(user_bp)
+app.register_blueprint(gemini_bp)
 
 from .utils.auth_utils import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
 from .database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
@@ -42,10 +44,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
-# Configure Gemini API key
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# # Configure Gemini API key
+# GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+# if GEMINI_API_KEY:
+#     genai.configure(api_key=GEMINI_API_KEY)
 
 # Initialize the database with our app
 init_db(app)
@@ -94,37 +96,37 @@ def add_preference_vector_columns(app):
 add_preference_vector_columns(app)
     
 # API endpoint to check for inappropriate content using Gemini
-@app.route('/api/check-inappropriate', methods=['POST'])
-def check_inappropriate():
-    # Get the text content from the request
-    data = request.json
-    text = data.get('text', '')
+# @app.route('/api/check-inappropriate', methods=['POST'])
+# def check_inappropriate():
+#     # Get the text content from the request
+#     data = request.json
+#     text = data.get('text', '')
     
-    if not text:
-        return jsonify({'is_inappropriate': False, 'error': 'No text provided'}), 400
+#     if not text:
+#         return jsonify({'is_inappropriate': False, 'error': 'No text provided'}), 400
     
-    try:
-        # Check if Gemini API is configured
-        if not GEMINI_API_KEY:
-            return jsonify({'is_inappropriate': False, 'error': 'Gemini API not configured'}), 500
+#     try:
+#         # Check if Gemini API is configured
+#         if not GEMINI_API_KEY:
+#             return jsonify({'is_inappropriate': False, 'error': 'Gemini API not configured'}), 500
         
-        # Use Gemini to check for inappropriate content
-        model = genai.GenerativeModel(model_name="gemini-2.0-flash")
-        prompt = f"Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with \"true\" or \"false\".\n\nText: \"{text}\""
+#         # Use Gemini to check for inappropriate content
+#         model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+#         prompt = f"Determine whether the following text is inappropriate based on general social norms, ethics, legal standards, or safety concerns. Respond only with \"true\" or \"false\".\n\nText: \"{text}\""
         
-        result = model.generate_content(prompt)
-        output = result.text.strip().lower()
+#         result = model.generate_content(prompt)
+#         output = result.text.strip().lower()
         
-        # Log the result for debugging
-        print(f"Gemini check result for text: '{text[:30]}...' => {output}")
+#         # Log the result for debugging
+#         print(f"Gemini check result for text: '{text[:30]}...' => {output}")
         
-        # Return the result
-        return jsonify({'is_inappropriate': output == 'true'})
+#         # Return the result
+#         return jsonify({'is_inappropriate': output == 'true'})
     
-    except Exception as e:
-        print(f"Error checking inappropriate content: {str(e)}")
-        # Fallback: if error, assume not inappropriate
-        return jsonify({'is_inappropriate': False, 'error': str(e)}), 500
+#     except Exception as e:
+#         print(f"Error checking inappropriate content: {str(e)}")
+#         # Fallback: if error, assume not inappropriate
+#         return jsonify({'is_inappropriate': False, 'error': str(e)}), 500
 
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
