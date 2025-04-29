@@ -7,7 +7,7 @@ import os
 import secrets
 from urllib.parse import quote_plus, urlencode, quote
 
-from .auth_utils import login_required, decode_token, is_authenticated
+from .auth_utils import login_required, decode_token
 from .auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
 
 # Import database models
