@@ -29,18 +29,12 @@ app.register_blueprint(experience_bp)
 app.register_blueprint(swipe_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(match_bp)
-try:
-    # Try local import first (for local development)
-    from auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from backend.utils.recommender_utils import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
-    import backend.utils.recommender_utils as recommender_utils
-except ImportError:
-    # Fall back to package import (for Heroku)
-    from backend.auth import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
-    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
-    from backend.utils.recommender_utils import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
-    import backend.utils.recommender_utils
+
+
+from .utils.auth_utils import validate, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL
+from .database import db, init_db, User, Experience, Match, UserSwipe, UserImage, add_new_columns, drop_unused_columns
+from .utils.recommender_utils import get_personalized_experiences, index_experience, get_embedding, get_user_preference_text, get_experience_text
+import backend.utils.recommender_utils
 
 # Setup Flask app with proper static folder configuration for production deployment
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key')
