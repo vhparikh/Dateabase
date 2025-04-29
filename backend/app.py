@@ -53,49 +53,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 # Initialize the database with our app
 init_db(app)
 
-# Add phone_number and preferred_email columns if they don't exist
-add_new_columns(app)
-
-# Drop bio and dietary_restrictions columns
-drop_unused_columns(app)
-
-# Add preference vector caching columns
-def add_preference_vector_columns(app):
-    """Add preference_vector and preference_vector_updated_at columns to User table"""
-    print("Starting migration to add preference vector caching columns...")
-    with app.app_context():
-        # Check if we're using SQLite or PostgreSQL
-        dialect = db.engine.dialect.name
-        print(f"Using {dialect} database")
-        
-        try:
-            with db.engine.connect() as connection:
-                if dialect == "sqlite":
-                    # For SQLite
-                    connection.execute(text('ALTER TABLE user ADD COLUMN preference_vector TEXT'))
-                    connection.execute(text('ALTER TABLE user ADD COLUMN preference_vector_updated_at DATETIME'))
-                    connection.commit()
-                elif dialect == "postgresql":
-                    # For PostgreSQL
-                    connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS preference_vector TEXT'))
-                    connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS preference_vector_updated_at TIMESTAMP'))
-                    connection.commit()
-                else:
-                    print(f"Unsupported database dialect: {dialect}")
-                    return False
-                
-                print("Preference vector caching columns added successfully!")
-                return True
-        except Exception as e:
-            print(f"Error: {e}")
-            if "duplicate column name" in str(e):
-                print("Column already exists. This is fine.")
-                return True
-            return False
-
-# Add preference vector caching columns
-add_preference_vector_columns(app)
-
 # Catch-all routes to handle React Router paths
 @app.route('/<path:path>')
 def catch_all(path):
