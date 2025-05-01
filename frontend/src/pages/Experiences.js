@@ -368,7 +368,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const isInappropriate = async (text) => {
     console.log('Checking for inappropriate content:', text);
     try {
-      const response = await axios.post(`${API_URL}/api/check-inappropriate`, text, { 
+      const response = await axios.post(`${API_URL}/api/check-inappropriate`, { text: text }, { 
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',

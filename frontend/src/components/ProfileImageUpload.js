@@ -83,7 +83,6 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       const response = await axios.post(`${API_URL}/api/users/images`, formData, {
         withCredentials: true,
         headers: {
-          'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
         }});
       
