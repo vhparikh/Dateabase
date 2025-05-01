@@ -4,7 +4,8 @@ import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { Autocomplete } from '@react-google-maps/api';
-
+import { useCSRFToken } from '../App';
+import axios from 'axios';
 
 // Define common experience types
 const experienceTypes = [
@@ -41,7 +42,7 @@ const CreateExperience = () => {
   // Check if user is authenticated
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  
+  const csrf_token = useCSRFToken();
   // We'll let the server's session authentication redirect if needed
   
   const autocompleteRef = useRef(null);
@@ -87,8 +88,13 @@ const CreateExperience = () => {
         try {
           const userId = user?.id || user?.sub;
           // Use fetch instead of axios directly
-          const response = await fetch(`${API_URL}/users/${userId}`);
-          const data = await response.json();
+          const response = await axios.get(`${API_URL}/users/${userId}`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrf_token
+            }
+          });
+          const data = response.data;
           
           if (data && data.profile_image) {
             setUserProfileImage(data.profile_image);
@@ -222,21 +228,20 @@ const CreateExperience = () => {
   const createExperience = async (experienceData) => {
     try {
       // Use fetch directly with credentials: 'include' to ensure cookies are sent
-      const response = await fetch(`${API_URL}/api/experiences`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(experienceData)
-      });
+      const response = await axios.post(`${API_URL}/api/experiences`, experienceData, 
+        { withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token,
+          },
+        });
       
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (response.status !== 200) {
+        const errorData = response.data;
         throw new Error(errorData.detail || 'Failed to create experience');
       }
       
-      return await response.json();
+      return response.data;
     } catch (error) {
       console.error('API error creating experience:', error);
       throw error;

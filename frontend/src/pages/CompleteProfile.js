@@ -2,7 +2,8 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
-
+import { useCSRFToken } from '../App';
+import axios from 'axios';
 const CompleteProfile = () => {
   const navigate = useNavigate();
   const { user, authTokens } = useContext(AuthContext);
@@ -23,6 +24,8 @@ const CompleteProfile = () => {
       travel: false
     })
   });
+
+  const csrf_token = useCSRFToken()
 
   useEffect(() => {
     // If user is not authenticated, redirect to login
@@ -99,16 +102,15 @@ const CompleteProfile = () => {
     
     try {
       // Update user profile
-      const response = await fetch(`${API_URL}/api/users/${user.sub}`, {
-        method: 'PUT',
+      const response = await axios.put(`${API_URL}/api/users/${user.sub}`, formData, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authTokens.access}`
-        },
-        body: JSON.stringify(formData)
+          'Authorization': `Bearer ${authTokens.access}`,
+          'X-CSRFToken': csrf_token
+        }
       });
       
-      const data = await response.json();
+      const data = response.data;
       
       if (response.status === 200) {
         navigate('/');

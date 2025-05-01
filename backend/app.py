@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, redirect, session, url_for
 from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from datetime import datetime, timedelta, timezone
 import os
 import secrets
@@ -31,6 +32,9 @@ from .routes.gemini_routes import gemini_bp
 # Create the app first before registering blueprints
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
 CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+
+# Enable CSRF protection for the Flask app
+csrf = CSRFProtect(app)
 
 # Now register the blueprint after app is defined
 app.register_blueprint(fix_images_bp)
@@ -78,6 +82,14 @@ with app.app_context():
         print("Tables created successfully")
     except Exception as e:
         print(f"Error initializing database: {e}")
+
+# CSRF token endpoint to provide tokens to the frontend
+@csrf.exempt
+@app.route('/api/csrf-token', methods=['GET'])
+def get_csrf_token():
+    token = generate_csrf()
+    response = jsonify({'csrf_token': token})
+    return response
 
 # Serve React frontend at root URL in production
 @app.route('/')

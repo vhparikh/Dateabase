@@ -4,6 +4,8 @@ import AuthContext from '../context/AuthContext';
 import { getExperiences, getCurrentUser } from '../services/api';
 import ProfileImageUpload from '../components/ProfileImageUpload';
 import { API_URL } from '../config';
+import axios from 'axios';
+import { useCSRFToken } from '../App';
 
 const Profile = () => {
   const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
@@ -14,6 +16,7 @@ const Profile = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile'); // New state for tab management
+  const csrfToken = useCSRFToken();
   
   // Fetch user profile directly from the API to ensure latest data
   useEffect(() => {
@@ -24,13 +27,10 @@ const Profile = () => {
         
         // Fetch user images
         try {
-          const imagesResponse = await fetch(`${API_URL}/api/users/images`, {
-            method: 'GET',
-            credentials: 'include'
-          });
+          const imagesResponse = await axios.get(`${API_URL}/api/users/images`, { withCredentials: true, headers: {'X-CsrfToken': csrfToken}});
           
-          if (imagesResponse.ok) {
-            const imagesData = await imagesResponse.json();
+          if (imagesResponse.status === 200) {
+            const imagesData = imagesResponse.data;
             // Update user profile with images
             setUserProfile({
               ...response.data,

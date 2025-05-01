@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
+import axios from 'axios';
+import { useCSRFToken } from '../App';
 
 const Preferences = () => {
   const navigate = useNavigate();
@@ -10,6 +12,8 @@ const Preferences = () => {
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  const csrfToken = useCSRFToken();
   
   // Parse JSON strings from user object or use defaults
   const parseUserJson = (jsonString, defaultValue) => {
@@ -125,17 +129,15 @@ const Preferences = () => {
         interests_prefs: JSON.stringify(formData.interests_prefs)
       };
       
-      const response = await fetch(`${API_URL}/api/me`, {
-        method: 'PUT',
+      const response = await axios.put(`${API_URL}/api/me`, apiFormData, { withCredentials: true, 
         headers: {
           'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
         },
-        credentials: 'include',
-        body: JSON.stringify(apiFormData)
       });
       
-      if (response.ok) {
-        const updatedUserData = await response.json();
+      if (response.status === 200) {
+        const updatedUserData = response.data;
         // Update the user in context
         setUser(updatedUserData);
         setSaveSuccess(true);
@@ -144,7 +146,7 @@ const Preferences = () => {
           navigate('/profile');
         }, 1200);
       } else {
-        const errorData = await response.json();
+        const errorData = response.data;
         setError(errorData.detail || 'Failed to update preferences');
       }
     } catch (err) {

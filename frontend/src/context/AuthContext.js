@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
+import { useCSRFToken } from '../App';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -14,6 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [casAuthenticated, setCasAuthenticated] = useState(false);
+
+  const csrfToken = useCSRFToken()
   
   // Check CAS authentication status on mount
   useEffect(() => {
@@ -22,22 +25,30 @@ export const AuthProvider = ({ children }) => {
       setAuthLoading(true);
       try {
         // Check if the user is authenticated with CAS
-        const response = await fetch(`${API_URL}/api/cas/status`, {
-          credentials: 'include' // Important for session cookies
+        const response = await axios.get(`${API_URL}/api/cas/status`, {
+          withCredentials: true, // Important for session cookies
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          }
         });
         
-        if (response.ok) {
-          const data = await response.json();
+        if (response.status === 200) {
+          const data = response.data;
           setCasAuthenticated(data.authenticated);
           
           // If authenticated, load user profile
           if (data.authenticated) {
-            const profileResponse = await fetch(`${API_URL}/api/users/me`, {
-              credentials: 'include'
+            const profileResponse = await axios.get(`${API_URL}/api/users/me`, {
+              withCredentials: true,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+              }
             });
             
-            if (profileResponse.ok) {
-              const profileData = await profileResponse.json();
+            if (profileResponse.status === 200) {
+              const profileData = profileResponse.data;
               console.log('User profile loaded');
               setUser(profileData);
             }
@@ -96,9 +107,14 @@ export const AuthProvider = ({ children }) => {
   // Initiate CAS login
   const loginWithCAS = async (callback_url = '/') => {
     try {
-      const response = await fetch(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`);
-      if (response.ok) {
-        const data = await response.json();
+      const response = await axios.get(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        }
+      });
+      if (response.status === 200) {
+        const data = response.data;
         // Redirect to CAS login URL
         window.location.href = data.login_url;
         return true;
@@ -127,12 +143,15 @@ export const AuthProvider = ({ children }) => {
       }
       
       // First, check if the user is authenticated with CAS
-      const statusResponse = await fetch(`${API_URL}/api/cas/status`, {
-        credentials: 'include'
+      const statusResponse = await axios.get(`${API_URL}/api/cas/status`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        }
       });
       
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
+      if (statusResponse.status === 200) {
+        const statusData = statusResponse.data;
         
         if (statusData.authenticated) {
           setCasAuthenticated(true);
@@ -173,8 +192,11 @@ export const AuthProvider = ({ children }) => {
       const loginUrl = `${currentUrl}/login`;
       
       // Logout from backend session
-      const response = await fetch(`${API_URL}/api/cas/logout?frontend_url=${encodeURIComponent(currentUrl)}`, {
-        credentials: 'include'
+      const response = await axios.get(`${API_URL}/api/cas/logout?frontend_url=${encodeURIComponent(currentUrl)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        }
       });
       
       // Clear state
@@ -182,8 +204,8 @@ export const AuthProvider = ({ children }) => {
       setCasAuthenticated(false);
       
       // Get the CAS logout URL from response
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('Logout successful, received logout URL:', data.logout_url);
         return data;  // Return data containing logout_url
       }

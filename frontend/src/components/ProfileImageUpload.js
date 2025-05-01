@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import axios from 'axios';
+import { useCSRFToken } from '../App';
+
 
 const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+
+  const csrfToken = useCSRFToken()
 
   // Fetch user's images on component mount
   useEffect(() => {
@@ -17,16 +22,18 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/images`, {
-        method: 'GET',
-        credentials: 'include'
+      const response = await axios.get(`${API_URL}/api/users/images`, {
+        withCredentials: true,
+        headers: {
+          'X-CSRFToken': csrfToken
+        }
       });
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error('Failed to fetch images');
       }
       
-      const data = await response.json();
+      const data = response.data;
       setImages(data);
     } catch (err) {
       console.error('Error fetching user images:', err);
@@ -73,18 +80,17 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // If we already have maxImages, the backend will replace the oldest one
       
       // Upload the image
-      const response = await fetch(`${API_URL}/api/users/images`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
+      const response = await axios.post(`${API_URL}/api/users/images`, formData, {
+        headers: {
+          'X-CSRFToken': csrfToken
+        }
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to upload image');
+      if (response.status !== 200) {
+        throw new Error(response.data.detail || 'Failed to upload image');
       }
       
-      const data = await response.json();
+      const data = response.data;
       
       // Update the images state with the new image
       setImages(prevImages => {
@@ -96,16 +102,16 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // If this is going to be the main profile image (position 0), update the profile_image field
       if (data.image.position === 0) {
         try {
-          const updateProfileResponse = await fetch(`${API_URL}/api/me`, {
-            method: 'PUT',
-            credentials: 'include',
+          const updateProfileResponse = await axios.put(`${API_URL}/api/me`, {
+            withCredentials: true,
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
             },
             body: JSON.stringify({ profile_image: data.image.url })
           });
           
-          if (!updateProfileResponse.ok) {
+          if (updateProfileResponse !== 200) {
             console.error('Failed to update profile image URL');
           }
         } catch (err) {
@@ -137,14 +143,15 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/images/${imageId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const response = await axios.delete(`${API_URL}/api/users/images/${imageId}`, {
+        withCredentials: true,
+        headers: {
+          'X-CSRFToken': csrfToken
+        }
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete image');
+      if (response.status !== 200) {
+        throw new Error(response.data.detail || 'Failed to delete image');
       }
       
       // Remove the deleted image from state
@@ -168,32 +175,31 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/images/${imageId}/set-position`, {
-        method: 'PUT',
-        credentials: 'include',
+      const response = await axios.put(`${API_URL}/api/users/images/${imageId}/set-position`, {
+        withCredentials: true,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
         },
         body: JSON.stringify({ position: 0 })
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update image position');
+      if (response.status !== 200) {
+        throw new Error(response.data.detail || 'Failed to update image position');
       }
       
       // Also update the user's profile_image field to use this as the main profile image
       try {
-        const updateProfileResponse = await fetch(`${API_URL}/api/me`, {
-          method: 'PUT',
-          credentials: 'include',
+        const updateProfileResponse = await axios.put(`${API_URL}/api/me`, {
+          withCredentials: true,
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
           },
           body: JSON.stringify({ profile_image: image.url })
         });
         
-        if (!updateProfileResponse.ok) {
+        if (updateProfileResponse.status !== 200) {
           console.error('Failed to update profile image URL, but position was updated');
         }
       } catch (err) {

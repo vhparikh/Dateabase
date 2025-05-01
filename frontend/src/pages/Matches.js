@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { createRoutesFromChildren, Link } from 'react-router-dom';
+import { useCSRFToken } from '../App'
 import axios from 'axios';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
@@ -12,6 +13,8 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('photos');
 
+  const csrfToken = useCSRFToken();
+
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserProfile();
@@ -23,15 +26,13 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/${userId}/profile`, {
-        credentials: 'include'
-      });
+      const response = await axios.get(`${API_URL}/api/users/${userId}/profile`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken } });
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error('Failed to fetch user profile');
       }
       
-      const data = await response.json();
+      const data = response.data;
       setUserProfile(data);
     } catch (err) {
       console.error('Error fetching user profile:', err);
@@ -269,7 +270,7 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   const [contactInfo, setContactInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const csrfToken = useCSRFToken();
   useEffect(() => {
     if (isOpen && user) {
       fetchContactInfo();
@@ -281,15 +282,12 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/users/${user.id}/contact`, {
-        credentials: 'include'
-      });
+      const response = await axios.get(`${API_URL}/api/users/${user.id}/contact`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
       
-      if (!response.ok) {
+      if (response !== 200) {
         throw new Error('Failed to fetch contact information');
       }
-      
-      const data = await response.json();
+      const data = await response.data;
       setContactInfo(data);
     } catch (err) {
       console.error('Error fetching contact info:', err);
@@ -518,16 +516,10 @@ const GroupedMatchCard = ({ user, experiences }) => {
       // Update experience location_image in the backend to avoid fetching new random images on reload
       for (const item of imagesToUpdate) {
         try {
-          await fetch(`${API_URL}/api/experiences/${item.experienceId}`, {
-            method: 'PUT',
+          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true, 
             headers: {
               'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              location_image: item.imageUrl
-            })
-          });
+            }});
           
           // Update the active experience image if it was just updated
           if (activeExperience.experience.id === item.experienceId) {
@@ -664,7 +656,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
                   </GoogleMap>
                 </LoadScript>
               ) : (
-                <iframe
+                <iframe title = "map_keys"
                   width="100%"
                   height="200px"
                   className="rounded-lg"
@@ -731,6 +723,7 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);
   const [locationImages, setLocationImages] = useState({});
+  const csrfToken = useCSRFToken();
   
   // Load location images on component mount
   useEffect(() => {
@@ -761,16 +754,11 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
       // Update experience location_image in the backend to avoid fetching new random images on reload
       for (const item of imagesToUpdate) {
         try {
-          await fetch(`${API_URL}/api/experiences/${item.experienceId}`, {
-            method: 'PUT',
+          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, { location_image: item.imageUrl }, { withCredentials: true,
             headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              location_image: item.imageUrl
-            })
-          });
+              'Content-Type': 'application/json',
+              'X-CsrfToken': csrfToken
+            }});
         } catch (error) {
           console.error('Error saving location image:', error);
         }
@@ -925,6 +913,8 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);
   const [locationImages, setLocationImages] = useState({});
+
+  const csrfToken = useCSRFToken();
   
   // Load location images on component mount
   useEffect(() => {
@@ -955,15 +945,11 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
       // Update experience location_image in the backend to avoid fetching new random images on reload
       for (const item of imagesToUpdate) {
         try {
-          await fetch(`${API_URL}/api/experiences/${item.experienceId}`, {
-            method: 'PUT',
+          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true,
             headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              location_image: item.imageUrl
-            })
+              'Content-Type': 'application/json',
+              'X-CsrfToken': csrfToken
+            }
           });
         } catch (error) {
           console.error('Error saving location image:', error);
@@ -1125,6 +1111,7 @@ const Matches = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('confirmed');
+  const csrfToken = useCSRFToken();
   
   const { user } = useContext(AuthContext);
   
@@ -1157,18 +1144,17 @@ const Matches = () => {
         throw new Error('User not authenticated');
       }
       
-      const response = await fetch(`${API_URL}/api/matches/${user.id}`, {
+      const response = await axios.get(`${API_URL}/api/matches/${user.id}`, { withCredentials: true,
         headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }});
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to fetch matches: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response.data;
       console.log('Matches data:', data);
       
       // Set the matches by category
@@ -1193,15 +1179,14 @@ const Matches = () => {
     try {
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/matches/${matchId}/accept`, {
-        method: 'PUT',
+      const response = await axios.put(`${API_URL}/api/matches/${matchId}/accept`, { withCredentials: true,
         headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }
       });
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to accept match: ${response.status}`);
       }
       
@@ -1218,15 +1203,14 @@ const Matches = () => {
     try {
       setError(null);
       
-      const response = await fetch(`${API_URL}/api/matches/${matchId}/reject`, {
-        method: 'PUT',
+      const response = await axios.put(`${API_URL}/api/matches/${matchId}/reject`, { withCredentials: true,
         headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }
       });
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to reject match: ${response.status}`);
       }
       

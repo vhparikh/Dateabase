@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
+import axios from 'axios';
+import { useCSRFToken } from '../App';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Swipe.css'; // Import the CSS file
 import { Link } from 'react-router-dom';
@@ -110,6 +112,7 @@ const Swipe = () => {
   const [allExperiencesCompleted, setAllExperiencesCompleted] = useState(false); // Track if user has swiped through all experiences
   const originalExperiencesRef = useRef([]); // Keep original experiences order for cycling
   const { user, authTokens } = useContext(AuthContext);
+  const csrfToken = useCSRFToken();
 
   const fetchExperiences = async () => {
     try {
@@ -131,15 +134,13 @@ const Swipe = () => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/swipe-experiences`, {
-        credentials: 'include'
-      });
+      const response = await axios.get(`${API_URL}/api/swipe-experiences`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Failed to fetch experiences: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data && data.length > 0) {
         console.log(`Received ${data.length} experiences from API`);
@@ -253,25 +254,20 @@ const Swipe = () => {
       if (!currentExperience) return;
       
       // Send swipe to backend
-      const response = await fetch(`${API_URL}/api/swipes`, {
-        method: 'POST',
+      const response = await axios.post(`${API_URL}/api/swipes`, { experience_id: currentExperience.id, is_like: isLike }, { withCredentials: true,
         headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          experience_id: currentExperience.id,
-          is_like: isLike
-        })
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (response.status !== 200) {
+        const errorData = response.data;
         throw new Error(errorData.detail || 'Failed to record swipe');
       }
       
       // Parse response data
-      const responseData = await response.json();
+      const responseData = response.data;
       console.log('Swipe response:', responseData);
       
       // Remove the match modal functionality

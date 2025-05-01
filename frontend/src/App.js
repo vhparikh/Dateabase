@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts and Pages
 import MainLayout from './components/layouts/MainLayout';
-import Home from './pages/Home';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
 import Experiences from './pages/Experiences';
@@ -16,21 +15,15 @@ import CASCallback from './pages/CASCallback';
 import CASSuccess from './pages/CASSuccess';
 import Onboarding from './pages/Onboarding';
 import Preferences from './pages/Preferences';
+import axios from 'axios';
 
 // Context Provider
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { API_URL } from './config'
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth();
-  
-  if (!user) {
-    // Redirect to login if not authenticated
-    return <Navigate to="/login" />;
-  }
-  
-  return children;
-};
+// Create CSRF Token Context
+const CSRFTokenContext = React.createContext(null);
+export const useCSRFToken = () => React.useContext(CSRFTokenContext);
 
 // Wrapper component that enforces authentication
 const AppWrapper = ({ children }) => {
@@ -65,9 +58,45 @@ const AppWrapper = ({ children }) => {
 };
 
 function App() {
+  const [csrfToken, setCSRFToken] = useState(null);
+  const [tokenLoading, setTokenLoading] = useState(true);
+
+  // Fetch CSRF token when component mounts
+  useEffect(() => {
+    const fetchCSRFToken = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/csrf-token`)
+        if (response.status === 200) {
+          setCSRFToken(response.data.csrf_token);
+        } else {
+          console.error('Failed to fetch CSRF token');
+        }
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error);
+      } finally {
+        setTokenLoading(false);
+      }
+    };
+
+    fetchCSRFToken();
+  }, []);
+
+  // Show loading state while fetching token
+  if (tokenLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-orange-800 font-medium">Loading application...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Router>
-      <AuthProvider>
+      <CSRFTokenContext.Provider value={csrfToken}>
+        <AuthProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
@@ -94,6 +123,7 @@ function App() {
           </Route>
         </Routes>
       </AuthProvider>
+      </CSRFTokenContext.Provider>
     </Router>
   );
 }

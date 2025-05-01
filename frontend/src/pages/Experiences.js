@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { getExperiences } from '../services/api';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import axios from 'axios';
+import { useCSRFToken } from '../App';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
 // Experience card component
@@ -366,8 +367,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const isInappropriate = async (text) => {
     console.log('Checking for inappropriate content:', text);
     try {
-      const response = await fetch(`${API_URL}/api/check-inappropriate`, {
-        method: 'POST',
+      const response = await axios.post(`${API_URL}/api/check-inappropriate`, text, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -375,11 +375,11 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         credentials: 'include'
       });
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Server returned ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response.data;
       return data.is_inappropriate;
     } catch (error) {
       console.error("Error checking inappropriate content:", error);
@@ -642,18 +642,18 @@ const Experiences = () => {
   const [currentExperience, setCurrentExperience] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, experienceId: null });
 
+  const csrfToken = useCSRFToken();
+
   // Fetch user's experiences when component mounts
   useEffect(() => {
     const fetchExperiences = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/my-experiences`, {
-          credentials: 'include'
-        });
-        if (!response.ok) {
+        const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true });
+        if (response.status !== 200) {
           throw new Error('Failed to fetch experiences');
         }
-        const data = await response.json();
+        const data = response.data;
         setExperiences(data);
         setError('');
       } catch (err) {
@@ -665,7 +665,7 @@ const Experiences = () => {
     };
 
     fetchExperiences();
-  }, [API_URL]);
+  }, []);
 
   const handleAddExperience = () => {
     setCurrentExperience(null);
@@ -687,21 +687,20 @@ const Experiences = () => {
       // Real API call for saving with session authentication
       if (experienceData.id) {
         // PUT request for updating an experience
-        const response = await fetch(`${API_URL}/api/experiences/${experienceData.id}`, {
-          method: 'PUT',
+        const response = await axios.put(`${API_URL}/api/experiences/${experienceData.id}`, experienceData, {
+          withCredentials: true,
           headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(experienceData)
+            'Content-Type': 'application/json',
+            'X-CsrfToken': csrfToken
+          }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
+        if (response.status !== 200) {
+          const errorData = response.data;
           throw new Error(errorData.detail || 'Failed to update experience');
         }
         
-        const data = await response.json();
+        const data = response.data;
         console.log('Experience updated successfully:', data);
         if (data) {
           setExperiences(prev => prev.map(exp => 
@@ -711,21 +710,20 @@ const Experiences = () => {
       } else {
         // POST request for creating a new experience
         console.log('Creating new experience');
-        const response = await fetch(`${API_URL}/api/experiences`, {
-          method: 'POST',
+        const response = await axios.post(`${API_URL}/api/experiences`, experienceData, {
+          withCredentials: true,
           headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(experienceData)
+            'Content-Type': 'application/json',
+            'X-CsrfToken': csrfToken
+          }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
+        if (response.status !== 200) {
+          const errorData = response.data;
           throw new Error(errorData.detail || 'Failed to create experience');
         }
         
-        const data = await response.json();
+        const data = response.data;
         console.log('Experience created successfully:', data);
         if (data) {
           setExperiences(prev => [data.experience, ...prev]);
@@ -736,13 +734,11 @@ const Experiences = () => {
       const fetchExperiences = async () => {
         try {
           setLoading(true);
-          const response = await fetch(`${API_URL}/api/my-experiences`, {
-            credentials: 'include'
-          });
-          if (!response.ok) {
+          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true });
+          if (response.status !== 200) {
             throw new Error('Failed to fetch experiences');
           }
-          const data = await response.json();
+          const data = response.data;
           setExperiences(data);
           setError('');
         } catch (err) {
@@ -763,22 +759,15 @@ const Experiences = () => {
     }
   };
 
-  const openDeleteConfirmation = (experienceId) => {
-    setDeleteModal({ isOpen: true, experienceId });
-  };
-
   const handleDeleteExperience = async (experienceId) => {
     try {
       setLoading(true);
       
       // Make DELETE request to delete the experience
-      const response = await fetch(`${API_URL}/api/experiences/${experienceId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { withCredentials: true });
       
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (response.status !== 200) {
+        const errorData = response.data;
         throw new Error(errorData.detail || 'Failed to delete experience');
       }
       
@@ -786,13 +775,11 @@ const Experiences = () => {
       const fetchExperiences = async () => {
         try {
           setLoading(true);
-          const response = await fetch(`${API_URL}/api/my-experiences`, {
-            credentials: 'include'
-          });
-          if (!response.ok) {
+          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true });
+          if (response.status !== 200) {
             throw new Error('Failed to fetch experiences');
           }
-          const data = await response.json();
+          const data = response.data;
           setExperiences(data);
           setError('');
         } catch (err) {
