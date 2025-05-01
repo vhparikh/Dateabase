@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { updateCurrentUser } from '../services/api';
+import { useCSRFToken } from '../App';
 import axios from 'axios';
 import { API_URL } from '../config';
 import ProfileImageUpload from '../components/ProfileImageUpload';
@@ -9,6 +9,7 @@ import ProfileImageUpload from '../components/ProfileImageUpload';
 const EditProfile = () => {
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const csrfToken = useCSRFToken();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -287,19 +288,13 @@ const EditProfile = () => {
       
       console.log('Submitting profile update with data:', userData);
       
-      // Construct full API URL - ensure it ends with /api/me
-      const fullUrl = `${API_URL}/api/me`;
-      console.log('Request URL:', fullUrl);
-      
       try {
         // Make direct API call to update user using axios instead of the service
-        const response = await axios({
-          method: 'PUT', 
-          url: fullUrl,
-          data: userData,
+        const response = await axios.put(`${API_URL}/api/me`, userData, {
           withCredentials: true,
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CsrfToken': csrfToken
           }
         });
         

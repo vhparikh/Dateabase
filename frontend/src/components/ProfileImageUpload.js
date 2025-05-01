@@ -25,7 +25,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       const response = await axios.get(`${API_URL}/api/users/images`, {
         withCredentials: true,
         headers: {
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         }
       });
       
@@ -82,7 +82,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // Upload the image
       const response = await axios.post(`${API_URL}/api/users/images`, formData, {
         headers: {
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         }
       });
       
@@ -106,7 +106,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
             withCredentials: true,
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRFToken': csrfToken
+              'X-CsrfToken': csrfToken
             },
             body: JSON.stringify({ profile_image: data.image.url })
           });
@@ -146,7 +146,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       const response = await axios.delete(`${API_URL}/api/users/images/${imageId}`, {
         withCredentials: true,
         headers: {
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         }
       });
       
@@ -179,7 +179,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         },
         body: JSON.stringify({ position: 0 })
       });
@@ -194,7 +194,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CsrfToken': csrfToken
           },
           body: JSON.stringify({ profile_image: image.url })
         });

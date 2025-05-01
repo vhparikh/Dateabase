@@ -13,59 +13,59 @@ const api = axios.create({
 
 // User endpoints
 export const getCSRFToken = () => {
-  return api.get('/csrf-token')
+  return api.get('/api/csrf-token')
 }
 export const registerUser = (userData) => {
-  return api.post('/users', userData);
+  return api.post('/api/users', userData);
 };
 
 export const getUser = (userId) => {
-  return api.get(`/users/${userId}`);
+  return api.get(`/api/users/${userId}`);
 };
 
 export const updateUser = (userId, userData) => {
-  return api.put(`/users/${userId}`, userData);
+  return api.put(`/api/users/${userId}`, userData);
 };
 
 // Current user profile endpoints
 export const getCurrentUser = () => {
-  return api.get('/me');
+  return api.get('/api/me');
 };
 
 export const updateCurrentUser = (userData) => {
-  return api.put('/me', userData);
+  return api.put('/api/me', userData);
 };
 
 export const completeOnboarding = (userData) => {
-  return api.post('/users/complete-onboarding', userData);
+  return api.post('/api/users/complete-onboarding', userData);
 };
 
 // Experience endpoints
 export const createExperience = (experienceData) => {
-  return api.post('/experiences', experienceData);
+  return api.post('/api/experiences', experienceData);
 };
 
 export const getExperiences = () => {
-  return api.get('/my-experiences');
+  return api.get('/api/my-experiences');
 };
 
 export const getUserExperiences = () => {
-  return api.get('/my-experiences');
+  return api.get('/api/my-experiences');
 };
 
 // Swipe endpoints
 export const createSwipe = (swipeData) => {
-  return api.post('/swipes', swipeData);
+  return api.post('/api/swipes', swipeData);
 };
 
 // Match endpoints
 export const getMatches = (userId) => {
-  return api.get(`/matches/${userId}`);
+  return api.get(`/api/matches/${userId}`);
 };
 
 // Recommendation endpoints
 export const getRecommendations = (userId) => {
-  return api.get(`/recommendations/${userId}`);
+  return api.get(`/api/recommendations/${userId}`);
 };
 
 export default api; 

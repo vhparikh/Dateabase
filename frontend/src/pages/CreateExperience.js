@@ -91,7 +91,7 @@ const CreateExperience = () => {
           const response = await axios.get(`${API_URL}/users/${userId}`, {
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRFToken': csrf_token
+              'X-CsrfToken': csrf_token
             }
           });
           const data = response.data;
@@ -232,7 +232,7 @@ const CreateExperience = () => {
         { withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrf_token,
+            'X-CsrfToken': csrf_token,
           },
         });
       

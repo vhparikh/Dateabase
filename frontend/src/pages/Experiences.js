@@ -649,7 +649,10 @@ const Experiences = () => {
     const fetchExperiences = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true });
+        const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {
+          'X-CsrfToken': csrfToken
+        } 
+      });
         if (response.status !== 200) {
           throw new Error('Failed to fetch experiences');
         }
@@ -734,7 +737,7 @@ const Experiences = () => {
       const fetchExperiences = async () => {
         try {
           setLoading(true);
-          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true });
+          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {'X-CsrfToken': csrfToken } });
           if (response.status !== 200) {
             throw new Error('Failed to fetch experiences');
           }
@@ -764,7 +767,9 @@ const Experiences = () => {
       setLoading(true);
       
       // Make DELETE request to delete the experience
-      const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { withCredentials: true });
+      const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { withCredentials: true, headers: {
+        'X-CsrfToken': csrfToken
+      } });
       
       if (response.status !== 200) {
         const errorData = response.data;
@@ -775,7 +780,10 @@ const Experiences = () => {
       const fetchExperiences = async () => {
         try {
           setLoading(true);
-          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true });
+          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {
+            'X-CsrfToken': csrfToken
+          } 
+        });
           if (response.status !== 200) {
             throw new Error('Failed to fetch experiences');
           }

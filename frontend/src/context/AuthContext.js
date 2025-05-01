@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
           withCredentials: true, // Important for session cookies
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CsrfToken': csrfToken
           }
         });
         
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
               withCredentials: true,
               headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CsrfToken': csrfToken
               }
             });
             
@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.get(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`, {
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         }
       });
       if (response.status === 200) {
@@ -146,7 +146,7 @@ export const AuthProvider = ({ children }) => {
       const statusResponse = await axios.get(`${API_URL}/api/cas/status`, {
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         }
       });
       
@@ -195,7 +195,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.get(`${API_URL}/api/cas/logout?frontend_url=${encodeURIComponent(currentUrl)}`, {
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
+          'X-CsrfToken': csrfToken
         }
       });
       

@@ -106,7 +106,7 @@ const CompleteProfile = () => {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authTokens.access}`,
-          'X-CSRFToken': csrf_token
+          'X-CsrfToken': csrf_token
         }
       });
       
