@@ -1179,7 +1179,7 @@ const Matches = () => {
     try {
       setError(null);
       
-      const response = await axios.put(`${API_URL}/api/matches/${matchId}/accept`, { withCredentials: true,
+      const response = await axios.put(`${API_URL}/api/matches/${matchId}/accept`, {}, { withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
@@ -1203,7 +1203,7 @@ const Matches = () => {
     try {
       setError(null);
       
-      const response = await axios.put(`${API_URL}/api/matches/${matchId}/reject`, { withCredentials: true,
+      const response = await axios.put(`${API_URL}/api/matches/${matchId}/reject`, {}, { withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken

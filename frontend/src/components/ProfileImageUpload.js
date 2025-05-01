@@ -81,10 +81,11 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       
       // Upload the image
       const response = await axios.post(`${API_URL}/api/users/images`, formData, {
+        withCredentials: true,
         headers: {
+          'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
-        }
-      });
+        }});
       
       if (response.status !== 200) {
         throw new Error(response.data.detail || 'Failed to upload image');
@@ -102,13 +103,12 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // If this is going to be the main profile image (position 0), update the profile_image field
       if (data.image.position === 0) {
         try {
-          const updateProfileResponse = await axios.put(`${API_URL}/api/me`, {
+          const updateProfileResponse = await axios.put(`${API_URL}/api/me`, { profile_image: data.image.url }, {
             withCredentials: true,
             headers: {
               'Content-Type': 'application/json',
               'X-CsrfToken': csrfToken
             },
-            body: JSON.stringify({ profile_image: data.image.url })
           });
           
           if (updateProfileResponse !== 200) {
@@ -175,13 +175,12 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.put(`${API_URL}/api/users/images/${imageId}/set-position`, {
+      const response = await axios.put(`${API_URL}/api/users/images/${imageId}/set-position`, { position: 0 }, {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
-        },
-        body: JSON.stringify({ position: 0 })
+        }
       });
       
       if (response.status !== 200) {
@@ -190,13 +189,12 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       
       // Also update the user's profile_image field to use this as the main profile image
       try {
-        const updateProfileResponse = await axios.put(`${API_URL}/api/me`, {
+        const updateProfileResponse = await axios.put(`${API_URL}/api/me`, { profile_image: image.url }, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
             'X-CsrfToken': csrfToken
           },
-          body: JSON.stringify({ profile_image: image.url })
         });
         
         if (updateProfileResponse.status !== 200) {

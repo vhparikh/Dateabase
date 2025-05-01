@@ -197,6 +197,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const [tagInput, setTagInput] = useState('');
   const autocompleteRef = useRef(null);
   const [mapCenter, setMapCenter] = useState(null);
+  const csrfToken = useCSRFToken()
   
   // Map configuration
   const mapContainerStyle = {
@@ -367,12 +368,12 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const isInappropriate = async (text) => {
     console.log('Checking for inappropriate content:', text);
     try {
-      const response = await axios.post(`${API_URL}/api/check-inappropriate`, text, {
+      const response = await axios.post(`${API_URL}/api/check-inappropriate`, text, { 
+        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-        credentials: 'include'
+          'X-CsrfToken': csrfToken
+        }
       });
       
       if (response.status !== 200) {
