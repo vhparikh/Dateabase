@@ -15,7 +15,7 @@ def login_required():
         def decorated_function(*args, **kwargs):
             print(f"Authenticating request to {f.__name__}")
             
-            # Check if user is authenticated using is_authenticated()
+            # Check if user is authenticated
             if not is_authenticated():
                 print(f"No user_info found in session for {f.__name__}")
                 return jsonify({'detail': 'Authentication required'}), 401
@@ -47,11 +47,6 @@ def get_current_user_id():
     user_info = session.get('user_info')
     netid = user_info.get('user', '')
     
-    # try:
-    #     from database import User
-    # except ImportError:
-    #     from backend.database import User
-        
     user = User.query.filter_by(netid=netid).first()
     if not user:
         return None
@@ -76,12 +71,7 @@ def validate(ticket):
     try:
         # Princeton CAS requires that the service URL in validation EXACTLY matches 
         # the one used during login, including all query parameters in the same order
-        
-        # Extract current host and protocol
-        # if 'herokuapp.com' in flask.request.host:
         scheme = 'https'
-        # else:
-        #     scheme = 'http'   # Use HTTP for local development
         
         host = flask.request.host
         callback_url = flask.request.args.get('callback_url', '/')
@@ -173,22 +163,14 @@ def get_cas_login_url(callback_url=None):
     if callback_url is None:
         callback_url = request.args.get('callback_url', request.referrer or '/')
     
-    # Determine service URL based on environment
-    # if 'herokuapp.com' in request.host:
-    # In Heroku, we'll use the app's domain
     scheme = request.headers.get('X-Forwarded-Proto', 'https')
     host = request.host
     
-    # Our callback endpoint is /api/cas/callback on the backend
+    # Callback endpoint is /api/cas/callback on the backend
     # But the frontend at /cas/callback will redirect to this
     api_callback = f"{scheme}://{host}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
     
     print(f"Heroku CAS login service URL: {api_callback}")
-    # else:
-    #     # In local development
-    #     base_url = request.url_root.rstrip('/')
-    #     api_callback = f"{base_url}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
-    #     print(f"Local CAS login service URL: {api_callback}")
     
     # Generate the CAS login URL
     login_url = f"{_CAS_URL}login?service={urllib.parse.quote(api_callback)}"
