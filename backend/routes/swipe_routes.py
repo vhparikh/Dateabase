@@ -43,40 +43,6 @@ def record_swipe(current_user_id=None):
         # Get the creator of the experience
         creator_id = experience.user_id
         
-        # Skip match checking if the creator is the same as the current user
-        # if creator_id == current_user_id:
-        #     print(f"DEBUG: User is the creator, skipping match")
-        #     # Still record the swipe if needed
-        #     if not UserSwipe.query.filter_by(user_id=current_user_id, experience_id=experience_id).first():
-        #         new_swipe = UserSwipe(user_id=current_user_id, experience_id=experience_id, direction=is_like)
-        #         db.session.add(new_swipe)
-        #         db.session.commit()
-        #         print(f"DEBUG: Created new swipe for user's own experience")
-        #     return jsonify({
-        #         'detail': 'Swipe recorded successfully',
-        #         'match_created': False
-        #     })
-        
-        # Check if the user has already swiped on this experience
-        # existing_swipe = UserSwipe.query.filter_by(
-        #     user_id=current_user_id,
-        #     experience_id=experience_id
-        # ).first()
-        
-        # swipe_updated = False
-        # if existing_swipe:
-        #     print(f"DEBUG: Found existing swipe: id={existing_swipe.id}, direction={existing_swipe.direction}")
-        #     # If the swipe direction is different, update it
-        #     if existing_swipe.direction != is_like:
-        #         existing_swipe.direction = is_like
-        #         db.session.commit()
-        #         swipe_updated = True
-        #         print(f"DEBUG: Updated existing swipe to direction={is_like}")
-        #     elif not is_like:
-        #         # If user is disliking again, just return
-        #         return jsonify({'detail': 'Swipe already recorded', 'match_created': False}), 200
-        #     # If user is liking again, continue to check for matches
-        # else:
         # Record new swipe
         new_swipe = UserSwipe(
             user_id=current_user_id,
@@ -87,42 +53,9 @@ def record_swipe(current_user_id=None):
         db.session.commit()
         print(f"DEBUG: Created new swipe id={new_swipe.id}")
         
-        # Invalidate the cached preference vector since the user has new swipe data
-        # try:
-        #     user = User.query.get(current_user_id)
-        #     if user and user.preference_vector and (not existing_swipe or swipe_updated):
-        #         print(f"User {current_user_id}: Invalidating preference vector after new swipe")
-        #         user.preference_vector_updated_at = datetime.utcnow()  # Keep the vector but mark it as needing update
-        #         db.session.commit()
-        # except Exception as e:
-        #     print(f"User {current_user_id}: Error updating preference vector timestamp: {e}")
-            # Continue even if this fails
-        
         # If user liked (swiped right), check for a match
         if is_like:
             print(f"DEBUG: User liked experience, checking for match. Creator_id: {creator_id}")
-            
-            # Check for existing match between these users for this experience
-            # existing_match = Match.query.filter(
-            #     ((Match.user1_id == current_user_id) & (Match.user2_id == creator_id) |
-            #     (Match.user1_id == creator_id) & (Match.user2_id == current_user_id)),
-            #     Match.experience_id == experience_id
-            # ).first()
-            
-            # if existing_match:
-            #     print(f"DEBUG: Found existing match id={existing_match.id}, status={existing_match.status}")
-            #     return jsonify({
-            #         'detail': 'Match already exists',
-            #         'match_created': False,
-            #         'match': {
-            #             'id': existing_match.id,
-            #             'status': existing_match.status,
-            #             'other_user': {
-            #                 'id': creator_id,
-            #                 'username': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
-            #             }
-            #         }
-            #     })
             
             # Create a pending match immediately when a user swipes right
             new_match = Match(
@@ -168,11 +101,6 @@ def record_swipe(current_user_id=None):
 def get_swipe_experiences(current_user_id=None):
     """
     Return personalized experiences for the swipe interface based on user preferences.
-    
-    This simplified endpoint uses Pinecone vector search to find experiences that match
-    the user's preference vector based solely on experience type.
-    
-    After a user has swiped through all experiences, they will be shown again in the same order.
     """
     try:
         # Get the current user
@@ -201,36 +129,34 @@ def get_swipe_experiences(current_user_id=None):
             print(f"User {current_user_id}: No unswiped experiences found")
             return jsonify([]), 200
         
-        # Parse the user's experience_type preferences for direct matching and reason generation
+        # Parse the user's preferences
         user_preferred_exp_types = []
         if user.experience_type_prefs:
-            try:
-                exp_prefs = json.loads(user.experience_type_prefs)
-                if isinstance(exp_prefs, dict):
-                    user_preferred_exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
-                elif isinstance(exp_prefs, list):
-                    user_preferred_exp_types = exp_prefs
-            except:
-                # Fallback for non-JSON format
-                if isinstance(user.experience_type_prefs, str):
-                    if ',' in user.experience_type_prefs:
-                        user_preferred_exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
-                    else:
-                        user_preferred_exp_types = [user.experience_type_prefs.strip()]
+            # try:
+            exp_prefs = json.loads(user.experience_type_prefs)
+            if isinstance(exp_prefs, dict):
+                user_preferred_exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
+            elif isinstance(exp_prefs, list):
+                user_preferred_exp_types = exp_prefs
+            # except:
+            #     # Fallback for non-JSON format
+            #     if isinstance(user.experience_type_prefs, str):
+            #         if ',' in user.experience_type_prefs:
+            #             user_preferred_exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
+            #         else:
+            #             user_preferred_exp_types = [user.experience_type_prefs.strip()]
         
         print(f"User {current_user_id} preferred experience types: {user_preferred_exp_types}")
             
-        # Use Pinecone for vector similarity search if available
+        # Use Pinecone for vector similarity search
         if backend.utils.recommender_utils.pinecone_initialized and hasattr(user, 'preference_vector') and user.preference_vector:
             print(f"User {current_user_id}: Using personalized experiences API for vector similarity ranking")
             
-            # Get personalized experiences using the simplified vector approach
-            # Note: We'll still filter out swiped experiences later
-            matches = get_personalized_experiences(user, top_k=100)  # Get more results
+            # Get personalized experiences
+            matches = get_personalized_experiences(user, top_k=100)
             
             # Initialize scored_experiences
             scored_experiences = []
-            
 
             print(f"User {current_user_id}: Found {len(matches)} matches from vector similarity search")
             
@@ -245,7 +171,7 @@ def get_swipe_experiences(current_user_id=None):
                 if exp_id in experiences_dict:
                     exp = experiences_dict[exp_id]
                     
-                    # Add match score and reason to the experience object
+                    # Add match score to the experience object
                     exp.match_score = match.get('score', 0.5)
                     
                     # Generate a simple match reason based on type match
@@ -311,7 +237,7 @@ def get_swipe_experiences(current_user_id=None):
             # Get sorted experiences
             experiences = [item['experience'] for item in scored_experiences]
             
-            # Add match scores and reasons to the experiences
+            # Add match scores to the experiences
             for i, exp in enumerate(experiences):
                 matching_item = next((item for item in scored_experiences if item['experience'].id == exp.id), None)
                 if matching_item:
@@ -325,7 +251,7 @@ def get_swipe_experiences(current_user_id=None):
             # Get the creator of the experience
             creator = User.query.get(exp.user_id)
             
-            # Skip if creator no longer exists (shouldn't happen but for safety)
+            # Skip if creator no longer exists
             if not creator:
                 print(f"User {current_user_id}: Skipping experience {exp.id} as creator no longer exists")
                 continue
@@ -366,7 +292,7 @@ def get_swipe_experiences(current_user_id=None):
     except Exception as e:
         print(f"User {current_user_id}: Error fetching swipe experiences: {e}")
         import traceback
-        traceback.print_exc()  # Print stack trace for better debugging
+        traceback.print_exc()
         return jsonify({'detail': str(e)}), 500
 
 @swipe_bp.route('/swipe')
