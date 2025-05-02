@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, current_app
 from ..database import Match, User, Experience, db
 from ..utils.auth_utils import login_required
-# from ..utils.match_utils import get_match_reason
 
 match_bp = Blueprint('match_routes', __name__)
 
