@@ -5,18 +5,9 @@ from datetime import datetime
 
 # Import login_required decorator
 from ..utils.auth_utils import login_required
-
-# Import database models
-try:
-    # Try local import first (for local development)
-    from database import db, User, Experience, Match, UserSwipe, UserImage
-    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import backend.utils.recommender_utils as recommender_utils
-except ImportError:
-    # Fall back to package import (for Heroku)
-    from backend.database import db, User, Experience, Match, UserSwipe, UserImage
-    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import backend.utils.recommender_utils
+from ..database import db, User, Experience, Match, UserSwipe, UserImage
+from ..utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
+import backend.utils.recommender_utils
 
 swipe_bp = Blueprint('swipe_routes', __name__)
 
@@ -24,10 +15,7 @@ swipe_bp = Blueprint('swipe_routes', __name__)
 @login_required()
 def record_swipe(current_user_id=None):
     """
-    Record a user's swipe on an experience (like or dislike).
-    
-    If the user likes an experience, also check if the creator has liked any of the
-    user's experiences to create a match.
+    Record a user's swipe on an experience.
     """
     data = request.json
     
@@ -56,58 +44,58 @@ def record_swipe(current_user_id=None):
         creator_id = experience.user_id
         
         # Skip match checking if the creator is the same as the current user
-        if creator_id == current_user_id:
-            print(f"DEBUG: User is the creator, skipping match")
-            # Still record the swipe if needed
-            if not UserSwipe.query.filter_by(user_id=current_user_id, experience_id=experience_id).first():
-                new_swipe = UserSwipe(user_id=current_user_id, experience_id=experience_id, direction=is_like)
-                db.session.add(new_swipe)
-                db.session.commit()
-                print(f"DEBUG: Created new swipe for user's own experience")
-            return jsonify({
-                'detail': 'Swipe recorded successfully',
-                'match_created': False
-            })
+        # if creator_id == current_user_id:
+        #     print(f"DEBUG: User is the creator, skipping match")
+        #     # Still record the swipe if needed
+        #     if not UserSwipe.query.filter_by(user_id=current_user_id, experience_id=experience_id).first():
+        #         new_swipe = UserSwipe(user_id=current_user_id, experience_id=experience_id, direction=is_like)
+        #         db.session.add(new_swipe)
+        #         db.session.commit()
+        #         print(f"DEBUG: Created new swipe for user's own experience")
+        #     return jsonify({
+        #         'detail': 'Swipe recorded successfully',
+        #         'match_created': False
+        #     })
         
         # Check if the user has already swiped on this experience
-        existing_swipe = UserSwipe.query.filter_by(
-            user_id=current_user_id,
-            experience_id=experience_id
-        ).first()
+        # existing_swipe = UserSwipe.query.filter_by(
+        #     user_id=current_user_id,
+        #     experience_id=experience_id
+        # ).first()
         
-        swipe_updated = False
-        if existing_swipe:
-            print(f"DEBUG: Found existing swipe: id={existing_swipe.id}, direction={existing_swipe.direction}")
-            # If the swipe direction is different, update it
-            if existing_swipe.direction != is_like:
-                existing_swipe.direction = is_like
-                db.session.commit()
-                swipe_updated = True
-                print(f"DEBUG: Updated existing swipe to direction={is_like}")
-            elif not is_like:
-                # If user is disliking again, just return
-                return jsonify({'detail': 'Swipe already recorded', 'match_created': False}), 200
-            # If user is liking again, continue to check for matches
-        else:
-            # Record new swipe
-            new_swipe = UserSwipe(
-                user_id=current_user_id,
-                experience_id=experience_id,
-                direction=is_like
-            )
-            db.session.add(new_swipe)
-            db.session.commit()
-            print(f"DEBUG: Created new swipe id={new_swipe.id}")
+        # swipe_updated = False
+        # if existing_swipe:
+        #     print(f"DEBUG: Found existing swipe: id={existing_swipe.id}, direction={existing_swipe.direction}")
+        #     # If the swipe direction is different, update it
+        #     if existing_swipe.direction != is_like:
+        #         existing_swipe.direction = is_like
+        #         db.session.commit()
+        #         swipe_updated = True
+        #         print(f"DEBUG: Updated existing swipe to direction={is_like}")
+        #     elif not is_like:
+        #         # If user is disliking again, just return
+        #         return jsonify({'detail': 'Swipe already recorded', 'match_created': False}), 200
+        #     # If user is liking again, continue to check for matches
+        # else:
+        # Record new swipe
+        new_swipe = UserSwipe(
+            user_id=current_user_id,
+            experience_id=experience_id,
+            direction=is_like
+        )
+        db.session.add(new_swipe)
+        db.session.commit()
+        print(f"DEBUG: Created new swipe id={new_swipe.id}")
         
         # Invalidate the cached preference vector since the user has new swipe data
-        try:
-            user = User.query.get(current_user_id)
-            if user and user.preference_vector and (not existing_swipe or swipe_updated):
-                print(f"User {current_user_id}: Invalidating preference vector after new swipe")
-                user.preference_vector_updated_at = datetime.utcnow()  # Keep the vector but mark it as needing update
-                db.session.commit()
-        except Exception as e:
-            print(f"User {current_user_id}: Error updating preference vector timestamp: {e}")
+        # try:
+        #     user = User.query.get(current_user_id)
+        #     if user and user.preference_vector and (not existing_swipe or swipe_updated):
+        #         print(f"User {current_user_id}: Invalidating preference vector after new swipe")
+        #         user.preference_vector_updated_at = datetime.utcnow()  # Keep the vector but mark it as needing update
+        #         db.session.commit()
+        # except Exception as e:
+        #     print(f"User {current_user_id}: Error updating preference vector timestamp: {e}")
             # Continue even if this fails
         
         # If user liked (swiped right), check for a match
@@ -115,26 +103,26 @@ def record_swipe(current_user_id=None):
             print(f"DEBUG: User liked experience, checking for match. Creator_id: {creator_id}")
             
             # Check for existing match between these users for this experience
-            existing_match = Match.query.filter(
-                ((Match.user1_id == current_user_id) & (Match.user2_id == creator_id) |
-                (Match.user1_id == creator_id) & (Match.user2_id == current_user_id)),
-                Match.experience_id == experience_id
-            ).first()
+            # existing_match = Match.query.filter(
+            #     ((Match.user1_id == current_user_id) & (Match.user2_id == creator_id) |
+            #     (Match.user1_id == creator_id) & (Match.user2_id == current_user_id)),
+            #     Match.experience_id == experience_id
+            # ).first()
             
-            if existing_match:
-                print(f"DEBUG: Found existing match id={existing_match.id}, status={existing_match.status}")
-                return jsonify({
-                    'detail': 'Match already exists',
-                    'match_created': False,
-                    'match': {
-                        'id': existing_match.id,
-                        'status': existing_match.status,
-                        'other_user': {
-                            'id': creator_id,
-                            'username': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
-                        }
-                    }
-                })
+            # if existing_match:
+            #     print(f"DEBUG: Found existing match id={existing_match.id}, status={existing_match.status}")
+            #     return jsonify({
+            #         'detail': 'Match already exists',
+            #         'match_created': False,
+            #         'match': {
+            #             'id': existing_match.id,
+            #             'status': existing_match.status,
+            #             'other_user': {
+            #                 'id': creator_id,
+            #                 'username': User.query.get(creator_id).name if User.query.get(creator_id) else 'Unknown'
+            #             }
+            #         }
+            #     })
             
             # Create a pending match immediately when a user swipes right
             new_match = Match(
