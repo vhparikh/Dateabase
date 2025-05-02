@@ -176,10 +176,10 @@ def get_swipe_experiences(current_user_id=None):
                     exp.match_score = match.get('score', 0.5)
                     
                     # Generate a simple match reason based on type match
-                    if exp.experience_type in user_preferred_exp_types:
-                        exp.match_reason = f"Matches your preference for {exp.experience_type} experiences"
-                    else:
-                        exp.match_reason = "Experience you might like"
+                    # if exp.experience_type in user_preferred_exp_types:
+                    #     exp.match_reason = f"Matches your preference for {exp.experience_type} experiences"
+                    # else:
+                    #     exp.match_reason = "Experience you might like"
                     
                     ordered_experiences.append(exp)
             
@@ -193,7 +193,7 @@ def get_swipe_experiences(current_user_id=None):
                 for exp_id in missing_exp_ids:
                     exp = experiences_dict[exp_id]
                     exp.match_score = 0.3  # Lower baseline score for non-vector matches
-                    exp.match_reason = "Other experience you might like"
+                    # exp.match_reason = "Other experience you might like"
                     experiences.append(exp)
         else:
             # If vector ranking is not available, do basic preference matching on experience type only
@@ -222,14 +222,14 @@ def get_swipe_experiences(current_user_id=None):
                                 break
                 
                 # Create match reason
-                match_reason = "Experience you might like"
-                if exp.experience_type and exp.experience_type in user_preferred_exp_types:
-                    match_reason = f"Matches your preference for {exp.experience_type} experiences"
+                # match_reason = "Experience you might like"
+                # if exp.experience_type and exp.experience_type in user_preferred_exp_types:
+                #     match_reason = f"Matches your preference for {exp.experience_type} experiences"
                 
                 scored_experiences.append({
                     'experience': exp,
-                    'score': score,
-                    'reason': match_reason
+                    'score': score
+                    # 'reason': match_reason
                 })
             
             # Sort by score
@@ -243,7 +243,7 @@ def get_swipe_experiences(current_user_id=None):
                 matching_item = next((item for item in scored_experiences if item['experience'].id == exp.id), None)
                 if matching_item:
                     exp.match_score = matching_item['score']
-                    exp.match_reason = matching_item['reason']
+                    # exp.match_reason = matching_item['reason']
         
         print(f"User {current_user_id}: Preparing {len(experiences)} experiences for response")
         
@@ -284,8 +284,8 @@ def get_swipe_experiences(current_user_id=None):
                 'place_name': exp.place_name,
                 'location_image': exp.location_image,
                 'created_at': exp.created_at.isoformat() if exp.created_at else None,
-                'match_score': getattr(exp, 'match_score', 0.5),
-                'match_reason': getattr(exp, 'match_reason', 'Experience you might like')
+                'match_score': getattr(exp, 'match_score', 0.5)
+                # 'match_reason': getattr(exp, 'match_reason', 'Experience you might like')
             })
         
         print(f"User {current_user_id}: Returning {len(result)} experiences for swiping")
