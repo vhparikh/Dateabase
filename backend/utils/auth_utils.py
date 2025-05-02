@@ -7,6 +7,8 @@ import flask
 import requests
 from flask import session, request, redirect, url_for, abort, current_app
 
+from ..database import User
+
 def login_required():
     def decorator(f):
         @wraps(f)
@@ -24,10 +26,10 @@ def login_required():
             print(f"Found session for user {netid}")
             
             # Import inside function to avoid circular imports
-            try:
-                from database import User
-            except ImportError:
-                from backend.database import User
+            # try:
+            #     from database import User
+            # except ImportError:
+            #     from backend.database import User
                 
             # Get the user from database
             user = User.query.filter_by(netid=netid).first()
@@ -51,10 +53,10 @@ def get_current_user_id():
     user_info = session.get('user_info')
     netid = user_info.get('user', '')
     
-    try:
-        from database import User
-    except ImportError:
-        from backend.database import User
+    # try:
+    #     from database import User
+    # except ImportError:
+    #     from backend.database import User
         
     user = User.query.filter_by(netid=netid).first()
     if not user:
@@ -82,10 +84,10 @@ def validate(ticket):
         # the one used during login, including all query parameters in the same order
         
         # Extract current host and protocol
-        if 'herokuapp.com' in flask.request.host:
-            scheme = 'https'  # Force HTTPS for Heroku
-        else:
-            scheme = 'http'   # Use HTTP for local development
+        # if 'herokuapp.com' in flask.request.host:
+        scheme = 'https'
+        # else:
+        #     scheme = 'http'   # Use HTTP for local development
         
         host = flask.request.host
         callback_url = flask.request.args.get('callback_url', '/')
@@ -178,21 +180,21 @@ def get_cas_login_url(callback_url=None):
         callback_url = request.args.get('callback_url', request.referrer or '/')
     
     # Determine service URL based on environment
-    if 'herokuapp.com' in request.host:
-        # In Heroku, we'll use the app's domain
-        scheme = request.headers.get('X-Forwarded-Proto', 'https')
-        host = request.host
-        
-        # Our callback endpoint is /api/cas/callback on the backend
-        # But the frontend at /cas/callback will redirect to this
-        api_callback = f"{scheme}://{host}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
-        
-        print(f"Heroku CAS login service URL: {api_callback}")
-    else:
-        # In local development
-        base_url = request.url_root.rstrip('/')
-        api_callback = f"{base_url}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
-        print(f"Local CAS login service URL: {api_callback}")
+    # if 'herokuapp.com' in request.host:
+    # In Heroku, we'll use the app's domain
+    scheme = request.headers.get('X-Forwarded-Proto', 'https')
+    host = request.host
+    
+    # Our callback endpoint is /api/cas/callback on the backend
+    # But the frontend at /cas/callback will redirect to this
+    api_callback = f"{scheme}://{host}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
+    
+    print(f"Heroku CAS login service URL: {api_callback}")
+    # else:
+    #     # In local development
+    #     base_url = request.url_root.rstrip('/')
+    #     api_callback = f"{base_url}/api/cas/callback?callback_url={urllib.parse.quote(callback_url)}"
+    #     print(f"Local CAS login service URL: {api_callback}")
     
     # Generate the CAS login URL
     login_url = f"{_CAS_URL}login?service={urllib.parse.quote(api_callback)}"
