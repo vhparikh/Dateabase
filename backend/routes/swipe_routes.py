@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_cors import CORS
 from functools import wraps
 from datetime import datetime
+import json
 
 # Import login_required decorator
 from ..utils.auth_utils import login_required
