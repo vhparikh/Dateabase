@@ -15,8 +15,8 @@ def login_required():
         def decorated_function(*args, **kwargs):
             print(f"Authenticating request to {f.__name__}")
             
-            # Check if user is authenticated via session
-            if not session.get('user_info'):
+            # Check if user is authenticated using is_authenticated()
+            if not is_authenticated():
                 print(f"No user_info found in session for {f.__name__}")
                 return jsonify({'detail': 'Authentication required'}), 401
             
@@ -25,12 +25,6 @@ def login_required():
             netid = user_info.get('user', '')
             print(f"Found session for user {netid}")
             
-            # Import inside function to avoid circular imports
-            # try:
-            #     from database import User
-            # except ImportError:
-            #     from backend.database import User
-                
             # Get the user from database
             user = User.query.filter_by(netid=netid).first()
             if not user:
