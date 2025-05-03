@@ -47,6 +47,7 @@ def get_user(user_id):
 @login_required()
 def update_user(user_id):
     try:
+        print("update_user called")
         user = User.query.get_or_404(user_id)
         data = request.json
         
@@ -178,12 +179,14 @@ def update_user(user_id):
 
 # API endpoint to get or update the current user's profile
 @user_bp.route('/api/me', methods=['GET', 'PUT'])
+@login_required()
 def get_or_update_current_user():
     """Get or update the current authenticated user's profile"""
     try:
         # Check if user is authenticated via CAS
-        if not is_authenticated():
-            return jsonify({'detail': 'Authentication required'}), 401
+        print("get_or_update_current_user called")
+        # if not is_authenticated():
+        #     return jsonify({'detail': 'Authentication required'}), 401
             
         user_info = session.get('user_info', {})
         netid = user_info.get('user', '')
