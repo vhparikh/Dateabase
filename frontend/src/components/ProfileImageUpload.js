@@ -86,8 +86,10 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
           'X-CsrfToken': csrfToken
         }});
       
+      console.log("Response Status:", response.status)
       if (response.status !== 200) {
         throw new Error(response.data.detail || 'Failed to upload image');
+
       }
       
       const data = response.data;
@@ -127,7 +129,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       event.target.value = null;
     } catch (err) {
       console.error('Error uploading image:', err);
-      setError(err.message || 'Failed to upload image. Please try again.');
+      setError(err.message);
     } finally {
       setUploading(false);
     }
