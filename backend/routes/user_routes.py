@@ -44,6 +44,7 @@ def get_user(user_id):
     })
 
 @user_bp.route('/api/users/<int:user_id>', methods=['PUT'])
+@login_required()
 def update_user(user_id):
     try:
         user = User.query.get_or_404(user_id)
