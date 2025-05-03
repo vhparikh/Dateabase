@@ -163,10 +163,6 @@ def get_swipe_experiences(current_user_id=None):
                 # Only include experiences that haven't been swiped on
                 if exp_id in experiences_dict:
                     exp = experiences_dict[exp_id]
-                    
-                    # Add match score to the experience object
-                    # exp.match_score = match.get('score', 0.5)
-                    
                     ordered_experiences.append(exp)
             
             # Use the ordered experiences from vector search
