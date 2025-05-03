@@ -4,17 +4,13 @@ from datetime import datetime, timedelta, timezone
 import json
 import pinecone
 
-try:
-    from database import db, init_db, User, Experience, Match, UserSwipe, UserImage
-except ImportError:
-    # Fall back to package import (for Heroku)
-    from backend.database import db, init_db, User, Experience, Match, UserSwipe, UserImage
+
+from ..database import db, init_db, User, Experience, Match, UserSwipe, UserImage
 
 # Configure Pinecone
 PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY', '')
 PINECONE_ENV = os.environ.get('PINECONE_ENV', '')
-# Check for both variable names since Heroku has PINECONE_INDEX_NAME
-PINECONE_INDEX = os.environ.get('PINECONE_INDEX', '') or os.environ.get('PINECONE_INDEX_NAME', '')
+PINECONE_INDEX = os.environ.get('PINECONE_INDEX', '')
 
 # Initialize Pinecone if we have the required environment variables
 pinecone_initialized = False
@@ -22,8 +18,7 @@ pinecone_index = None
 
 if PINECONE_API_KEY and PINECONE_INDEX:
     try:
-        # Updated initialization pattern for Pinecone
-        import pinecone
+        # Initialization for Pinecone
         pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
         pinecone_index = pc.Index(PINECONE_INDEX)
         pinecone_initialized = True
@@ -67,8 +62,6 @@ def get_embedding(text):
         embedding_dim = len(embedding)
         print(f"Generated embedding with dimension {embedding_dim}")
         
-        # Cohere's embed-english-v3.0 model produces 1024-dimensional vectors,
-        # which matches our Pinecone index perfectly
         assert embedding_dim == 1024, f"Embedding dimension mismatch: {embedding_dim} != 1024"
         
         return embedding
@@ -79,71 +72,59 @@ def get_embedding(text):
         print("Using fallback dummy vector of 1024 dimensions")
         return [0.1] * 1024
     
-# Helper function to convert user preferences to a text description for embedding
 def get_user_preference_text(user):
     """
     Generate a simple text description of user preferences for vector embedding.
-    
-    Only include Experience Type Preferences for simplified vector matching.
     """
-    # Only process experience type preferences
+    # Process experience type preferences
     if user.experience_type_prefs:
-        try:
+        # try:
             # Try as JSON object
-            exp_prefs = json.loads(user.experience_type_prefs)
-            if isinstance(exp_prefs, dict):
-                # Handle dictionary format (most common)
-                exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
-                if exp_types:
-                    return f"Preferred experience types: {', '.join(exp_types)}"
-            elif isinstance(exp_prefs, list):
-                # Handle list format (fallback)
-                if exp_prefs:
-                    return f"Preferred experience types: {', '.join(exp_prefs)}"
-        except (json.JSONDecodeError, TypeError):
-            # Fallback for string format
-            if isinstance(user.experience_type_prefs, str):
-                if ',' in user.experience_type_prefs:
-                    exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
-                    if exp_types:
-                        return f"Preferred experience types: {', '.join(exp_types)}"
-                else:
-                    return f"Preferred experience type: {user.experience_type_prefs.strip()}"
+        exp_prefs = json.loads(user.experience_type_prefs)
+        # if isinstance(exp_prefs, dict):
+        # Handle dictionary format (most common)
+        exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
+        if exp_types:
+            return f"Preferred experience types: {', '.join(exp_types)}"
+            # elif isinstance(exp_prefs, list):
+            #     # Handle list format (fallback)
+            #     if exp_prefs:
+            #         return f"Preferred experience types: {', '.join(exp_prefs)}"
+        # except (json.JSONDecodeError, TypeError):
+        #     # Fallback for string format
+        #     if isinstance(user.experience_type_prefs, str):
+        #         if ',' in user.experience_type_prefs:
+        #             exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
+        #             if exp_types:
+        #                 return f"Preferred experience types: {', '.join(exp_types)}"
+        #         else:
+        #             return f"Preferred experience type: {user.experience_type_prefs.strip()}"
     
     return "No specific preferences"
 
-# Helper function to get experience text description for embedding
 def get_experience_text(experience, creator=None):
     """
     Generate a simple text description of an experience for vector embedding.
-    
-    Only use the experience_type field for vectorization to keep it simple and focused.
-    No creator information or other metadata is included in the vector.
     """
-    # Only include the experience type (category)
+
     if experience.experience_type:
         return f"Experience type: {experience.experience_type}"
     else:
         return "No specific experience details"
 
-# Helper function to index an experience in Pinecone
 def index_experience(experience, creator=None):
     """
     Index an experience in Pinecone for vector search.
-    
-    This simplified function creates a vector representation of only the experience type,
-    removing creator profile data and other complex metadata for streamlined matching.
     """
     if not pinecone_initialized or not pinecone_index:
         print(f"Experience {experience.id}: Pinecone not initialized. Cannot index experience.")
         return False
     
     try:
-        # Generate simplified text description of the experience
+        
         text_description = get_experience_text(experience)
         print(f"Experience {experience.id}: Generated text description: {text_description[:100]}...")
         
-        # Create minimal metadata for the experience
         metadata = {
             'id': experience.id,
             'user_id': experience.user_id,
@@ -152,24 +133,23 @@ def index_experience(experience, creator=None):
         
         print(f"Experience {experience.id}: Created metadata")
         
-        # Generate real embedding for the text description
         print(f"Experience {experience.id}: Generating embedding")
         embedding = get_embedding(text_description)
         print(f"Experience {experience.id}: Generated embedding with dimension {len(embedding)}")
         
-        # Create the Pinecone vector record with real embedding
+        # Create the Pinecone vector record with embedding
         record = {
             'id': f"exp_{experience.id}",
-            'values': embedding,  # Real embedding vector
+            'values': embedding,
             'metadata': {
                 **metadata,
-                'text': text_description  # Put text in metadata
+                'text': text_description
             }
         }
         
         print(f"Experience {experience.id}: Created vector record")
         
-        # Upsert the record into Pinecone - updated pattern
+        # Upsert the record into Pinecone
         try:
             print(f"Experience {experience.id}: Attempting to upsert to Pinecone")
             result = pinecone_index.upsert(
@@ -185,23 +165,16 @@ def index_experience(experience, creator=None):
         print(f"Experience {experience.id}: Error preparing data for Pinecone indexing: {e}")
         return False
 
-# Helper function to query Pinecone with user preferences
 def get_personalized_experiences(user, top_k=20):
     """
     Query Pinecone with user preferences to get personalized experience recommendations.
-    
-    This simplified function:
-    1. Uses the cached preference vector if available, or generates a new one if needed
-    2. Searches for experiences with similar embeddings, considering only experience type
-    3. Returns a ranked list of experiences based on cosine similarity to the user's preferences
     """
     if not pinecone_initialized or not pinecone_index:
         print(f"User {user.id}: Pinecone not initialized. Cannot query for personalized experiences.")
         return None
     
     try:
-        # Determine if we need to generate a new preference embedding
-        # or if we can use the cached one
+
         preference_embedding = None
         need_new_embedding = True
         cache_new_embedding = False
@@ -212,15 +185,13 @@ def get_personalized_experiences(user, top_k=20):
             
             # Deserialize the cached vector from JSON
             try:
-                import json
                 preference_embedding = json.loads(user.preference_vector)
                 vector_dimension = len(preference_embedding)
                 print(f"User {user.id}: Loaded cached preference vector with dimension {vector_dimension}")
                 
                 # Make sure the vector has the correct dimension
                 if vector_dimension == 1024:
-                    # Use the cached vector - only generate a new one if the user has swiped on something
-                    # since the vector was last cached
+                    # Use the cached vector
                     latest_swipe = UserSwipe.query.filter_by(user_id=user.id).order_by(
                         UserSwipe.created_at.desc()
                     ).first()
