@@ -165,7 +165,7 @@ def get_swipe_experiences(current_user_id=None):
                     exp = experiences_dict[exp_id]
                     
                     # Add match score to the experience object
-                    exp.match_score = match.get('score', 0.5)
+                    # exp.match_score = match.get('score', 0.5)
                     
                     ordered_experiences.append(exp)
             

@@ -251,24 +251,16 @@ def get_personalized_experiences(user, top_k=20):
                 exp_id = int(match['id'].split('_')[1]) if match['id'].startswith('exp_') else None
                 if exp_id:
                     
-                    # Get already swiped experiences
-                    # already_swiped = UserSwipe.query.filter_by(
-                    #     user_id=user.id, 
-                    #     experience_id=exp_id
-                    # ).first()
-                    
                     # Format the match with ID, score, and metadata
                     matches.append({
                         'id': exp_id,
                         'score': match['score'],
                         'metadata': match['metadata']
-                        # 'already_swiped': already_swiped is not None
                     })
             
             print(f"User {user.id}: Found {len(matches)} valid experience matches")
             
-            # Return the matches sorted by score (highest first) - using cosine similarity
-            # We don't need additional sorting here as Pinecone already returns sorted by similarity
+            # Return the matches sorted by score
             return matches
             
         except Exception as e:
