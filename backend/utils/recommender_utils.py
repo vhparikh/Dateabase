@@ -78,27 +78,12 @@ def get_user_preference_text(user):
     """
     # Process experience type preferences
     if user.experience_type_prefs:
-        # try:
-            # Try as JSON object
+        
         exp_prefs = json.loads(user.experience_type_prefs)
-        # if isinstance(exp_prefs, dict):
-        # Handle dictionary format (most common)
+        
         exp_types = [exp_type for exp_type, is_selected in exp_prefs.items() if is_selected]
         if exp_types:
             return f"Preferred experience types: {', '.join(exp_types)}"
-            # elif isinstance(exp_prefs, list):
-            #     # Handle list format (fallback)
-            #     if exp_prefs:
-            #         return f"Preferred experience types: {', '.join(exp_prefs)}"
-        # except (json.JSONDecodeError, TypeError):
-        #     # Fallback for string format
-        #     if isinstance(user.experience_type_prefs, str):
-        #         if ',' in user.experience_type_prefs:
-        #             exp_types = [x.strip() for x in user.experience_type_prefs.split(',') if x.strip()]
-        #             if exp_types:
-        #                 return f"Preferred experience types: {', '.join(exp_types)}"
-        #         else:
-        #             return f"Preferred experience type: {user.experience_type_prefs.strip()}"
     
     return "No specific preferences"
 
@@ -245,14 +230,14 @@ def get_personalized_experiences(user, top_k=20):
             "user_id": {"$ne": user.id}  # Base filter: exclude user's own experiences
         }
         
-        # For debugging, log the exact filter being used
+        # Log the exact filter being used
         print(f"User {user.id}: Using Pinecone filter: {filter_conditions}")
         
-        # Query Pinecone for similar vectors with minimal filtering
+        # Query Pinecone for similar vectors
         try:
             print(f"User {user.id}: Querying Pinecone with preference embedding")
             query_results = pinecone_index.query(
-                top_k=top_k * 2,  # Request more results to account for filtering
+                top_k=top_k * 2,
                 vector=preference_embedding,
                 filter=filter_conditions,
                 include_metadata=True
@@ -265,18 +250,19 @@ def get_personalized_experiences(user, top_k=20):
             for match in query_results.get('matches', []):
                 exp_id = int(match['id'].split('_')[1]) if match['id'].startswith('exp_') else None
                 if exp_id:
-                    # Get already swiped experiences - but don't filter them out
-                    already_swiped = UserSwipe.query.filter_by(
-                        user_id=user.id, 
-                        experience_id=exp_id
-                    ).first()
+                    
+                    # Get already swiped experiences
+                    # already_swiped = UserSwipe.query.filter_by(
+                    #     user_id=user.id, 
+                    #     experience_id=exp_id
+                    # ).first()
                     
                     # Format the match with ID, score, and metadata
                     matches.append({
                         'id': exp_id,
                         'score': match['score'],
-                        'metadata': match['metadata'],
-                        'already_swiped': already_swiped is not None
+                        'metadata': match['metadata']
+                        # 'already_swiped': already_swiped is not None
                     })
             
             print(f"User {user.id}: Found {len(matches)} valid experience matches")
