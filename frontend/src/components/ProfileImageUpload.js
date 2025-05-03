@@ -87,7 +87,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
         }});
       
       console.log("Response Status:", response.status)
-      if (response.status !== 200) {
+      if (response.status !== 200 || response.status !== 201) {
         throw new Error(response.data.detail || 'Failed to upload image');
 
       }
