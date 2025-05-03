@@ -11,13 +11,7 @@ import argparse
 
 # Add the backend directory to the path to allow importing database models
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
-# Import database models
-try:
-    from database import db, Match, UserSwipe
-except ImportError:
-    print("Error: Unable to import database models. Make sure you're running this script from the backend directory.")
-    sys.exit(1)
+from backend.database import db, Match, UserSwipe
 
 def reset_matches_and_swipes(confirm=False):
     """
