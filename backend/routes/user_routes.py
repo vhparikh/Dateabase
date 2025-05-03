@@ -179,7 +179,7 @@ def update_user(user_id):
 
 # API endpoint to get or update the current user's profile
 @user_bp.route('/api/me', methods=['GET', 'PUT'])
-@login_required()
+# @login_required()
 def get_or_update_current_user():
     """Get or update the current authenticated user's profile"""
     try:
