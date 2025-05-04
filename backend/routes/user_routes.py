@@ -637,3 +637,11 @@ def get_user_contact_info(user_id, current_user_id=None):
 @user_bp.route('/profile')
 def serve_profile():
     return current_app.send_static_file('index.html')
+
+@user_bp.route('/profile/edit')
+def serve_profile_edit():
+    return current_app.send_static_file('index.html')
+    
+@user_bp.route('/profile/preferences')
+def serve_profile_preferences():
+    return current_app.send_static_file('index.html')
