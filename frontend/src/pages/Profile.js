@@ -23,7 +23,7 @@ const Profile = () => {
     const fetchUserProfile = async () => {
       try {
         setProfileLoading(true);
-        const response = await axios.get(`{API_URL}/api/me`, {withCredentials: true, headers: {
+        const response = await axios.get(`${API_URL}/api/me`, {withCredentials: true, headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
         }});
