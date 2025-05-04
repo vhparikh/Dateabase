@@ -178,7 +178,7 @@ def get_user(user_id):
 #         return jsonify({'detail': str(e)}), 500
 
 # API endpoint to get or update the current user's profile
-@user_bp.route('/api/me', methods=['GET', 'PUT'])
+@user_bp.route('/api/users/me', methods=['GET', 'PUT'])
 # @login_required()
 def get_or_update_current_user():
     """Get or update the current authenticated user's profile"""
@@ -392,10 +392,10 @@ def get_or_update_current_user():
         return jsonify({'detail': f'Error: {str(e)}'}), 500
 
 # Legacy endpoint - redirects to the new /api/me endpoint
-@user_bp.route('/api/users/me', methods=['GET'])
-def get_current_user():
-    """Legacy endpoint that redirects to the new /api/me endpoint"""
-    return get_or_update_current_user()
+# @user_bp.route('/api/users/me', methods=['GET'])
+# def get_current_user():
+#     """Legacy endpoint that redirects to the new /api/me endpoint"""
+#     return get_or_update_current_user()
 
 # Endpoint to complete onboarding
 @user_bp.route('/api/users/complete-onboarding', methods=['POST'])
