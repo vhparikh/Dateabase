@@ -10,7 +10,6 @@ import cloudinary.uploader
 import cloudinary.api
 from urllib.parse import quote_plus, urlencode, quote
 import pinecone
-import numpy as np
 import json
 import cohere  # Import Cohere client
 from sqlalchemy import text

@@ -16,7 +16,6 @@ import sys
 import json
 from datetime import datetime
 import time
-import numpy as np
 from sqlalchemy import func
 
 # Add the backend directory to the path so we can import modules
