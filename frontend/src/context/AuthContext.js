@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
           
           // If authenticated, load user profile
           if (data.authenticated) {
-            const profileResponse = await axios.get(`${API_URL}/api/users/me`, {
+            const profileResponse = await axios.get(`${API_URL}/api/me`, {
               withCredentials: true,
               headers: {
                 'Content-Type': 'application/json',
