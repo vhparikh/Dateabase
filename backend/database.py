@@ -12,7 +12,6 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=True)  # Increased from 128 to 255
-    cas_id = db.Column(db.String(50), unique=True, nullable=True)  # CAS unique identifier
     netid = db.Column(db.String(50), unique=True, nullable=True)  # Princeton NetID
     name = db.Column(db.String(100), nullable=False)
     gender = db.Column(db.String(20), nullable=True)  # Made nullable for initial CAS login

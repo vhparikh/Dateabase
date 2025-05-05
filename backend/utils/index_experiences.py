@@ -13,10 +13,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-# Import User and Experience from database.py
 from database import User, Experience
 
-# Ensure environment variables are accessible
+
 if len(sys.argv) > 1:
     db_url = sys.argv[1]
 else:
@@ -31,11 +30,8 @@ if not db_url:
 def get_experience_text(experience, creator=None):
     """
     Generate a simple text description of an experience for vector embedding.
-    
-    Only use the experience_type field for vectorization to keep it simple and focused.
-    No creator information or other metadata is included in the vector.
     """
-    # Only include the experience type (category)
+    # Only include experience type
     if experience.experience_type:
         return f"Experience type: {experience.experience_type}"
     else:
@@ -43,7 +39,7 @@ def get_experience_text(experience, creator=None):
 
 def index_all_experiences():
     """Index all existing experiences in Pinecone"""
-    # Only proceed if the Pinecone API key and index name are set
+    
     pinecone_api_key = os.environ.get('PINECONE_API_KEY', '')
     pinecone_index_name = os.environ.get('PINECONE_INDEX', '')
     cohere_api_key = os.environ.get('COHERE_API_KEY', '')
@@ -61,15 +57,14 @@ def index_all_experiences():
         return False
     
     try:
-        # Initialize SQLAlchemy with the database URL
+        # Initialize SQLAlchemy
         engine = create_engine(db_url)
         Session = sessionmaker(bind=engine)
         session = Session()
         
-        # Initialize Pinecone with the API key
+        # Initialize Pinecone
         pc = pinecone.Pinecone(api_key=pinecone_api_key)
         
-        # Check if the index exists
         try:
             index = pc.Index(pinecone_index_name)
             print(f"Successfully connected to Pinecone index: {pinecone_index_name}")
@@ -77,10 +72,10 @@ def index_all_experiences():
             print(f"Error connecting to Pinecone index: {e}")
             return False
         
-        # Initialize Cohere client
+        # Initialize Cohere
         co = CohereClient(cohere_api_key)
         
-        # Retrieve all experiences from the database
+        # Retrieve all experiences
         experiences = session.query(Experience).all()
         print(f"Found {len(experiences)} experiences to index")
         
@@ -102,32 +97,32 @@ def index_all_experiences():
                 text_description = get_experience_text(exp)
                 print(f"Generated text description: {text_description[:100]}...")
                 
-                # Create minimal metadata for the experience
+                # Create metadata for experience
                 metadata = {
                     'id': exp.id,
                     'user_id': exp.user_id,
                     'experience_type': exp.experience_type,
                 }
                 
-                # Generate embedding using Cohere API
+                # Generate embedding using Cohere
                 response = co.embed(
                     texts=[text_description],
                     model="embed-english-v3.0",
                     input_type="search_document"
                 )
                 
-                # Extract embedding from response
+                # Extract embedding
                 embedding = response.embeddings[0]
                 
                 print(f"Generated embedding with dimension {len(embedding)}")
                 
-                # Create vector record with the correct format for SDK v3
+                # Create vector record
                 vector = {
                     'id': f"exp_{exp.id}",
-                    'values': embedding,  # Real embedding
+                    'values': embedding,
                     'metadata': {
                         **metadata,
-                        'text': text_description  # Text goes in metadata
+                        'text': text_description
                     }
                 }
                 
