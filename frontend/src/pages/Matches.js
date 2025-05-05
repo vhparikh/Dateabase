@@ -283,10 +283,6 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
       setError(null);
       
       const response = await axios.get(`${API_URL}/api/users/${user.id}/contact`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
-      
-      if (response !== 200) {
-        throw new Error('Failed to fetch contact information');
-      }
       const data = await response.data;
       setContactInfo(data);
     } catch (err) {
