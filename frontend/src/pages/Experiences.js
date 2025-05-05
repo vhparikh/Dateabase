@@ -7,6 +7,9 @@ import axios from 'axios';
 import { useCSRFToken } from '../App';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
+// Define libraries array outside component to prevent recreation on each render
+const libraries = ["places"];
+
 // Experience card component
 const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   // Function to get a random gradient
@@ -466,7 +469,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
             </label>
             <LoadScript 
               googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-              libraries={["places"]}
+              libraries={libraries}
             >
               <div className="relative">
                 <Autocomplete

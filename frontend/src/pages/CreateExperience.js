@@ -38,6 +38,9 @@ const suggestedLocations = [
   'Institute Woods'
 ];
 
+// Define libraries array outside component to prevent recreation on each render
+const libraries = ["places"];
+
 const CreateExperience = () => {
   // Check if user is authenticated
   const { user } = useContext(AuthContext);
@@ -461,7 +464,7 @@ const CreateExperience = () => {
                 
                 <LoadScript 
                   googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-                  libraries={["places"]}
+                  libraries={libraries}
                 >
                   <Autocomplete
                     onLoad={autocomplete => {

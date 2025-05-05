@@ -6,6 +6,9 @@ import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
+// Define libraries array outside component to prevent recreation on each render
+const libraries = ["places"];
+
 // UserProfileModal component for displaying a user's full profile
 const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
   const [userProfile, setUserProfile] = useState(null);
@@ -641,7 +644,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
           {showMap && (
             <div className="mb-4">
               {activeExperience.experience.latitude && activeExperience.experience.longitude ? (
-                <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""}>
+                <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ""} libraries={libraries}>
                   <GoogleMap
                     mapContainerStyle={mapContainerStyle}
                     center={mapCenter}
