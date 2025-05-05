@@ -16,15 +16,14 @@ def get_matches(user_id):
         
         print(f"DEBUG: Found {len(all_matches)} total matches for user_id: {user_id}")
         
-        # Use sets to track which combinations we've already processed to avoid duplicates
+        # Track which combinations we've already processed to avoid duplicates
         processed_combinations = set()
         
         confirmed_matches = []
-        pending_received = []  # Matches where user is the experience owner and needs to accept
-        pending_sent = []      # Matches where user liked someone else's experience
+        pending_received = []
+        pending_sent = []
         
         for match in all_matches:
-            # Determine the other user in the match
             other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
             other_user = User.query.get(other_user_id)
             experience = Experience.query.get(match.experience_id)
@@ -37,7 +36,6 @@ def get_matches(user_id):
                 continue
             
             # Create a unique key for this match combination to avoid duplicates
-            # We sort the user IDs to ensure (user1, user2) and (user2, user1) create the same key
             match_key = (min(user_id, other_user_id), max(user_id, other_user_id), experience.id)
             
             # Skip if we've already processed this combination
@@ -45,7 +43,6 @@ def get_matches(user_id):
                 print(f"DEBUG: Skipping duplicate match combination: {match_key}")
                 continue
                 
-            # Add to processed set
             processed_combinations.add(match_key)
             
             print(f"DEBUG: Experience owner_id: {experience.user_id}")
@@ -116,12 +113,12 @@ def accept_match(match_id, current_user_id=None):
         if not match:
             return jsonify({'detail': 'Match not found'}), 404
             
-        # Get the experience to verify ownership
+        # Verify ownership
         experience = Experience.query.get(match.experience_id)
         if not experience:
             return jsonify({'detail': 'Experience not found'}), 404
             
-        # Verify that the current user is either involved in the match as user1 or user2
+        # Verify that the current user is either involved in the match
         if current_user_id != match.user1_id and current_user_id != match.user2_id:
             return jsonify({'detail': 'You are not authorized to interact with this match'}), 403
         
@@ -160,11 +157,10 @@ def reject_match(match_id, current_user_id=None):
         if not experience:
             return jsonify({'detail': 'Experience not found'}), 404
             
-        # Verify that the current user is either involved in the match as user1 or user2
+        # Verify that the current user is either involved in the match
         if current_user_id != match.user1_id and current_user_id != match.user2_id:
             return jsonify({'detail': 'You are not authorized to interact with this match'}), 403
         
-        # Any user involved in the match can reject it
         # Delete the match
         db.session.delete(match)
         db.session.commit()
