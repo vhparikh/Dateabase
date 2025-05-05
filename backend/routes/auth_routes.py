@@ -7,17 +7,10 @@ from urllib.parse import quote_plus, urlencode, quote
 
 from ..utils.auth_utils import login_required, is_authenticated, get_cas_login_url, logout_cas, strip_ticket, _CAS_URL, validate
 
-# Import database models
-try:
-    # Try local import first (for local development)
-    from database import db, User, Experience, Match, UserSwipe, UserImage
-    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import backend.utils.recommender_utils as recommender_utils
-except ImportError:
-    # Fall back to package import (for Heroku)
-    from backend.database import db, User, Experience, Match, UserSwipe, UserImage
-    from backend.utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
-    import backend.utils.recommender_utils
+    
+from ..database import db, User, Experience, Match, UserSwipe, UserImage
+from ..utils.recommender_utils import index_experience, get_personalized_experiences, get_embedding, get_user_preference_text, get_experience_text
+import backend.utils.recommender_utils
 
 auth_bp = Blueprint('auth_routes', __name__)
 
@@ -62,20 +55,18 @@ def cas_callback():
         ticket = request.args.get('ticket')
         callback_url = request.args.get('callback_url', '/')
         
-        # Determine the frontend URL based on environment
-        # In production, the app is served from the same domain
-        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+        # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
             # In production, use the same host
-            scheme = request.headers.get('X-Forwarded-Proto', 'https')
-            frontend_url = f"{scheme}://{request.host}"
-        else:
-            # In development, get from Origin header or use localhost:3000 as fallback
-            frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        scheme = request.headers.get('X-Forwarded-Proto', 'https')
+        frontend_url = f"{scheme}://{request.host}"
+        # else:
+        #     # In development, get from Origin header or use localhost:3000 as fallback
+        #     frontend_url = request.headers.get('Origin', 'http://localhost:3000')
         
         if not ticket:
             return jsonify({'detail': 'No ticket provided'}), 400
         
-        # Step 1: Validate ticket with CAS server - Authentication happens first
+        # Validate ticket with CAS server
         user_info = validate(ticket)
         
         if not user_info:
@@ -86,35 +77,33 @@ def cas_callback():
         netid = user_info.get('user', '')
         
         # Extract attributes for more user information if available
-        attributes = user_info.get('attributes', {})
-        # Use principalId as the cas_id if available, otherwise use netid
-        cas_id = attributes.get('principalId', netid)
+        # attributes = user_info.get('attributes', {})
+        # cas_id = attributes.get('principalId', netid)
         
-        # Step 2: Check if user exists in our database - first by netid, then by cas_id
+        # Check if user exists in our database
         user = User.query.filter_by(netid=netid).first()
-        if not user:
-            user = User.query.filter_by(cas_id=cas_id).first()
+        # if not user:
+        #     user = User.query.filter_by(cas_id=cas_id).first()
         
         is_new_user = False
-        # If user doesn't exist, we'll create one with information from CAS
+        
         if not user:
             is_new_user = True
-            # Get display name or default to netID
+
             display_name = attributes.get('displayName', f"{netid.capitalize()} User")
             
-            # Create a new user with the netid and cas_id
+            # Create a new user
             new_user = User(
                 username=netid,
                 netid=netid,
-                cas_id=cas_id,
+                # cas_id=cas_id,
                 name=display_name,
-                # Set optional fields to default values that can be updated later
                 gender='Other',
                 class_year=2025,
                 interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
                 password_hash=secrets.token_hex(16),
-                onboarding_completed=False,  # Explicitly set onboarding as not completed for new users
+                onboarding_completed=False,
                 phone_number=attributes.get('phoneNumber', ''),
                 preferred_email=attributes.get('email', '')
             )
@@ -127,36 +116,36 @@ def cas_callback():
             # If we have a user but they're missing netid or cas_id, update them
             if not user.netid:
                 user.netid = netid
-            if not user.cas_id:
-                user.cas_id = cas_id
+            # if not user.cas_id:
+            #     user.cas_id = cas_id
             db.session.commit()
         
-        # Step 3: Determine if onboarding is needed
+        # Determine if onboarding is needed
         # New users ALWAYS need onboarding, existing users only if onboarding_completed is False
         needs_onboarding = is_new_user or not user.onboarding_completed
         print(f"User {user.username} is new: {is_new_user}, needs onboarding: {needs_onboarding}")
         
         # Step 4: Redirect based on authentication and onboarding status
         # For production environment (Heroku) - CRITICAL FIX: Always redirect to root with hash params to avoid 404s
-        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-            # In SPAs on Heroku, we need to redirect to the root and let React Router handle it
-            redirect_url = f"{frontend_url}/#/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
-            print(f"Redirecting to: {redirect_url}")
-            return redirect(redirect_url)
-        else:
-            # In development, redirect to the React dev server
-            redirect_url = f"{frontend_url}/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
-            print(f"Redirecting to: {redirect_url}")
-            return redirect(redirect_url)
+        # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+        # In SPAs on Heroku, we need to redirect to the root and let React Router handle it
+        redirect_url = f"{frontend_url}/#/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
+        print(f"Redirecting to: {redirect_url}")
+        return redirect(redirect_url)
+        # else:
+        #     # In development, redirect to the React dev server
+        #     redirect_url = f"{frontend_url}/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
+        #     print(f"Redirecting to: {redirect_url}")
+        #     return redirect(redirect_url)
             
     except Exception as e:
         print(f"Error in CAS callback: {e}")
         # Determine frontend URL for error redirect
-        if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-            scheme = request.headers.get('X-Forwarded-Proto', 'https')
-            frontend_url = f"{scheme}://{request.host}"
-        else:
-            frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+        # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+        scheme = request.headers.get('X-Forwarded-Proto', 'https')
+        frontend_url = f"{scheme}://{request.host}"
+        # else:
+        #     frontend_url = request.headers.get('Origin', 'http://localhost:3000')
             
         # Include more detailed error information
         error_message = str(e)
@@ -178,11 +167,11 @@ def cas_logout():
         frontend_url = request.args.get('frontend_url', '')
         
         if not frontend_url:
-            if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-                scheme = request.headers.get('X-Forwarded-Proto', 'https')
-                frontend_url = f"{scheme}://{request.host}"
-            else:
-                frontend_url = request.headers.get('Origin', 'http://localhost:3000')
+            # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
+            scheme = request.headers.get('X-Forwarded-Proto', 'https')
+            frontend_url = f"{scheme}://{request.host}"
+            # else:
+            #     frontend_url = request.headers.get('Origin', 'http://localhost:3000')
         
         # Add /login to the frontend URL to ensure redirection to login page
         login_url = f"{frontend_url}/login"

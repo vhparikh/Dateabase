@@ -16,7 +16,7 @@ from flask import request
 fix_images_bp = Blueprint('fix_images', __name__)
 
 def is_google_maps_url(url):
-    """Check if the URL is a Google Maps PhotoService URL which is likely to cause issues."""
+    """Check if the URL is a Google Maps PhotoService URL."""
     if not url:
         return False
     
@@ -35,13 +35,12 @@ def is_valid_url(url):
         return False
     
     try:
-        # Parse the URL to check if it's well-formed
+        # Parse the URL
         parsed = urlparse(url)
         if not all([parsed.scheme, parsed.netloc]):
             return False
         
-        # Don't do actual HTTP validation in production to avoid performance issues
-        # Just check for valid URL format
+        # Check for valid URL format
         return True
     except:
         return False
@@ -51,24 +50,23 @@ def get_unsplash_image_for_location(location):
     if not location:
         return "https://source.unsplash.com/random/800x600/?city"
     
-    # Clean the location string - take just the first part before any comma
+    # Clean the location string
     location_clean = location.split(',')[0].strip()
     
-    # Replace spaces with plus signs and remove special characters
+    # Replace/remove special characters
     location_query = re.sub(r'[^a-zA-Z0-9\s]', '', location_clean).replace(' ', '+')
     
     # Return an Unsplash URL for the location
     return f"https://source.unsplash.com/random/800x600/?{location_query}"
 
-# Simple API key check middleware for protection
+# API key check middleware for protection
 def require_api_key(view_function):
     @wraps(view_function)
     def decorated_function(*args, **kwargs):
         # Get API key from request header or query parameter
         api_key = request.headers.get('X-API-KEY') or request.args.get('api_key')
         
-        # Check if API key is valid (uses simple string matching for illustration)
-        # In production, use a more secure method like environment variables
+        # Check if API key is valid
         if api_key != "fix_images_secret_key":
             return jsonify({
                 'success': False,
@@ -85,7 +83,6 @@ def fix_image_urls_route():
     
     start_time = time.time()
     
-    # Get optional parameter to specify fixing only problematic URLs
     fix_all = request.args.get('fix_all', 'false').lower() == 'true'
     dry_run = request.args.get('dry_run', 'false').lower() == 'true'
     experience_id = request.args.get('id')
@@ -100,7 +97,7 @@ def fix_image_urls_route():
     }
     
     try:
-        # Get experiences (all or a specific one)
+        # Get experiences
         if experience_id:
             experiences = Experience.query.filter_by(id=experience_id).all()
         else:
@@ -186,7 +183,7 @@ def fix_image_urls_route():
                 'already_valid_count': stats['already_valid_count'],
                 'empty_urls_count': stats['empty_urls_count'],
             },
-            'fixed_experiences': stats['fixed_experiences'][:20],  # Limit to 20 to avoid huge responses
+            'fixed_experiences': stats['fixed_experiences'][:20],
             'total_fixed_experiences': len(stats['fixed_experiences'])
         })
         
