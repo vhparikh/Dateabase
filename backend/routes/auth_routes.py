@@ -55,13 +55,9 @@ def cas_callback():
         ticket = request.args.get('ticket')
         callback_url = request.args.get('callback_url', '/')
         
-        # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-            # In production, use the same host
+        
         scheme = request.headers.get('X-Forwarded-Proto', 'https')
         frontend_url = f"{scheme}://{request.host}"
-        # else:
-        #     # In development, get from Origin header or use localhost:3000 as fallback
-        #     frontend_url = request.headers.get('Origin', 'http://localhost:3000')
         
         if not ticket:
             return jsonify({'detail': 'No ticket provided'}), 400
@@ -76,14 +72,8 @@ def cas_callback():
         session['user_info'] = user_info
         netid = user_info.get('user', '')
         
-        # Extract attributes for more user information if available
-        # attributes = user_info.get('attributes', {})
-        # cas_id = attributes.get('principalId', netid)
-        
         # Check if user exists in our database
         user = User.query.filter_by(netid=netid).first()
-        # if not user:
-        #     user = User.query.filter_by(cas_id=cas_id).first()
         
         is_new_user = False
         
@@ -96,7 +86,6 @@ def cas_callback():
             new_user = User(
                 username=netid,
                 netid=netid,
-                # cas_id=cas_id,
                 name=display_name,
                 gender='Other',
                 class_year=2025,
@@ -112,40 +101,24 @@ def cas_callback():
             
             # Retrieve the user after commit
             user = User.query.filter_by(netid=netid).first()
-        elif not user.netid or not user.cas_id:
-            # If we have a user but they're missing netid or cas_id, update them
-            if not user.netid:
-                user.netid = netid
-            # if not user.cas_id:
-            #     user.cas_id = cas_id
+        elif not user.netid:
+            # If we have a user but they're missing netid, update them
+            user.netid = netid
             db.session.commit()
         
         # Determine if onboarding is needed
-        # New users ALWAYS need onboarding, existing users only if onboarding_completed is False
         needs_onboarding = is_new_user or not user.onboarding_completed
         print(f"User {user.username} is new: {is_new_user}, needs onboarding: {needs_onboarding}")
         
-        # Step 4: Redirect based on authentication and onboarding status
-        # For production environment (Heroku) - CRITICAL FIX: Always redirect to root with hash params to avoid 404s
-        # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
-        # In SPAs on Heroku, we need to redirect to the root and let React Router handle it
+        # Redirect based on authentication and onboarding status
         redirect_url = f"{frontend_url}/#/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
         print(f"Redirecting to: {redirect_url}")
         return redirect(redirect_url)
-        # else:
-        #     # In development, redirect to the React dev server
-        #     redirect_url = f"{frontend_url}/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
-        #     print(f"Redirecting to: {redirect_url}")
-        #     return redirect(redirect_url)
             
     except Exception as e:
         print(f"Error in CAS callback: {e}")
-        # Determine frontend URL for error redirect
-        # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
         scheme = request.headers.get('X-Forwarded-Proto', 'https')
         frontend_url = f"{scheme}://{request.host}"
-        # else:
-        #     frontend_url = request.headers.get('Origin', 'http://localhost:3000')
             
         # Include more detailed error information
         error_message = str(e)
@@ -167,17 +140,14 @@ def cas_logout():
         frontend_url = request.args.get('frontend_url', '')
         
         if not frontend_url:
-            # if 'herokuapp.com' in request.host or os.environ.get('PRODUCTION') == 'true':
             scheme = request.headers.get('X-Forwarded-Proto', 'https')
             frontend_url = f"{scheme}://{request.host}"
-            # else:
-            #     frontend_url = request.headers.get('Origin', 'http://localhost:3000')
         
-        # Add /login to the frontend URL to ensure redirection to login page
+        # Add /login to the frontend URL
         login_url = f"{frontend_url}/login"
         print(f"Setting CAS logout service URL to: {login_url}")
         
-        # Generate CAS logout URL with specific redirect to login page
+        # Generate CAS logout URL
         logout_url = f"{_CAS_URL}logout?service={quote(login_url)}"
         
         return jsonify({
