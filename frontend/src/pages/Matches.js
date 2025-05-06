@@ -490,49 +490,41 @@ const GroupedMatchCard = ({ user, experiences }) => {
   useEffect(() => {
     const loadImages = async () => {
       const images = {...locationImages};
-      const imagesToUpdate = [];
       
       for (const exp of experiences) {
-        if (exp.experience.location_image) {
-          // Use the existing image if available
-          images[exp.experience.id] = exp.experience.location_image;
-        } else if (exp.experience.location && !images[exp.experience.id]) {
-          // Only fetch a new image if we don't already have one for this experience
-          const locationForImage = exp.experience.location.split(',')[0].trim();
-          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-          images[exp.experience.id] = imageUrl;
-          
-          // Keep track of experiences whose images need to be updated in the backend
-          imagesToUpdate.push({
-            experienceId: exp.experience.id,
-            imageUrl
+        try {
+          // Fetch fresh image URL from the API for each experience
+          const response = await axios.get(`${API_URL}/api/experiences/get-image/${exp.experience.id}`, { 
+            withCredentials: true 
           });
+          
+          if (response.data && response.data.image_url) {
+            images[exp.experience.id] = response.data.image_url;
+          } else if (exp.experience.location_image) {
+            // Fallback to stored image if API call doesn't return a valid URL
+            images[exp.experience.id] = exp.experience.location_image;
+          } else if (exp.experience.location) {
+            // Last resort fallback to Unsplash
+            const locationForImage = exp.experience.location.split(',')[0].trim();
+            images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          }
+        } catch (error) {
+          console.error('Error fetching image URL:', error);
+          // Fallback to the stored URL if there's an error
+          if (exp.experience.location_image) {
+            images[exp.experience.id] = exp.experience.location_image;
+          } else if (exp.experience.location) {
+            const locationForImage = exp.experience.location.split(',')[0].trim();
+            images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          }
         }
       }
       
       setLocationImages(images);
       
-      // Update experience location_image in the backend to avoid fetching new random images on reload
-      for (const item of imagesToUpdate) {
-        try {
-          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true, 
-            headers: {
-              'Content-Type': 'application/json'
-            }});
-          
-          // Update the active experience image if it was just updated
-          if (activeExperience.experience.id === item.experienceId) {
-            setActiveExperience(prev => ({
-              ...prev,
-              experience: {
-                ...prev.experience,
-                location_image: item.imageUrl
-              }
-            }));
-          }
-        } catch (error) {
-          console.error('Error saving location image:', error);
-        }
+      // Set the active experience if not already set
+      if (experiences.length > 0 && !activeExperience) {
+        setActiveExperience(experiences[0]);
       }
     };
     
@@ -728,48 +720,45 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
   useEffect(() => {
     const loadImages = async () => {
       const images = {...locationImages};
-      const imagesToUpdate = [];
       
       for (const exp of experiences) {
-        if (exp.experience.location_image) {
-          // Use the existing image if available
-          images[exp.experience.id] = exp.experience.location_image;
-        } else if (exp.experience.location && !images[exp.experience.id]) {
-          // Only fetch a new image if we don't already have one for this experience
-          const locationForImage = exp.experience.location.split(',')[0].trim();
-          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-          images[exp.experience.id] = imageUrl;
-          
-          // Keep track of experiences whose images need to be updated in the backend
-          imagesToUpdate.push({
-            experienceId: exp.experience.id,
-            imageUrl
+        try {
+          // Fetch fresh image URL from the API for each experience
+          const response = await axios.get(`${API_URL}/api/experiences/get-image/${exp.experience.id}`, { 
+            withCredentials: true 
           });
+          
+          if (response.data && response.data.image_url) {
+            images[exp.experience.id] = response.data.image_url;
+          } else if (exp.experience.location_image) {
+            // Fallback to stored image if API call doesn't return a valid URL
+            images[exp.experience.id] = exp.experience.location_image;
+          } else if (exp.experience.location) {
+            // Last resort fallback to Unsplash
+            const locationForImage = exp.experience.location.split(',')[0].trim();
+            images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          }
+        } catch (error) {
+          console.error('Error fetching image URL:', error);
+          // Fallback to the stored URL if there's an error
+          if (exp.experience.location_image) {
+            images[exp.experience.id] = exp.experience.location_image;
+          } else if (exp.experience.location) {
+            const locationForImage = exp.experience.location.split(',')[0].trim();
+            images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          }
         }
       }
       
       setLocationImages(images);
       
-      // Update experience location_image in the backend to avoid fetching new random images on reload
-      for (const item of imagesToUpdate) {
-        try {
-          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, { location_image: item.imageUrl }, { withCredentials: true,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CsrfToken': csrfToken
-            }});
-        } catch (error) {
-          console.error('Error saving location image:', error);
-        }
+      // Set the active experience if not already set
+      if (experiences.length > 0 && !expandedExperience) {
+        setExpandedExperience(experiences[0].experience.id);
       }
     };
     
     loadImages();
-    
-    // Set the first experience as expanded by default
-    if (experiences.length > 0 && !expandedExperience) {
-      setExpandedExperience(experiences[0].experience.id);
-    }
   }, [experiences]);
   
   return (
@@ -925,49 +914,45 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
   useEffect(() => {
     const loadImages = async () => {
       const images = {...locationImages};
-      const imagesToUpdate = [];
       
       for (const exp of experiences) {
-        if (exp.experience.location_image) {
-          // Use the existing image if available
-          images[exp.experience.id] = exp.experience.location_image;
-        } else if (exp.experience.location && !images[exp.experience.id]) {
-          // Only fetch a new image if we don't already have one for this experience
-          const locationForImage = exp.experience.location.split(',')[0].trim();
-          const imageUrl = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
-          images[exp.experience.id] = imageUrl;
-          
-          // Keep track of experiences whose images need to be updated in the backend
-          imagesToUpdate.push({
-            experienceId: exp.experience.id,
-            imageUrl
+        try {
+          // Fetch fresh image URL from the API for each experience
+          const response = await axios.get(`${API_URL}/api/experiences/get-image/${exp.experience.id}`, { 
+            withCredentials: true 
           });
+          
+          if (response.data && response.data.image_url) {
+            images[exp.experience.id] = response.data.image_url;
+          } else if (exp.experience.location_image) {
+            // Fallback to stored image if API call doesn't return a valid URL
+            images[exp.experience.id] = exp.experience.location_image;
+          } else if (exp.experience.location) {
+            // Last resort fallback to Unsplash
+            const locationForImage = exp.experience.location.split(',')[0].trim();
+            images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          }
+        } catch (error) {
+          console.error('Error fetching image URL:', error);
+          // Fallback to the stored URL if there's an error
+          if (exp.experience.location_image) {
+            images[exp.experience.id] = exp.experience.location_image;
+          } else if (exp.experience.location) {
+            const locationForImage = exp.experience.location.split(',')[0].trim();
+            images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
+          }
         }
       }
       
       setLocationImages(images);
       
-      // Update experience location_image in the backend to avoid fetching new random images on reload
-      for (const item of imagesToUpdate) {
-        try {
-          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CsrfToken': csrfToken
-            }
-          });
-        } catch (error) {
-          console.error('Error saving location image:', error);
-        }
+      // Set the active experience if not already set
+      if (experiences.length > 0 && !expandedExperience) {
+        setExpandedExperience(experiences[0].experience.id);
       }
     };
     
     loadImages();
-    
-    // Set the first experience as expanded by default
-    if (experiences.length > 0 && !expandedExperience) {
-      setExpandedExperience(experiences[0].experience.id);
-    }
   }, [experiences]);
   
   return (

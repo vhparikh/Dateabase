@@ -25,6 +25,8 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
   
   // Generate Google Maps Static Map URL for small preview
   const [staticMapUrl, setStaticMapUrl] = useState(null);
+  const [locationImageUrl, setLocationImageUrl] = useState(experience.location_image || null);
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
   
   useEffect(() => {
     // Only generate map URL if coordinates are available
@@ -34,42 +36,61 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
     } else {
       setStaticMapUrl(null);
     }
+    
+    // Fetch fresh image URL from the API
+    const fetchImageUrl = async () => {
+      if (experience.id) {
+        try {
+          setIsLoadingImage(true);
+          const response = await axios.get(`${API_URL}/api/experiences/get-image/${experience.id}`, { 
+            withCredentials: true 
+          });
+          
+          if (response.data && response.data.image_url) {
+            setLocationImageUrl(response.data.image_url);
+          }
+        } catch (error) {
+          console.error('Error fetching image URL:', error);
+          // Fallback to the stored URL if there's an error
+          setLocationImageUrl(experience.location_image);
+        } finally {
+          setIsLoadingImage(false);
+        }
+      }
+    };
+    
+    fetchImageUrl();
   }, [experience]);
   
-  // Function to change badge color based on experience type
-  const badgeColor = (type) => {
-    const colors = {
-      'Restaurant': 'bg-red-100 text-red-700',
-      'Cafe': 'bg-orange-100 text-orange-700',
-      'Bar': 'bg-purple-100 text-purple-700',
-      'Park': 'bg-green-100 text-green-700',
-      'Museum': 'bg-blue-100 text-blue-700',
-      'Theater': 'bg-indigo-100 text-indigo-700',
-      'Concert': 'bg-pink-100 text-pink-700',
-      'Hiking': 'bg-teal-100 text-teal-700',
-      'Beach': 'bg-cyan-100 text-cyan-700',
-      'Shopping': 'bg-amber-100 text-amber-700',
-      'Sports': 'bg-lime-100 text-lime-700',
-      'Festival': 'bg-fuchsia-100 text-fuchsia-700',
-      'Class': 'bg-yellow-100 text-yellow-700',
-      'Club': 'bg-violet-100 text-violet-700'
-    };
-    return colors[type] || 'bg-gray-100 text-gray-700';
-  };
-  
-  // Handle image error
+  // Function to handle image load errors by providing a fallback
   const handleImageError = () => {
-    // Fallback to a default image based on the experience type
-    return `https://source.unsplash.com/featured/?${encodeURIComponent(experience.experience_type || 'experience')}`;
+    // Fallback to a location-based Unsplash image
+    const locationForImage = experience.place_name || experience.location.split(',')[0].trim();
+    return `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
   };
   
-  // Function to open Google Maps directions
+  // Helper function to generate badge colors based on experience type
+  const badgeColor = (type) => {
+    const typeMap = {
+      'Restaurant': 'bg-red-100 text-red-800',
+      'Bar': 'bg-purple-100 text-purple-800',
+      'Cafe': 'bg-amber-100 text-amber-800',
+      'Activity': 'bg-blue-100 text-blue-800',
+      'Outdoors': 'bg-green-100 text-green-800',
+      'Other': 'bg-gray-100 text-gray-800'
+    };
+    
+    return typeMap[type] || 'bg-gray-100 text-gray-800';
+  };
+  
   const openDirections = () => {
+    let url;
     if (experience.latitude && experience.longitude) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${experience.latitude},${experience.longitude}`);
+      url = `https://www.google.com/maps/search/?api=1&query=${experience.latitude},${experience.longitude}`;
     } else {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}`);
+      url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}`;
     }
+    window.open(url, '_blank');
   };
   
   return (
@@ -81,9 +102,13 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
     >
       {/* Card image */}
       <div className="h-48 bg-gray-200 relative overflow-hidden">
-        {experience.location_image ? (
+        {isLoadingImage ? (
+          <div className={`w-full h-full bg-gradient-to-r ${randomGradient()} flex items-center justify-center p-4`}>
+            <span className="text-white text-xl font-medium text-center">Loading...</span>
+          </div>
+        ) : locationImageUrl ? (
           <img 
-            src={experience.location_image} 
+            src={locationImageUrl} 
             alt={experience.location}
             className="w-full h-full object-cover"
             onError={(e) => {

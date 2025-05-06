@@ -74,32 +74,22 @@ def create_experience(current_user_id=None):
             }
         }
         
-        # Try to index the experience
-        if backend.utils.recommender_utils.pinecone_initialized:
-            # Do the indexing in a try-except block that can't affect the main response
-            try:
-                print(f"Attempting to index experience {new_experience.id} in Pinecone...")
-                index_result = index_experience(new_experience)
-                if index_result:
-                    print(f"Experience indexed in Pinecone successfully")
-                    response_data['indexed'] = True
-                else:
-                    print(f"Warning: Failed to index experience in Pinecone, but continuing")
-                    response_data['indexed'] = False
-            except Exception as index_error:
-                print(f"Error indexing experience in Pinecone: {index_error}")
-                response_data['indexed'] = False
-        else:
-            print("Pinecone not initialized. Skipping vector indexing.")
-            response_data['indexed'] = False
+        # Index the experience in the recommender system
+        try:
+            # Only index if pinecone is enabled
+            if hasattr(backend.utils.recommender_utils, 'get_pinecone_index'):
+                index_success = index_experience(new_experience)
+                if not index_success:
+                    print(f"Warning: Failed to index experience {new_experience.id} in Pinecone")
+        except Exception as e:
+            print(f"Error indexing experience: {e}")
+            # Don't return an error to the client - the experience was created
         
-        # Return success response
         return jsonify(response_data)
-        
-    except Exception as db_error:
-        print(f"Database error creating experience: {db_error}")
+    except Exception as e:
+        print(f"Error creating experience: {e}")
         db.session.rollback()
-        return jsonify({'detail': f'Database error: {str(db_error)}'}), 500
+        return jsonify({'detail': str(e)}), 500
 
 @experience_bp.route('/api/experiences', methods=['GET'])
 @login_required()
@@ -171,44 +161,98 @@ def get_my_experiences(current_user_id=None):
         print(f"Error fetching user experiences: {e}")
         return jsonify({'detail': str(e)}), 500
 
+@experience_bp.route('/api/experiences/get-image/<int:experience_id>', methods=['GET'])
+@login_required()
+def get_experience_image(experience_id, current_user_id=None):
+    """Get a fresh location image for an experience using Google Places API"""
+    try:
+        # Fetch the experience
+        experience = Experience.query.get(experience_id)
+        if not experience:
+            return jsonify({'detail': 'Experience not found'}), 404
+        
+        # Import the necessary functions for getting images
+        from ..utils.image_utils import get_photo_url, get_place_details, find_place_from_text, select_best_photo
+        
+        image_url = None
+        
+        # Try using place_id first if available
+        if experience.place_id:
+            place_details = get_place_details(experience.place_id)
+            
+            if place_details and place_details.get('photos'):
+                photos = place_details.get('photos')
+                best_photo = select_best_photo(photos, place_details)
+                
+                if best_photo:
+                    image_url = get_photo_url(best_photo['photo_reference'])
+        
+        # If place_id doesn't work or doesn't exist, try using the location
+        if not image_url and experience.location:
+            place = find_place_from_text(experience.location)
+            
+            if place:
+                if place.get('photos'):
+                    best_photo = select_best_photo(place['photos'], place)
+                    
+                    if best_photo:
+                        image_url = get_photo_url(best_photo['photo_reference'])
+                        
+                # If findplacefromtext didn't return photos but did give us a place_id,
+                # try getting details which often contains more photos
+                if not image_url and place.get('place_id'):
+                    place_details = get_place_details(place['place_id'])
+                    
+                    if place_details and place_details.get('photos'):
+                        best_photo = select_best_photo(place_details['photos'], place_details)
+                        
+                        if best_photo:
+                            image_url = get_photo_url(best_photo['photo_reference'])
+        
+        # If we still don't have an image, fall back to the stored image
+        if not image_url:
+            image_url = experience.location_image
+        
+        return jsonify({'image_url': image_url})
+    except Exception as e:
+        print(f"Error getting experience image: {e}")
+        return jsonify({'detail': str(e), 'image_url': None}), 500
+
 @experience_bp.route('/api/experiences/<int:experience_id>', methods=['DELETE'])
 @login_required()
 def delete_experience(experience_id, current_user_id=None):
     try:
-        # Get the experience
-        experience = db.session.get(Experience, experience_id)
+        # Fetch experience
+        experience = Experience.query.get(experience_id)
+        
+        # Check if experience exists
         if not experience:
             return jsonify({'detail': 'Experience not found'}), 404
-            
-        # Check if the user owns this experience
+        
+        # Check if user is authorized to delete this experience
         if experience.user_id != current_user_id:
-            return jsonify({'detail': 'You can only delete your own experiences'}), 403
+            return jsonify({'detail': 'You are not authorized to delete this experience'}), 403
         
-        # Delete the experience from Pinecone
-        if backend.utils.recommender_utils.pinecone_initialized and backend.utils.recommender_utils.pinecone_index:
-            try:
-                # Delete the experience from Pinecone index
-                backend.utils.recommender_utils.pinecone_index.delete(ids=[f"exp_{experience_id}"])
-                print(f"Deleted experience {experience_id} from Pinecone index")
-            except Exception as e:
-                print(f"Error deleting from Pinecone: {e}")
+        # Get related matches and swipes for cleanup
+        matches = Match.query.filter(
+            (Match.experience_id == experience_id) | 
+            (Match.matching_experience_id == experience_id)
+        ).all()
         
-        # Delete any matches related to this experience
-        matches = Match.query.filter_by(experience_id=experience_id).all()
+        swipes = UserSwipe.query.filter(
+            (UserSwipe.experience_id == experience_id) | 
+            (UserSwipe.swiped_experience_id == experience_id)
+        ).all()
+        
+        # Delete related records
         for match in matches:
-            print(f"Deleting match {match.id} for experience {experience_id}")
             db.session.delete(match)
-        
-        # Delete any user swipes related to this experience
-        swipes = UserSwipe.query.filter_by(experience_id=experience_id).all()
+            
         for swipe in swipes:
-            print(f"Deleting user swipe {swipe.id} for experience {experience_id}")
             db.session.delete(swipe)
         
         # Delete the experience
-        print(f"Deleting experience {experience_id}")
         db.session.delete(experience)
-        
         db.session.commit()
         
         return jsonify({'message': 'Experience deleted successfully'}), 200
@@ -221,46 +265,48 @@ def delete_experience(experience_id, current_user_id=None):
 @login_required()
 def update_experience(experience_id, current_user_id=None):
     try:
-        # Get the experience
-        experience = db.session.get(Experience, experience_id)
+        # Fetch experience
+        experience = Experience.query.get(experience_id)
+        
+        # Check if experience exists
         if not experience:
             return jsonify({'detail': 'Experience not found'}), 404
-            
-        # Check if the user owns this experience
+        
+        # Check if user is authorized to update this experience
         if experience.user_id != current_user_id:
-            return jsonify({'detail': 'You can only update your own experiences'}), 403
-            
-        # Update the experience
+            return jsonify({'detail': 'You are not authorized to update this experience'}), 403
+        
+        # Update experience attributes
         data = request.json
         
-        # Update fields
-        if 'experience_type' in data:
+        if 'experience_type' in data and data['experience_type'].strip():
             experience.experience_type = data['experience_type'].strip()
+            
         if 'experience_name' in data:
-            experience.experience_name = data['experience_name'].strip()
-        if 'location' in data:
+            experience.experience_name = data['experience_name'].strip() if data['experience_name'] else None
+            
+        if 'location' in data and data['location'].strip():
             experience.location = data['location'].strip()
+            
         if 'description' in data:
-            experience.description = data['description'].strip()
+            experience.description = data['description'].strip() if data['description'] else None
+            
         if 'latitude' in data:
             experience.latitude = data['latitude']
+            
         if 'longitude' in data:
             experience.longitude = data['longitude']
+            
         if 'place_id' in data:
             experience.place_id = data['place_id']
+            
         if 'place_name' in data:
             experience.place_name = data['place_name']
+            
         if 'location_image' in data:
             experience.location_image = data['location_image']
-            
+        
         db.session.commit()
-        
-        user = User.query.get(current_user_id)
-        
-        # Update the experience in Pinecone
-        if backend.utils.recommender_utils.pinecone_initialized:
-            index_experience(experience, user)
-            print(f"Experience {experience.id} updated in Pinecone index")
         
         return jsonify({
             'message': 'Experience updated successfully',
