@@ -260,7 +260,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
           </div>
         ))}
         
-        {/* Empty placeholder slots */}
+        {/* placeholder slots  */}
         {Array.from({ length: Math.max(0, maxImages - images.length) }).map((_, index) => (
           <div key={`empty-${index}`} className="border-2 border-dashed border-gray-300 rounded-lg h-40 flex items-center justify-center">
             <span className="text-gray-400">No Image</span>

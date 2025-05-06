@@ -19,6 +19,7 @@ import axios from 'axios';
 
 // Context Provider
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { API_URL } from './config'
 
 // Create CSRF Token Context
 const CSRFTokenContext = React.createContext(null);
@@ -64,8 +65,7 @@ function App() {
   useEffect(() => {
     const fetchCSRFToken = async () => {
       try {
-        const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-        const response = await axios.get(`${apiUrl}/api/csrf-token`)
+        const response = await axios.get(`${API_URL}/api/csrf-token`)
         if (response.status === 200) {
           setCSRFToken(response.data.csrf_token);
         } else {

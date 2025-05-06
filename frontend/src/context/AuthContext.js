@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { API_URL } from '../config';
 import { useCSRFToken } from '../App';
 import axios from 'axios';
 
@@ -23,9 +24,8 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setAuthLoading(true);
       try {
-        const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
         // Check if the user is authenticated with CAS
-        const response = await axios.get(`${apiUrl}/api/cas/status`, {
+        const response = await axios.get(`${API_URL}/api/cas/status`, {
           withCredentials: true, // important for session cookies
           headers: {
             'Content-Type': 'application/json',
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
           
           // If authenticated, load user profile
           if (data.authenticated) {
-            const profileResponse = await axios.get(`${apiUrl}/api/me`, {
+            const profileResponse = await axios.get(`${API_URL}/api/me`, {
               withCredentials: true,
               headers: {
                 'Content-Type': 'application/json',
@@ -107,8 +107,7 @@ export const AuthProvider = ({ children }) => {
   // initiate CAS login
   const loginWithCAS = async (callback_url = '/') => {
     try {
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.get(`${apiUrl}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`, {
+      const response = await axios.get(`${API_URL}/api/cas/login?callback_url=${encodeURIComponent(callback_url)}`, {
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
@@ -144,8 +143,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       // First, check if the user is authenticated with CAS
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const statusResponse = await axios.get(`${apiUrl}/api/cas/status`, {
+      const statusResponse = await axios.get(`${API_URL}/api/cas/status`, {
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
@@ -194,8 +192,7 @@ export const AuthProvider = ({ children }) => {
       const loginUrl = `${currentUrl}/login`;
       
       // Logout from backend session
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.get(`${apiUrl}/api/cas/logout?frontend_url=${encodeURIComponent(currentUrl)}`, {
+      const response = await axios.get(`${API_URL}/api/cas/logout?frontend_url=${encodeURIComponent(currentUrl)}`, {
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken

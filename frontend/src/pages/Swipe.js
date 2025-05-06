@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
+import { API_URL } from '../config';
 import axios from 'axios';
 import { useCSRFToken } from '../App';
 import { motion } from 'framer-motion';
 import './Swipe.css'; // Import the CSS file
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const Swipe = () => {
   const [experiences, setExperiences] = useState([]);
@@ -20,7 +21,6 @@ const Swipe = () => {
   const originalExperiencesRef = useRef([]); // Keep original experiences order for cycling
   const { user, authTokens } = useContext(AuthContext);
   const csrfToken = useCSRFToken();
-  const navigate = useNavigate();
 
   const fetchExperiences = async () => {
     try {
@@ -42,16 +42,7 @@ const Swipe = () => {
         return;
       }
       
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      
-      // Get potential matches only if not already swiping on one
-      const response = await axios.get(`${apiUrl}/api/potential-matches`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CsrfToken': csrfToken
-        },
-        withCredentials: true
-      });
+      const response = await axios.get(`${API_URL}/api/swipe-experiences`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
       
       if (response.status !== 200) {
         throw new Error(`Failed to fetch experiences: ${response.status}`);
@@ -170,16 +161,12 @@ const Swipe = () => {
       const currentExperience = experiences[currentIndex];
       if (!currentExperience) return;
       
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.post(`${apiUrl}/api/swipe`, {
-        experience_id: currentExperience.id,
-        liked: isLike
-      }, {
+      // Send swipe to backend
+      const response = await axios.post(`${API_URL}/api/swipes`, { experience_id: currentExperience.id, is_like: isLike }, { withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
-        },
-        withCredentials: true
+        }
       });
 
       if (response.status !== 200) {

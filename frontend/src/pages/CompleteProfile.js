@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { API_URL } from '../config';
 import { useCSRFToken } from '../App';
 import axios from 'axios';
 const CompleteProfile = () => {
@@ -101,8 +102,7 @@ const CompleteProfile = () => {
     
     try {
       // Update user profile
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.put(`${apiUrl}/api/users/${user.sub}`, formData, {
+      const response = await axios.put(`${API_URL}/api/users/${user.sub}`, formData, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authTokens.access}`,

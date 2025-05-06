@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { createRoutesFromChildren, Link } from 'react-router-dom';
 import { useCSRFToken } from '../App'
 import axios from 'axios';
+import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
@@ -28,8 +29,7 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
       setLoading(true);
       setError(null);
       
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.get(`${apiUrl}/api/users/${userId}/profile`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken } });
+      const response = await axios.get(`${API_URL}/api/users/${userId}/profile`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken } });
       
       if (response.status !== 200) {
         throw new Error('Failed to fetch user profile');
@@ -285,8 +285,7 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
       setLoading(true);
       setError(null);
       
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.get(`${apiUrl}/api/users/${user.id}/contact`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
+      const response = await axios.get(`${API_URL}/api/users/${user.id}/contact`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
       const data = await response.data;
       setContactInfo(data);
     } catch (err) {
@@ -516,8 +515,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
       // Update experience location_image in the backend to avoid fetching new random images on reload
       for (const item of imagesToUpdate) {
         try {
-          const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-          await axios.put(`${apiUrl}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true, 
+          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true, 
             headers: {
               'Content-Type': 'application/json'
             }});
@@ -755,8 +753,7 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
       // Update experience location_image in the backend to avoid fetching new random images on reload
       for (const item of imagesToUpdate) {
         try {
-          const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-          await axios.put(`${apiUrl}/api/experiences/${item.experienceId}`, { location_image: item.imageUrl }, { withCredentials: true,
+          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, { location_image: item.imageUrl }, { withCredentials: true,
             headers: {
               'Content-Type': 'application/json',
               'X-CsrfToken': csrfToken
@@ -947,8 +944,7 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
       // Update experience location_image in the backend to avoid fetching new random images on reload
       for (const item of imagesToUpdate) {
         try {
-          const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-          await axios.put(`${apiUrl}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true,
+          await axios.put(`${API_URL}/api/experiences/${item.experienceId}`, {location_image: item.imageUrl}, { withCredentials: true,
             headers: {
               'Content-Type': 'application/json',
               'X-CsrfToken': csrfToken
@@ -1139,13 +1135,19 @@ const Matches = () => {
   };
   
   const fetchMatches = async () => {
-    setLoading(true);
     try {
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.get(`${apiUrl}/api/matches/${user.id}`, {
-        headers: { 'X-CsrfToken': csrfToken },
-        withCredentials: true
-      });
+      setLoading(true);
+      setError(null);
+      
+      if (!user || !user.id) {
+        throw new Error('User not authenticated');
+      }
+      
+      const response = await axios.get(`${API_URL}/api/matches/${user.id}`, { withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }});
       
       if (response.status !== 200) {
         throw new Error(`Failed to fetch matches: ${response.status}`);
@@ -1176,10 +1178,11 @@ const Matches = () => {
     try {
       setError(null);
       
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.put(`${apiUrl}/api/matches/${matchId}/accept`, {}, {
-        headers: { 'X-CsrfToken': csrfToken },
-        withCredentials: true
+      const response = await axios.put(`${API_URL}/api/matches/${matchId}/accept`, {}, { withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }
       });
       
       if (response.status !== 200) {
@@ -1199,10 +1202,11 @@ const Matches = () => {
     try {
       setError(null);
       
-      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
-      const response = await axios.put(`${apiUrl}/api/matches/${matchId}/reject`, {}, {
-        headers: { 'X-CsrfToken': csrfToken },
-        withCredentials: true
+      const response = await axios.put(`${API_URL}/api/matches/${matchId}/reject`, {}, { withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        }
       });
       
       if (response.status !== 200) {

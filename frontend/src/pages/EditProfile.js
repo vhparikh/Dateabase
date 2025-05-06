@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { useCSRFToken } from '../App';
 import axios from 'axios';
+import { API_URL } from '../config';
 import ProfileImageUpload from '../components/ProfileImageUpload';
 
 const EditProfile = () => {
