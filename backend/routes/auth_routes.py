@@ -91,7 +91,7 @@ def cas_callback():
                 name=display_name,
                 gender='Other',
                 class_year=2025,
-                interests='{"hiking": true, "dining": true, "movies": true, "study": true}',
+                interests='{"hiking": false, "dining": false, "movies": false, "study": false, "sports": false, "music": false, "art": false, "travel": false}',
                 profile_image=f'https://ui-avatars.com/api/?name={netid}&background=orange&color=fff',
                 password_hash=secrets.token_hex(16),
                 onboarding_completed=False,
