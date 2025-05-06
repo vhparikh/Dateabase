@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { getExperiences, getCurrentUser } from '../services/api';
 import ProfileImageUpload from '../components/ProfileImageUpload';
-import { API_URL } from '../config';
 import axios from 'axios';
 import { useCSRFToken } from '../App';
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -371,7 +370,8 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const isInappropriate = async (text) => {
     console.log('Checking for inappropriate content:', text);
     try {
-      const response = await axios.post(`${API_URL}/api/check-inappropriate`, { text: text }, { 
+      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+      const response = await axios.post(`${apiUrl}/api/check-inappropriate`, { text: text }, { 
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
@@ -653,7 +653,8 @@ const Experiences = () => {
     const fetchExperiences = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {
+        const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+        const response = await axios.get(`${apiUrl}/api/my-experiences`, { withCredentials: true, headers: {
           'X-CsrfToken': csrfToken
         } 
       });
@@ -694,7 +695,8 @@ const Experiences = () => {
       // Real API call for saving with session authentication
       if (experienceData.id) {
         // PUT request for updating an experience
-        const response = await axios.put(`${API_URL}/api/experiences/${experienceData.id}`, experienceData, {
+        const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+        const response = await axios.put(`${apiUrl}/api/experiences/${experienceData.id}`, experienceData, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
@@ -717,7 +719,8 @@ const Experiences = () => {
       } else {
         // POST request for creating a new experience
         console.log('Creating new experience');
-        const response = await axios.post(`${API_URL}/api/experiences`, experienceData, {
+        const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+        const response = await axios.post(`${apiUrl}/api/experiences`, experienceData, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
@@ -741,7 +744,8 @@ const Experiences = () => {
       const fetchExperiences = async () => {
         try {
           setLoading(true);
-          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {'X-CsrfToken': csrfToken } });
+          const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+          const response = await axios.get(`${apiUrl}/api/my-experiences`, { withCredentials: true, headers: {'X-CsrfToken': csrfToken } });
           if (response.status !== 200) {
             throw new Error('Failed to fetch experiences');
           }
@@ -771,7 +775,8 @@ const Experiences = () => {
       setLoading(true);
       
       // Make DELETE request to delete the experience
-      const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { withCredentials: true, headers: {
+      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+      const response = await axios.delete(`${apiUrl}/api/experiences/${experienceId}`, { withCredentials: true, headers: {
         'X-CsrfToken': csrfToken
       } });
       
@@ -784,7 +789,8 @@ const Experiences = () => {
       const fetchExperiences = async () => {
         try {
           setLoading(true);
-          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {
+          const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+          const response = await axios.get(`${apiUrl}/api/my-experiences`, { withCredentials: true, headers: {
             'X-CsrfToken': csrfToken
           } 
         });

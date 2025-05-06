@@ -1,7 +1,6 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { API_URL } from '../config';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { Autocomplete } from '@react-google-maps/api';
 import { useCSRFToken } from '../App';
@@ -231,7 +230,8 @@ const CreateExperience = () => {
   const createExperience = async (experienceData) => {
     try {
       // Use fetch directly with credentials: 'include' to ensure cookies are sent
-      const response = await axios.post(`${API_URL}/api/experiences`, experienceData, 
+      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+      const response = await axios.post(`${apiUrl}/api/experiences`, experienceData, 
         { withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
