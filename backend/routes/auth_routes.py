@@ -80,6 +80,8 @@ def cas_callback():
         if not user:
             is_new_user = True
 
+            # Get attributes from user_info instead of using undefined variable
+            attributes = user_info.get('attributes', {})
             display_name = attributes.get('displayName', f"{netid.capitalize()} User")
             
             # Create a new user
