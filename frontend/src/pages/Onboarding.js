@@ -177,7 +177,7 @@ const Onboarding = () => {
     try {
       console.log('Starting onboarding completion process...');
       
-      // Validate email (now required)
+      // Validate email
       if (!formData.preferred_email) {
         setError('Email address is required.');
         setLoading(false);
@@ -192,7 +192,6 @@ const Onboarding = () => {
       }
       
       // Properly format user data from form fields
-      // Use the classYear field for class_year (resolving the mismatch)
       const userData = {
         name: formData.name,
         gender: formData.gender,
@@ -234,16 +233,11 @@ const Onboarding = () => {
       
       const data = response.data;
       console.log('Onboarding completed successfully:', data);
-      
-      // Skip token refresh since the endpoint doesn't exist
-      // Instead, directly load user profile
         
       // Force reload user profile and wait for it to complete
       const userProfile = await loadUserProfile();
       console.log('User profile loaded after onboarding:', userProfile);
       
-      // If we got the user profile but onboarding_completed is still false,
-      // manually update it to ensure AppWrapper doesn't redirect back to onboarding
       if (userProfile) {
         console.log('Updating user context with completed onboarding status');
         setUser({
@@ -256,8 +250,6 @@ const Onboarding = () => {
       console.log('Navigating to home page...');
       window.localStorage.setItem('onboardingCompleted', 'true');
       
-      // Use window.location for a hard redirect to avoid routing issues
-      // This is more reliable than using navigate() from react-router
       window.location.href = '/swipe';
       return true;
     } catch (error) {
@@ -268,7 +260,7 @@ const Onboarding = () => {
     }
   };
 
-  // Render step 1: Basic profile info
+  // Basic profile info
   const renderStep1 = () => (
     <div className="space-y-6">
       <div>
@@ -339,7 +331,7 @@ const Onboarding = () => {
     </div>
   );
   
-  // Render step 2: Location and education
+  // Location and education
   const renderStep2 = () => (
     <div className="space-y-6">
       <div>
@@ -441,7 +433,7 @@ const Onboarding = () => {
     </div>
   );
   
-  // Get available prompts (excluding already selected ones except the current field)
+  // Get available prompts
   const getAvailablePrompts = (currentField) => {
     const selectedPrompts = [];
     
@@ -452,7 +444,7 @@ const Onboarding = () => {
     return promptOptions.filter(prompt => !selectedPrompts.includes(prompt));
   };
 
-  // Render step 3: Prompts and answers
+  // Prompts and answers
   const renderStep3 = () => (
     <div className="space-y-6">
       <div>
