@@ -49,8 +49,18 @@ export const AuthProvider = ({ children }) => {
             
             if (profileResponse.status === 200) {
               const profileData = profileResponse.data;
-              console.log('User profile loaded');
-              setUser(profileData);
+              // Check if user is authenticated but not registered
+              if (profileData.registered === false) {
+                setUser(null); // No user object yet
+                // Store the netid in session storage for onboarding flow
+                // sessionStorage.setItem('tempNetid', profileData.netid);
+                // Will need to redirect to registration/onboarding
+                // window.location.href = '/onboarding';
+              } else {
+                // Normal case - user is registered
+                console.log('User profile loaded');
+                setUser(profileData);
+              }
             }
           } else {
             // Not authenticated with CAS, clear user data
