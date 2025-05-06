@@ -451,6 +451,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               name="experience_name"
               value={formData.experience_name}
               onChange={handleChange}
+              maxLength={30}
               placeholder="Give your experience a memorable name"
               className={`w-full px-3 py-2 border ${errors.experience_name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
             />
