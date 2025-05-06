@@ -5,6 +5,40 @@ import axios from 'axios';
 import { useCSRFToken } from '../App';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
+// Add axios interceptors for debugging
+axios.interceptors.request.use(request => {
+  console.log('Starting Request', {
+    url: request.url,
+    method: request.method,
+    headers: request.headers,
+    data: request.data
+  });
+  return request;
+});
+
+axios.interceptors.response.use(
+  response => {
+    console.log('Response:', {
+      status: response.status,
+      headers: response.headers,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    console.error('Response Error:', {
+      message: error.message,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      } : 'No response',
+      request: error.request || 'No request'
+    });
+    return Promise.reject(error);
+  }
+);
+
 // Define libraries array outside component to prevent recreation on each render
 const libraries = ["places"];
 
@@ -757,16 +791,26 @@ const Experiences = () => {
   const handleDeleteExperience = async (experienceId) => {
     try {
       setLoading(true);
+      console.log(`Attempting to delete experience with ID: ${experienceId}`);
       
       // Make DELETE request to delete the experience
-      const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { withCredentials: true, headers: {
-        'X-CsrfToken': csrfToken
-      } });
+      const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { 
+        withCredentials: true, 
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
+        } 
+      });
+      
+      console.log('Delete response:', response);
       
       if (response.status !== 200) {
         const errorData = response.data;
+        console.error('Server returned non-200 status:', response.status, errorData);
         throw new Error(errorData.detail || 'Failed to delete experience');
       }
+      
+      console.log('Experience deleted successfully');
       
       // Refresh experiences after successful deletion
       const fetchExperiences = async () => {
@@ -795,8 +839,15 @@ const Experiences = () => {
       setLoading(false);
     } catch (err) {
       console.error('Error deleting experience:', err);
-      setError('Failed to delete experience. Please try again.');
+      if (err.response) {
+        console.error('Error response:', err.response.status, err.response.data);
+        setError(`Failed to delete experience. Server error: ${err.response.status} ${err.response.data?.detail || ''}`);
+      } else {
+        setError(`Failed to delete experience: ${err.message}`);
+      }
       setLoading(false);
+      // Close the modal even on error
+      setDeleteModal({ isOpen: false, experienceId: null });
     }
   };
 
@@ -829,7 +880,7 @@ const Experiences = () => {
               key={experience.id}
               experience={experience}
               onEdit={handleEditExperience}
-              onDelete={handleDeleteExperience}
+              onDelete={(id) => setDeleteModal({ isOpen: true, experienceId: id })}
             />
           ))}
         </div>
