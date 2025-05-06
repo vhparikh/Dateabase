@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import AuthContext from '../context/AuthContext';
 import { API_URL } from '../config';
 import axios from 'axios';
@@ -14,15 +14,15 @@ const Swipe = () => {
   const [error, setError] = useState(null);
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
-  const [animationStep, setAnimationStep] = useState(0); // Track animation progress
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
   const [allExperiencesCompleted, setAllExperiencesCompleted] = useState(false); // Track if user has swiped through all experiences
   const originalExperiencesRef = useRef([]); // Keep original experiences order for cycling
-  const { user, authTokens } = useContext(AuthContext);
+  const animationStepRef = useRef(0); // Track animation progress
+  const { user } = useContext(AuthContext);
   const csrfToken = useCSRFToken();
 
-  const fetchExperiences = async () => {
+  const fetchExperiences = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -32,7 +32,7 @@ const Swipe = () => {
       setCurrentIndex(0);
       setCurrentPosition({ x: 0, y: 0 });
       setSwipeDirection(null);
-      setAnimationStep(0);
+      animationStepRef.current = 0;
       
       // Check if user is logged in
       if (!user?.id) {
@@ -70,11 +70,11 @@ const Swipe = () => {
       // After initial data load, mark as no longer the initial page load
       setIsInitialLoad(false);
     }
-  };
+  }, [user?.id, csrfToken]);
 
   useEffect(() => {
     fetchExperiences();
-  }, [user.id, authTokens]);
+  }, [fetchExperiences]);
   
   // Make sure swipeDirection is properly initialized as null
   useEffect(() => {
@@ -104,7 +104,7 @@ const Swipe = () => {
       // Ensure we still reset state on error
       setCurrentPosition({ x: 0, y: 0 });
       setSwipeDirection(null);
-      setAnimationStep(0);
+      animationStepRef.current = 0;
       setIsAnimating(false); // Reset animation state on error
     }
   };
@@ -114,45 +114,38 @@ const Swipe = () => {
     const totalSteps = 16;
     // Define the max distance the card should move
     const maxDistance = isLike ? 500 : -500;
-    // Define the max rotation
-    const maxRotation = isLike ? 30 : -30;
     
     // Set initial animation step
-    setAnimationStep(1);
+    animationStepRef.current = 1;
     
     // Create an animation sequence
     const animationInterval = setInterval(() => {
-      setAnimationStep(prevStep => {
-        const nextStep = prevStep + 1;
+      animationStepRef.current += 1;
+      
+      // Calculate progress ratio (0 to 1)
+      const progress = animationStepRef.current / totalSteps;
+      
+      // Apply easing function for more natural movement
+      // Using cubic-bezier like easing for smooth acceleration and deceleration
+      const easedProgress = progress < 0.5 
+        ? 4 * progress * progress * progress 
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
         
-        // Calculate progress ratio (0 to 1)
-        const progress = nextStep / totalSteps;
-        
-        // Apply easing function for more natural movement
-        // Using cubic-bezier like easing for smooth acceleration and deceleration
-        const easedProgress = progress < 0.5 
-          ? 4 * progress * progress * progress 
-          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-          
-        // Calculate new position and rotation with easing
-        const newX = maxDistance * easedProgress;
-        const newRotation = maxRotation * easedProgress;
-        
-        // Update card position with easing
-        setCurrentPosition({ 
-          x: newX, 
-          y: 0 
-        });
-        
-        // If we've completed all steps, clear the interval and finish the swipe
-        if (nextStep >= totalSteps) {
-          clearInterval(animationInterval);
-          finishSwipe(isLike);
-          return 0; // Reset step counter
-        }
-        
-        return nextStep;
+      // Calculate new position with easing
+      const newX = maxDistance * easedProgress;
+      
+      // Update card position with easing
+      setCurrentPosition({ 
+        x: newX, 
+        y: 0 
       });
+      
+      // If we've completed all steps, clear the interval and finish the swipe
+      if (animationStepRef.current >= totalSteps) {
+        clearInterval(animationInterval);
+        finishSwipe(isLike);
+        animationStepRef.current = 0; // Reset step counter
+      }
     }, 15); // Run even faster at 15ms for quicker animation
   };
   

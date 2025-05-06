@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useCSRFToken } from '../App'
 import axios from 'axios';
@@ -18,13 +18,7 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
 
   const csrfToken = useCSRFToken();
 
-  useEffect(() => {
-    if (isOpen && userId) {
-      fetchUserProfile();
-    }
-  }, [isOpen, userId, fetchUserProfile, csrfToken]);
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -43,7 +37,13 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, csrfToken]);
+
+  useEffect(() => {
+    if (isOpen && userId) {
+      fetchUserProfile();
+    }
+  }, [isOpen, userId, fetchUserProfile]);
 
   // Format the interests from JSON string to an array of selected interests
   const renderInterests = () => {
@@ -201,7 +201,7 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
                           <div key={image.id} className="aspect-square rounded-lg overflow-hidden">
                             <img 
                               src={image.url} 
-                              alt={`${userProfile.name}'s photo`} 
+                              alt={`${userProfile.name}`} 
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -275,13 +275,7 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   const [error, setError] = useState(null);
   const csrfToken = useCSRFToken();
   
-  useEffect(() => {
-    if (isOpen && user) {
-      fetchContactInfo();
-    }
-  }, [isOpen, user, fetchContactInfo, csrfToken]);
-
-  const fetchContactInfo = async () => {
+  const fetchContactInfo = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -295,7 +289,13 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, csrfToken]);
+  
+  useEffect(() => {
+    if (isOpen && user) {
+      fetchContactInfo();
+    }
+  }, [isOpen, user, fetchContactInfo]);
   
   if (!isOpen) return null;
   
@@ -528,7 +528,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
     };
     
     loadImages();
-  }, [experiences]);
+  }, [experiences, activeExperience, locationImages]);
 
   const openGoogleMaps = () => {
     if (activeExperience.experience.latitude && activeExperience.experience.longitude) {
@@ -713,7 +713,6 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);
   const [locationImages, setLocationImages] = useState({});
-  const csrfToken = useCSRFToken();
   
   // Load location images on component mount
   useEffect(() => {
@@ -758,7 +757,7 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
     };
     
     loadImages();
-  }, [experiences]);
+  }, [experiences, expandedExperience, locationImages]);
   
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
@@ -906,8 +905,6 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);
   const [locationImages, setLocationImages] = useState({});
-
-  const csrfToken = useCSRFToken();
   
   // Load location images on component mount
   useEffect(() => {
@@ -952,7 +949,7 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
     };
     
     loadImages();
-  }, [experiences]);
+  }, [experiences, expandedExperience, locationImages]);
   
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-card mb-4">
@@ -1104,27 +1101,7 @@ const Matches = () => {
   
   const { user } = useContext(AuthContext);
   
-  // Helper function to group matches by user
-  const groupMatchesByUser = (matches) => {
-    const grouped = {};
-    
-    matches.forEach(match => {
-      const userId = match.other_user.id;
-      
-      if (!grouped[userId]) {
-        grouped[userId] = {
-          user: match.other_user,
-          experiences: []
-        };
-      }
-      
-      grouped[userId].experiences.push(match);
-    });
-    
-    return grouped;
-  };
-  
-  const fetchMatches = async () => {
+  const fetchMatches = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -1149,6 +1126,26 @@ const Matches = () => {
       // Set the matches by category
       setPendingReceivedMatches(data.pending_received || []);
       
+      // Helper function to group matches by user
+      const groupMatchesByUser = (matches) => {
+        const grouped = {};
+        
+        matches.forEach(match => {
+          const userId = match.other_user.id;
+          
+          if (!grouped[userId]) {
+            grouped[userId] = {
+              user: match.other_user,
+              experiences: []
+            };
+          }
+          
+          grouped[userId].experiences.push(match);
+        });
+        
+        return grouped;
+      };
+      
       // Group matches by user
       setGroupedConfirmedMatches(groupMatchesByUser(data.confirmed || []));
       setGroupedPendingReceivedMatches(groupMatchesByUser(data.pending_received || []));
@@ -1160,7 +1157,7 @@ const Matches = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, csrfToken]);
   
   const handleAcceptMatch = async (matchId) => {
     try {
@@ -1214,7 +1211,7 @@ const Matches = () => {
     if (user) {
       fetchMatches();
     }
-  }, [user, csrfToken]);
+  }, [user, csrfToken, fetchMatches]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">

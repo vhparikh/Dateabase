@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../config';
-import AuthContext from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useCSRFToken } from '../App';

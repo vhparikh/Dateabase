@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../config';
 import axios from 'axios';
 import { useCSRFToken } from '../App';
@@ -11,7 +11,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
 
   const csrfToken = useCSRFToken();
   
-  const fetchUserImages = async () => {
+  const fetchUserImages = useCallback(async () => {
     try {
       setError(null);
       
@@ -32,12 +32,12 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       console.error('Error fetching user images:', err);
       setError('Failed to load images. Please try again.');
     }
-  };
+  }, [csrfToken]);
 
   // Fetch user's images on component mount
   useEffect(() => {
     fetchUserImages();
-  }, [userId, csrfToken]);
+  }, [userId, fetchUserImages]);
 
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];

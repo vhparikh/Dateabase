@@ -57,7 +57,7 @@ const Profile = () => {
       if (!userProfile || !userProfile.id) return;
       
       try {
-        const response = await getExperiences();
+        await getExperiences();
         // We don't need to store experiences in this component anymore
       } catch (err) {
         console.error('Failed to load experiences', err);
@@ -125,17 +125,6 @@ const Profile = () => {
         ))}
       </div>
     );
-  };
-  
-  // Function to get a random gradient for experience cards
-  const getRandomGradient = () => {
-    const gradients = [
-      'border-t-orange-500',
-      'border-t-orange-400',
-      'border-t-orange-600',
-      'border-t-accent-light',
-    ];
-    return gradients[Math.floor(Math.random() * gradients.length)];
   };
   
   // Determine if we have a profile image to show
