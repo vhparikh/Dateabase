@@ -1,4 +1,4 @@
-from database import db, User, Experience, Match, UserSwipe
+from backend.database import db, User, Experience, Match, UserSwipe
 from flask import Flask
 import os
 
