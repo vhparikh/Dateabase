@@ -18,14 +18,14 @@ const Header = () => {
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo and Brand Name */}
+          {/* logo */}
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
               <span className="text-2xl font-bold text-orange-500">DateABase</span>
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* desktop */}
           <nav className="hidden md:flex space-x-8">
             <Link to="/" className={`px-3 py-2 rounded-md text-sm ${isActive('/')}`}>
               Home
@@ -44,7 +44,7 @@ const Header = () => {
             </Link>
           </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile */}
           <div className="md:hidden">
             <button
               onClick={toggleMenu}
@@ -72,7 +72,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
+      {/* Mobile Navigation  */}
       {isMenuOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">

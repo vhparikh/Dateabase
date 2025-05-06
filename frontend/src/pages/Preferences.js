@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { API_URL } from '../config';
 import axios from 'axios';
 import { useCSRFToken } from '../App';
 
@@ -129,7 +128,8 @@ const Preferences = () => {
         interests_prefs: JSON.stringify(formData.interests_prefs)
       };
       
-      const response = await axios.put(`${API_URL}/api/me`, apiFormData, { withCredentials: true, 
+      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+      const response = await axios.put(`${apiUrl}/api/me`, apiFormData, { withCredentials: true, 
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken

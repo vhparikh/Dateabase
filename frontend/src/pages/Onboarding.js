@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { API_URL } from '../config';
 import axios from 'axios';
 import { useCSRFToken } from '../App';
 
@@ -217,7 +216,8 @@ const Onboarding = () => {
       console.log('Submitting onboarding data:', userData);
       
       // Make API call to complete onboarding
-      const response = await axios.post(`${API_URL}/api/users/complete-onboarding`, userData, { withCredentials: true, 
+      const apiUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5001');
+      const response = await axios.post(`${apiUrl}/api/users/complete-onboarding`, userData, { withCredentials: true, 
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
@@ -237,7 +237,7 @@ const Onboarding = () => {
       
       // Get fresh tokens after completing onboarding
       console.log('Refreshing tokens after onboarding completion...');
-      const tokenResponse = await axios.post(`${API_URL}/api/token/refresh`, { withCredentials: true,
+      const tokenResponse = await axios.post(`${apiUrl}/api/token/refresh`, { withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
