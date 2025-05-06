@@ -27,7 +27,7 @@ export const useCSRFToken = () => React.useContext(CSRFTokenContext);
 
 // Wrapper component that enforces authentication
 const AppWrapper = ({ children }) => {
-  const { user, authLoading, loadUserProfile } = useAuth();
+  const { user, authLoading } = useAuth();
   
   // While checking authentication status, show loading
   if (authLoading) {

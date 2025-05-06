@@ -4,7 +4,6 @@ import AuthContext from '../context/AuthContext';
 
 const CASCallback = () => {
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { handleCASCallback } = useContext(AuthContext);
@@ -32,7 +31,6 @@ const CASCallback = () => {
         if (!ticket && !casSuccess) {
           console.error('No CAS ticket or success parameters found in URL');
           setError('Authentication information missing. Please try logging in again.');
-          setLoading(false);
           return;
         }
 
@@ -59,8 +57,6 @@ const CASCallback = () => {
       } catch (err) {
         console.error('Error processing CAS callback:', err);
         setError('An error occurred during CAS authentication. Please try again.');
-      } finally {
-        setLoading(false);
       }
     };
 

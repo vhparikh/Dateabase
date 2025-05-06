@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { createRoutesFromChildren, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCSRFToken } from '../App'
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -22,7 +22,7 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
     if (isOpen && userId) {
       fetchUserProfile();
     }
-  }, [isOpen, userId]);
+  }, [isOpen, userId, fetchUserProfile, csrfToken]);
 
   const fetchUserProfile = async () => {
     try {
@@ -274,11 +274,12 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const csrfToken = useCSRFToken();
+  
   useEffect(() => {
     if (isOpen && user) {
       fetchContactInfo();
     }
-  }, [isOpen, user]);
+  }, [isOpen, user, fetchContactInfo, csrfToken]);
 
   const fetchContactInfo = async () => {
     try {
@@ -1092,9 +1093,7 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
 };
 
 const Matches = () => {
-  const [confirmedMatches, setConfirmedMatches] = useState([]);
   const [pendingReceivedMatches, setPendingReceivedMatches] = useState([]);
-  const [pendingSentMatches, setPendingSentMatches] = useState([]);
   const [groupedConfirmedMatches, setGroupedConfirmedMatches] = useState({});
   const [groupedPendingReceivedMatches, setGroupedPendingReceivedMatches] = useState({});
   const [groupedPendingSentMatches, setGroupedPendingSentMatches] = useState({});
@@ -1148,9 +1147,7 @@ const Matches = () => {
       console.log('Matches data:', data);
       
       // Set the matches by category
-      setConfirmedMatches(data.confirmed || []);
       setPendingReceivedMatches(data.pending_received || []);
-      setPendingSentMatches(data.pending_sent || []);
       
       // Group matches by user
       setGroupedConfirmedMatches(groupMatchesByUser(data.confirmed || []));
@@ -1217,7 +1214,7 @@ const Matches = () => {
     if (user) {
       fetchMatches();
     }
-  }, [user]);
+  }, [user, csrfToken]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 py-6">

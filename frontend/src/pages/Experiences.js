@@ -222,7 +222,6 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   });
   
   const [errors, setErrors] = useState({});
-  const [tagInput, setTagInput] = useState('');
   const autocompleteRef = useRef(null);
   const [mapCenter, setMapCenter] = useState(null);
   const csrfToken = useCSRFToken()
@@ -290,7 +289,6 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
     }
     
     setErrors({});
-    setTagInput('');
   }, [experience, isOpen]);
   
   const handleChange = (e) => {
@@ -631,9 +629,6 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, experienceId }) =
 };
 
 const Experiences = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
   const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -667,7 +662,7 @@ const Experiences = () => {
     };
 
     fetchExperiences();
-  }, []);
+  }, [csrfToken]);
 
   const handleAddExperience = () => {
     setCurrentExperience(null);

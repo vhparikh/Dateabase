@@ -1,20 +1,16 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { getExperiences, getCurrentUser } from '../services/api';
+import { getExperiences } from '../services/api';
 import ProfileImageUpload from '../components/ProfileImageUpload';
 import { API_URL } from '../config';
 import axios from 'axios';
 import { useCSRFToken } from '../App';
 
 const Profile = () => {
-  const { user, logoutUser, loadUserProfile } = useContext(AuthContext);
+  const { user, logoutUser } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [userExperiences, setUserExperiences] = useState([]);
   const [userProfile, setUserProfile] = useState(user); // Initialize with current context user
-  const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile'); // New state for tab management
   const csrfToken = useCSRFToken();
   
@@ -22,7 +18,6 @@ const Profile = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        setProfileLoading(true);
         const response = await axios.get(`${API_URL}/api/me`, {withCredentials: true, headers: {
           'Content-Type': 'application/json',
           'X-CsrfToken': csrfToken
@@ -48,16 +43,13 @@ const Profile = () => {
           // Still set user profile even if images fetch fails
           setUserProfile(response.data);
         }
-        
-        setProfileLoading(false);
       } catch (err) {
         console.error('Failed to load user profile', err);
-        setProfileLoading(false);
       }
     };
     
     fetchUserProfile();
-  }, []);
+  }, [csrfToken]);
   
   // Fetch user experiences
   useEffect(() => {
@@ -65,15 +57,10 @@ const Profile = () => {
       if (!userProfile || !userProfile.id) return;
       
       try {
-        setLoading(true);
         const response = await getExperiences();
-        // Filter experiences created by this user
-        const filteredExperiences = response.data.filter(exp => exp.user_id === userProfile.id);
-        setUserExperiences(filteredExperiences);
-        setLoading(false);
+        // We don't need to store experiences in this component anymore
       } catch (err) {
-        setError('Failed to load your experiences');
-        setLoading(false);
+        console.error('Failed to load experiences', err);
       }
     };
     

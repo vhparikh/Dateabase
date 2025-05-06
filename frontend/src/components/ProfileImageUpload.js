@@ -6,20 +6,13 @@ import { useCSRFToken } from '../App';
 
 const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
   const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
-  const csrfToken = useCSRFToken()
-
-  // Fetch user's images on component mount
-  useEffect(() => {
-    fetchUserImages();
-  }, [userId]);
-
+  const csrfToken = useCSRFToken();
+  
   const fetchUserImages = async () => {
     try {
-      setLoading(true);
       setError(null);
       
       const response = await axios.get(`${API_URL}/api/users/images`, {
@@ -38,10 +31,13 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
     } catch (err) {
       console.error('Error fetching user images:', err);
       setError('Failed to load images. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
+
+  // Fetch user's images on component mount
+  useEffect(() => {
+    fetchUserImages();
+  }, [userId, csrfToken]);
 
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
@@ -140,9 +136,6 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
     }
     
     try {
-      setLoading(true);
-      setError(null);
-      
       const response = await axios.delete(`${API_URL}/api/users/images/${imageId}`, {
         withCredentials: true,
         headers: {
@@ -162,8 +155,6 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
     } catch (err) {
       console.error('Error deleting image:', err);
       setError(err.message || 'Failed to delete image. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
   
@@ -172,9 +163,6 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
     if (!image) return;
     
     try {
-      setLoading(true);
-      setError(null);
-      
       const response = await axios.put(`${API_URL}/api/users/images/${imageId}/set-position`, { position: 0 }, {
         withCredentials: true,
         headers: {
@@ -214,8 +202,6 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
     } catch (err) {
       console.error('Error updating image position:', err);
       setError(err.message || 'Failed to update image position. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -6,8 +6,7 @@ import axios from 'axios';
 import { useCSRFToken } from '../App';
 
 const Onboarding = () => {
-  const navigate = useNavigate();
-  const { user, loadUserProfile, setUser, setAuthTokens } = useContext(AuthContext);
+  const { user, loadUserProfile, setUser } = useContext(AuthContext);
   const csrfToken = useCSRFToken();
   
   // List of prompts for users to choose from

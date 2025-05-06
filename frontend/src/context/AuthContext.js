@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
     };
     
     checkAuthStatus();
-  }, []);
+  }, [csrfToken]);
   
   // load user profile - gets current user profile from backend
   const loadUserProfile = useCallback(async () => {

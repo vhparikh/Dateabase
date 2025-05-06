@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 
 const Login = () => {
@@ -8,7 +8,6 @@ const Login = () => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   
   const { loginWithCAS } = useContext(AuthContext);
-  const navigate = useNavigate();
   const location = useLocation();
   
   // Get the callback URL from state or default to home
