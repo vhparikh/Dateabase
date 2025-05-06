@@ -24,12 +24,20 @@ const Login = () => {
       const success = await loginWithCAS(callbackUrl);
       
       if (!success) {
-        setError('Failed to initiate CAS login. Please try again.');
+        // If login fails, show a more helpful message about Heroku-specific issues
+        setError('Failed to initiate CAS login. This could be due to the Heroku app being in sleep mode. Please try again in a moment, or contact the app administrator if the issue persists.');
       }
       // No need to navigate - the loginWithCAS function redirects to CAS
     } catch (err) {
       console.error('CAS login error:', err);
-      setError(`Error: ${err.message}`);
+      // Provide more helpful error messages for common issues
+      if (err.message && err.message.includes('Network Error')) {
+        setError('Network error connecting to the app server. The Heroku dyno may be sleeping or restarting. Please try again in a moment.');
+      } else if (err.response && err.response.status === 404) {
+        setError('Error 404: App server not found. The Heroku app may have been moved or renamed. Please contact the administrator.');
+      } else {
+        setError(`Error: ${err.message}`);
+      }
     } finally {
       setCasLoading(false);
     }

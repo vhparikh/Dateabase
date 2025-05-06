@@ -63,7 +63,11 @@ def get_or_update_current_user():
             user = User.query.filter_by(username=netid).first()
             
         if not user:
-            return jsonify({'detail': 'User not found'}), 404
+            return jsonify({
+                'authenticated': True,
+                'registered': False,
+                'netid': netid,
+                'detail': 'User is authenticated but not registered'}), 200
         
         # If user doesn't have netid set yet, update it
         if not user.netid:
