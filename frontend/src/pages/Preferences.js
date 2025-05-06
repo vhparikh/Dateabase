@@ -15,7 +15,7 @@ const Preferences = () => {
 
   const csrfToken = useCSRFToken();
   
-  // Parse JSON strings from user object or use defaults
+  // Parse JSON strings from user object
   const parseUserJson = (jsonString, defaultValue) => {
     if (!jsonString) return defaultValue;
     try {
@@ -40,13 +40,13 @@ const Preferences = () => {
     "Campus Tour"
   ];
   
-  // Form state - only include experience_type_prefs
+  // Form state
   const [formData, setFormData] = useState({
     experience_type_prefs: parseUserJson(user?.experience_type_prefs, {})
   });
   
   useEffect(() => {
-    // When user data changes, update form data - only for experience_type_prefs
+    // When user data changes, update form data
     if (user) {
       setFormData({
         experience_type_prefs: parseUserJson(user.experience_type_prefs, {})
@@ -145,7 +145,7 @@ const Preferences = () => {
       )}
       
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
-        {/* Experience Type Preferences - only section to keep */}
+        {/* Experience Type Preferences*/}
         <div>
           <h2 className="text-xl font-semibold mb-3 text-gray-800">Experience Type Preferences</h2>
           <p className="text-gray-500 mb-3 text-sm">Select the types of experiences you're interested in</p>

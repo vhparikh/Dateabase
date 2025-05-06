@@ -777,11 +777,15 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
       {/* Header */}
       <div className="relative">
         <div className="h-32 bg-orange-50">
-          <img 
-            src={locationImages[expandedExperience] || `https://source.unsplash.com/random/800x600/?experience`} 
-            alt="Experience"
-            className="w-full h-full object-cover"
-          />
+          {locationImages[expandedExperience] ? (
+            <img 
+              src={locationImages[expandedExperience]} 
+              alt="Experience"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-orange-500 to-orange-600"></div>
+          )}
         </div>
         
         <div className="absolute -bottom-12 left-4">
@@ -829,7 +833,9 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
                 <div 
                   className="w-20 h-20 flex-shrink-0 bg-orange-50"
                   style={{
-                    backgroundImage: `url(${locationImages[exp.experience.id] || ''})`,
+                    backgroundImage: locationImages[exp.experience.id] ? 
+                      `url(${locationImages[exp.experience.id]})` : 
+                      'linear-gradient(to right, #f97316, #fb923c)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center'
                   }}
@@ -1030,7 +1036,9 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
                 <div 
                   className="w-10 h-10 rounded-lg flex-shrink-0 bg-amber-100 mr-3 overflow-hidden"
                   style={{
-                    backgroundImage: `url(${locationImages[exp.experience.id] || ''})`,
+                    backgroundImage: locationImages[exp.experience.id] ? 
+                      `url(${locationImages[exp.experience.id]})` : 
+                      'linear-gradient(to right, #f97316, #fb923c)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center'
                   }}
