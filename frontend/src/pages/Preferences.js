@@ -40,54 +40,19 @@ const Preferences = () => {
     "Campus Tour"
   ];
   
-  // Form state
+  // Form state - only include experience_type_prefs
   const [formData, setFormData] = useState({
-    gender_pref: user?.gender_pref || '',
-    experience_type_prefs: parseUserJson(user?.experience_type_prefs, {}),
-    class_year_min_pref: user?.class_year_min_pref || 2023,
-    class_year_max_pref: user?.class_year_max_pref || 2027,
-    interests_prefs: parseUserJson(user?.interests_prefs, {})
+    experience_type_prefs: parseUserJson(user?.experience_type_prefs, {})
   });
   
-  // Interest options
-  const interestOptions = [
-    "Photography",
-    "Reading",
-    "Writing",
-    "Music",
-    "Art",
-    "Gaming",
-    "Sports",
-    "Cooking",
-    "Travel",
-    "Technology",
-    "Fashion",
-    "Dancing",
-    "Movies & TV",
-    "Nature",
-    "Fitness"
-  ];
-
   useEffect(() => {
-    // When user data changes, update form data
+    // When user data changes, update form data - only for experience_type_prefs
     if (user) {
       setFormData({
-        gender_pref: user.gender_pref || '',
-        experience_type_prefs: parseUserJson(user.experience_type_prefs, {}),
-        class_year_min_pref: user.class_year_min_pref || 2023,
-        class_year_max_pref: user.class_year_max_pref || 2027,
-        interests_prefs: parseUserJson(user.interests_prefs, {})
+        experience_type_prefs: parseUserJson(user.experience_type_prefs, {})
       });
     }
   }, [user]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
   
   const handleCheckboxChange = (type, value) => {
     setFormData(prev => {
@@ -98,15 +63,6 @@ const Preferences = () => {
         return {
           ...prev,
           experience_type_prefs: updatedExpPrefs
-        };
-      }
-      // For interest preferences
-      else if (type === 'interests_prefs') {
-        const updatedInterestsPrefs = { ...prev.interests_prefs };
-        updatedInterestsPrefs[value] = !updatedInterestsPrefs[value];
-        return {
-          ...prev,
-          interests_prefs: updatedInterestsPrefs
         };
       }
       return prev;
@@ -120,13 +76,15 @@ const Preferences = () => {
     setSaveSuccess(false);
     
     try {
-      // Convert objects to JSON strings for API
+      // Only send experience_type_prefs to the API
       const apiFormData = {
-        gender_pref: formData.gender_pref,
-        experience_type_prefs: JSON.stringify(formData.experience_type_prefs),
-        class_year_min_pref: parseInt(formData.class_year_min_pref, 10),
-        class_year_max_pref: parseInt(formData.class_year_max_pref, 10),
-        interests_prefs: JSON.stringify(formData.interests_prefs)
+        // Keep existing user preferences for other fields
+        gender_pref: user?.gender_pref || '',
+        class_year_min_pref: user?.class_year_min_pref || 2023,
+        class_year_max_pref: user?.class_year_max_pref || 2027,
+        interests_prefs: user?.interests_prefs || '{}',
+        // Update experience type preferences
+        experience_type_prefs: JSON.stringify(formData.experience_type_prefs)
       };
       
       const response = await axios.put(`${API_URL}/api/me`, apiFormData, { withCredentials: true, 
@@ -161,9 +119,9 @@ const Preferences = () => {
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dating Preferences</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Experience Preferences</h1>
           <p className="text-gray-600 mt-1">
-            Customize your matching preferences to find better matches
+            Select the types of experiences you're interested in
           </p>
         </div>
         <button
@@ -187,28 +145,8 @@ const Preferences = () => {
       )}
       
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
-        {/* Gender Preference */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-3 text-gray-800">Gender Preference</h2>
-          <div className="flex flex-wrap gap-4">
-            {['Male', 'Female', 'Everyone'].map((gender) => (
-              <label key={gender} className="flex items-center">
-                <input
-                  type="radio"
-                  name="gender_pref"
-                  value={gender}
-                  checked={formData.gender_pref === gender}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-orange-500 focus:ring-orange-400"
-                />
-                <span className="ml-2 text-gray-700">{gender}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        
-        {/* Experience Type Preferences */}
-        <div className="mb-6">
+        {/* Experience Type Preferences - only section to keep */}
+        <div>
           <h2 className="text-xl font-semibold mb-3 text-gray-800">Experience Type Preferences</h2>
           <p className="text-gray-500 mb-3 text-sm">Select the types of experiences you're interested in</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -226,60 +164,8 @@ const Preferences = () => {
           </div>
         </div>
         
-        {/* Class Year Preferences */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-3 text-gray-800">Class Year Range</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 mb-2">Minimum Class Year</label>
-              <select
-                name="class_year_min_pref"
-                value={formData.class_year_min_pref}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-orange-500 focus:border-orange-500"
-              >
-                {Array.from({ length: 9 }, (_, i) => 2020 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-2">Maximum Class Year</label>
-              <select
-                name="class_year_max_pref"
-                value={formData.class_year_max_pref}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-orange-500 focus:border-orange-500"
-              >
-                {Array.from({ length: 9 }, (_, i) => 2020 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-        
-        {/* Interests Preferences */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-3 text-gray-800">Interest Preferences</h2>
-          <p className="text-gray-500 mb-3 text-sm">Select interests you would like to match on</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {interestOptions.map((interest) => (
-              <label key={interest} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={!!formData.interests_prefs[interest]}
-                  onChange={() => handleCheckboxChange('interests_prefs', interest)}
-                  className="h-4 w-4 text-orange-500 focus:ring-orange-400 rounded"
-                />
-                <span className="ml-2 text-gray-700">{interest}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        
         {/* Submit Button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-6">
           <button
             type="submit"
             disabled={loading}
