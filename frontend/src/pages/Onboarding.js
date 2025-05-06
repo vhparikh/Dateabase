@@ -216,73 +216,50 @@ const Onboarding = () => {
       
       console.log('Submitting onboarding data:', userData);
       
-      // // Make API call to complete onboarding
-      // const response = await axios.post(`${API_URL}/api/users/complete-onboarding`, userData, { withCredentials: true, 
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-CsrfToken': csrfToken
-      //   }
-      // });
-      
-      // if (response.status !== 200) {
-      //   const errorData = response.data;
-      //   console.error('Onboarding completion failed:', errorData);
-      //   setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
-      //   setLoading(false);
-      //   return false;
-      // }
-      
-      // const data = response.data;
-      // console.log('Onboarding completed successfully:', data);
-      
-      // // Get fresh tokens after completing onboarding
-      // console.log('Refreshing tokens after onboarding completion...');
-      // const tokenResponse = await axios.post(`${API_URL}/api/token/refresh`, { withCredentials: true,
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-CsrfToken': csrfToken
-      //   }
-      // });
-      
-      // if (tokenResponse.status === 200) {
-      //   // Parse and store the tokens
-      //   const tokenData = tokenResponse.data;
-      //   console.log('Token refresh successful');
-        
-      //   // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
-      //   if (tokenData && tokenData.access) {
-      //     localStorage.setItem('authTokens', JSON.stringify(tokenData));
-      //     setAuthTokens(tokenData);
-      //   }
-        
-        // Force reload user profile and wait for it to complete
-        const userProfile = await loadUserProfile();
-        console.log('User profile loaded after onboarding:', userProfile);
-        
-        // If we got the user profile but onboarding_completed is still false,
-        // manually update it to ensure AppWrapper doesn't redirect back to onboarding
-        if (userProfile) {
-          console.log('Updating user context with completed onboarding status');
-          setUser({
-            ...userProfile,
-            onboarding_completed: true
-          });
+      // Make API call to complete onboarding
+      const response = await axios.post(`${API_URL}/api/users/complete-onboarding`, userData, { withCredentials: true, 
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CsrfToken': csrfToken
         }
+      });
+      
+      if (response.status !== 200) {
+        const errorData = response.data;
+        console.error('Onboarding completion failed:', errorData);
+        setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
+        setLoading(false);
+        return false;
+      }
+      
+      const data = response.data;
+      console.log('Onboarding completed successfully:', data);
+      
+      // Skip token refresh since the endpoint doesn't exist
+      // Instead, directly load user profile
         
-        // Navigate to the home/swipe page
-        console.log('Navigating to home page...');
-        window.localStorage.setItem('onboardingCompleted', 'true');
-        
-        // Use window.location for a hard redirect to avoid routing issues
-        // This is more reliable than using navigate() from react-router
-        window.location.href = '/swipe';
-        return true;
-      // } else {
-      //   console.error('Failed to refresh token after onboarding');
-      //   setError('Authentication error after onboarding. Please try logging in again.');
-      //   setLoading(false);
-      //   return false;
-      // }
+      // Force reload user profile and wait for it to complete
+      const userProfile = await loadUserProfile();
+      console.log('User profile loaded after onboarding:', userProfile);
+      
+      // If we got the user profile but onboarding_completed is still false,
+      // manually update it to ensure AppWrapper doesn't redirect back to onboarding
+      if (userProfile) {
+        console.log('Updating user context with completed onboarding status');
+        setUser({
+          ...userProfile,
+          onboarding_completed: true
+        });
+      }
+      
+      // Navigate to the home/swipe page
+      console.log('Navigating to home page...');
+      window.localStorage.setItem('onboardingCompleted', 'true');
+      
+      // Use window.location for a hard redirect to avoid routing issues
+      // This is more reliable than using navigate() from react-router
+      window.location.href = '/swipe';
+      return true;
     } catch (error) {
       console.error('Error during onboarding completion:', error);
       setError('An unexpected error occurred. Please try again.');
