@@ -216,44 +216,44 @@ const Onboarding = () => {
       
       console.log('Submitting onboarding data:', userData);
       
-      // Make API call to complete onboarding
-      const response = await axios.post(`${API_URL}/api/users/complete-onboarding`, userData, { withCredentials: true, 
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CsrfToken': csrfToken
-        }
-      });
+      // // Make API call to complete onboarding
+      // const response = await axios.post(`${API_URL}/api/users/complete-onboarding`, userData, { withCredentials: true, 
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'X-CsrfToken': csrfToken
+      //   }
+      // });
       
-      if (response.status !== 200) {
-        const errorData = response.data;
-        console.error('Onboarding completion failed:', errorData);
-        setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
-        setLoading(false);
-        return false;
-      }
+      // if (response.status !== 200) {
+      //   const errorData = response.data;
+      //   console.error('Onboarding completion failed:', errorData);
+      //   setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
+      //   setLoading(false);
+      //   return false;
+      // }
       
-      const data = response.data;
-      console.log('Onboarding completed successfully:', data);
+      // const data = response.data;
+      // console.log('Onboarding completed successfully:', data);
       
-      // Get fresh tokens after completing onboarding
-      console.log('Refreshing tokens after onboarding completion...');
-      const tokenResponse = await axios.post(`${API_URL}/api/token/refresh`, { withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CsrfToken': csrfToken
-        }
-      });
+      // // Get fresh tokens after completing onboarding
+      // console.log('Refreshing tokens after onboarding completion...');
+      // const tokenResponse = await axios.post(`${API_URL}/api/token/refresh`, { withCredentials: true,
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'X-CsrfToken': csrfToken
+      //   }
+      // });
       
-      if (tokenResponse.status === 200) {
-        // Parse and store the tokens
-        const tokenData = tokenResponse.data;
-        console.log('Token refresh successful');
+      // if (tokenResponse.status === 200) {
+      //   // Parse and store the tokens
+      //   const tokenData = tokenResponse.data;
+      //   console.log('Token refresh successful');
         
-        // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
-        if (tokenData && tokenData.access) {
-          localStorage.setItem('authTokens', JSON.stringify(tokenData));
-          setAuthTokens(tokenData);
-        }
+      //   // Make sure tokens are properly stored in localStorage (can help with Heroku issues)
+      //   if (tokenData && tokenData.access) {
+      //     localStorage.setItem('authTokens', JSON.stringify(tokenData));
+      //     setAuthTokens(tokenData);
+      //   }
         
         // Force reload user profile and wait for it to complete
         const userProfile = await loadUserProfile();
@@ -277,12 +277,12 @@ const Onboarding = () => {
         // This is more reliable than using navigate() from react-router
         window.location.href = '/swipe';
         return true;
-      } else {
-        console.error('Failed to refresh token after onboarding');
-        setError('Authentication error after onboarding. Please try logging in again.');
-        setLoading(false);
-        return false;
-      }
+      // } else {
+      //   console.error('Failed to refresh token after onboarding');
+      //   setError('Authentication error after onboarding. Please try logging in again.');
+      //   setLoading(false);
+      //   return false;
+      // }
     } catch (error) {
       console.error('Error during onboarding completion:', error);
       setError('An unexpected error occurred. Please try again.');
