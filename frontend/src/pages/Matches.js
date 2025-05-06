@@ -504,13 +504,11 @@ const GroupedMatchCard = ({ user, experiences }) => {
             // Fallback to stored image if API call doesn't return a valid URL
             images[exp.experience.id] = exp.experience.location_image;
           } else if (exp.experience.location) {
-            // Last resort fallback to Unsplash
             const locationForImage = exp.experience.location.split(',')[0].trim();
             images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
           }
         } catch (error) {
           console.error('Error fetching image URL:', error);
-          // Fallback to the stored URL if there's an error
           if (exp.experience.location_image) {
             images[exp.experience.id] = exp.experience.location_image;
           } else if (exp.experience.location) {
@@ -522,7 +520,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
       
       setLocationImages(images);
       
-      // Set the active experience if not already set
+      // Set the active experience
       if (experiences.length > 0 && !activeExperience) {
         setActiveExperience(experiences[0]);
       }
@@ -902,7 +900,7 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
   );
 };
 
-// Updated Pending Sent Match Card - Remove contact info button for pending sent matches
+// Pending Sent Match Card
 const GroupedPendingSentMatchCard = ({ user, experiences }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [expandedExperience, setExpandedExperience] = useState(null);

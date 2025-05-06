@@ -180,7 +180,7 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           </button>
         </div>
         
-        {/* Static map if coordinates available */}
+        {/* Static map */}
         {staticMapUrl && (
           <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
             <img 
@@ -263,7 +263,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         is_active: experience.is_active !== undefined ? experience.is_active : true
       });
       
-      // Set map center if coordinates are available
+      // Set map center
       if (experience.latitude && experience.longitude) {
         setMapCenter({
           lat: experience.latitude,
@@ -300,7 +300,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
     
-    // Clear error for this field if it exists
+    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -328,7 +328,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       let imageUrl = '';
       let shouldFetchImage = true;
       
-      // First try to get a Google Maps photo if available
+      // First try to get a Google Maps photo
       if (place.photos && place.photos.length > 0) {
         try {
           imageUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
@@ -569,7 +569,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               Cancel
             </button>
             <button
-              type="button" /* Changed from 'submit' to 'button' to prevent default form submission */
+              type="button"
               onClick={handleButtonClick}
               className="px-4 py-2 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg shadow-sm hover:shadow-md transition-all"
             >
@@ -686,7 +686,7 @@ const Experiences = () => {
       
       console.log('Attempting to save experience:', experienceData);
       
-      // Real API call for saving with session authentication
+      
       if (experienceData.id) {
         // PUT request for updating an experience
         const response = await axios.put(`${API_URL}/api/experiences/${experienceData.id}`, experienceData, {

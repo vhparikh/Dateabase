@@ -8,6 +8,7 @@ from ..utils.auth_utils import login_required
 from ..database import db, User, Experience, Match, UserSwipe
 from ..utils.recommender_utils import index_experience
 import backend.utils.recommender_utils
+from ..utils.image_utils import get_photo_url, get_place_details, find_place_from_text, select_best_photo
 
 # Create Blueprint
 experience_bp = Blueprint('experience_routes', __name__)
@@ -171,9 +172,6 @@ def get_experience_image(experience_id, current_user_id=None):
         if not experience:
             return jsonify({'detail': 'Experience not found'}), 404
         
-        # Import the necessary functions for getting images
-        from ..utils.image_utils import get_photo_url, get_place_details, find_place_from_text, select_best_photo
-        
         image_url = None
         
         # Try using place_id first if available
@@ -198,8 +196,6 @@ def get_experience_image(experience_id, current_user_id=None):
                     if best_photo:
                         image_url = get_photo_url(best_photo['photo_reference'])
                         
-                # If findplacefromtext didn't return photos but did give us a place_id,
-                # try getting details which often contains more photos
                 if not image_url and place.get('place_id'):
                     place_details = get_place_details(place['place_id'])
                     
