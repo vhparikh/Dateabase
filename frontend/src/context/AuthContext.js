@@ -123,6 +123,7 @@ export const AuthProvider = ({ children }) => {
           'X-CsrfToken': csrfToken
         }
       });
+      console.log('CAS login response:', response.status);
       if (response.status === 200) {
         const data = response.data;
         // Redirect to CAS login URL
