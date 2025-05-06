@@ -19,6 +19,13 @@ const CASCallback = () => {
         const needsOnboarding = params.get('needs_onboarding') === 'true';
         const casSuccess = params.get('cas_success') === 'true';
 
+        console.log('CASCallback params:', {
+          ticket: ticket ? 'present' : 'missing',
+          callbackUrl,
+          needsOnboarding,
+          casSuccess
+        });
+
         // If ticket is present, we're coming directly from CAS
         // If no ticket but needs_onboarding is set, we're coming from backend redirect
         // If cas_success is true, we're coming from backend redirect
@@ -30,23 +37,28 @@ const CASCallback = () => {
         }
 
         // Process the CAS callback
+        console.log('Processing CAS callback...');
         const result = await handleCASCallback(ticket, params);
+        console.log('CAS callback result:', result);
         
-        if (result.success) {
+        if (result && result.success) {
           console.log('CAS authentication successful');
           // Check if user needs to complete onboarding
           if (result.needs_onboarding) {
+            console.log('User needs onboarding, navigating to /onboarding');
             navigate('/onboarding');
           } else {
             // Navigate to the callback URL or home page
+            console.log(`Navigating to ${result.callback_url || callbackUrl || '/'}`);
             navigate(result.callback_url || callbackUrl || '/');
           }
         } else {
-          setError(result.message || 'CAS authentication failed');
+          console.error('CAS callback unsuccessful:', result);
+          setError(result?.message || 'CAS authentication failed');
         }
       } catch (err) {
         console.error('Error processing CAS callback:', err);
-        setError('An error occurred during CAS authentication');
+        setError('An error occurred during CAS authentication. Please try again.');
       } finally {
         setLoading(false);
       }

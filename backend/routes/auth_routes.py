@@ -110,8 +110,8 @@ def cas_callback():
         needs_onboarding = is_new_user or not user.onboarding_completed
         print(f"User {user.username} is new: {is_new_user}, needs onboarding: {needs_onboarding}")
         
-        # Redirect based on authentication and onboarding status
-        redirect_url = f"{frontend_url}/#/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
+        # Redirect based on authentication and onboarding status - fix by removing hash symbol
+        redirect_url = f"{frontend_url}/cas/callback?callback_url={quote(callback_url)}&needs_onboarding={str(needs_onboarding).lower()}&cas_success=true"
         print(f"Redirecting to: {redirect_url}")
         return redirect(redirect_url)
             
