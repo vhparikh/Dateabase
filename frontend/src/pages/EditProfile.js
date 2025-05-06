@@ -406,6 +406,7 @@ const EditProfile = () => {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    maxLength={30}
                     placeholder="Enter your first name"
                     required
                   />
@@ -422,6 +423,7 @@ const EditProfile = () => {
                     value={formData.lastName}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    maxLength={30}
                     placeholder="Enter your last name"
                   />
                 </div>
