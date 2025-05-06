@@ -379,10 +379,6 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
         }
       });
       
-      if (response.status !== 200) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
       const data = response.data;
       return data.is_inappropriate;
     } catch (error) {
@@ -432,6 +428,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               name="experience_type"
               value={formData.experience_type}
               onChange={handleChange}
+              maxLength={30}
               className={`w-full px-3 py-2 border ${errors.experience_type ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
             >
               <option value="">Select an experience type</option>
@@ -491,6 +488,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
+                    maxLength={30}
                     placeholder="Search for a location..."
                     className={`w-full px-3 py-2 border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
                   />
@@ -525,6 +523,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
               name="description"
               value={formData.description}
               onChange={handleChange}
+              maxLength={200}
               placeholder="Describe this experience..."
               rows="3"
               className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500`}
@@ -532,36 +531,6 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
             {errors.description && (
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
             )}
-          </div>
-          
-          {/* Location Image */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location Image URL
-            </label>
-            <input
-              type="text"
-              name="location_image"
-              value={formData.location_image}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">Leave empty for a color gradient</p>
-          </div>
-          
-          {/* Active Status */}
-          <div className="mb-6">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_active"
-                checked={formData.is_active}
-                onChange={handleChange}
-                className="rounded text-orange-600 focus:ring-orange-500 h-4 w-4"
-              />
-              <span className="ml-2 text-sm text-gray-700">Active (visible to others)</span>
-            </label>
           </div>
           
           {/* Form actions */}

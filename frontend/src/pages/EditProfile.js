@@ -527,6 +527,7 @@ const EditProfile = () => {
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
+                    maxLength={30}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Where you currently live"
                   />
@@ -542,6 +543,7 @@ const EditProfile = () => {
                     name="hometown"
                     value={formData.hometown}
                     onChange={handleInputChange}
+                    maxLength={30}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Where you're from"
                   />
@@ -559,6 +561,7 @@ const EditProfile = () => {
                   name="major"
                   value={formData.major}
                   onChange={handleInputChange}
+                  maxLength={30}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   placeholder="Your field of study"
                 />
@@ -611,6 +614,7 @@ const EditProfile = () => {
                     name="phone_number"
                     value={formData.phone_number}
                     onChange={handleInputChange}
+                    maxLength={15}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your phone number (optional)"
                   />
@@ -629,6 +633,7 @@ const EditProfile = () => {
                     name="preferred_email"
                     value={formData.preferred_email}
                     onChange={handleInputChange}
+                    maxLength={60}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your email address"
                     required
@@ -658,6 +663,7 @@ const EditProfile = () => {
                 name="prompt1"
                 value={formData.prompt1}
                 onChange={handlePromptChange}
+                maxLength = {200}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
                 required
               >
@@ -671,6 +677,7 @@ const EditProfile = () => {
                 name="answer1"
                 value={formData.answer1}
                 onChange={handleInputChange}
+                maxLength={200}
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -687,6 +694,7 @@ const EditProfile = () => {
                 name="prompt2"
                 value={formData.prompt2}
                 onChange={handlePromptChange}
+                maxLength={200}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
                 required
               >
@@ -700,6 +708,7 @@ const EditProfile = () => {
                 name="answer2"
                 value={formData.answer2}
                 onChange={handleInputChange}
+                maxLength={200}
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -716,6 +725,7 @@ const EditProfile = () => {
                 name="prompt3"
                 value={formData.prompt3}
                 onChange={handlePromptChange}
+                maxLength={200}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-2"
                 required
               >
@@ -729,6 +739,7 @@ const EditProfile = () => {
                 name="answer3"
                 value={formData.answer3}
                 onChange={handleInputChange}
+                maxLength={200}
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
