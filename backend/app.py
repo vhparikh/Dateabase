@@ -27,7 +27,7 @@ from .routes.match_routes import match_bp
 from .routes.image_routes import image_bp
 from .routes.user_routes import user_bp
 from .routes.gemini_routes import gemini_bp
-from .routes.help_routes import help_bp
+from .routes.help_routes import help_bp, help_frontend_bp
 
 # Create the app first before registering blueprints
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
@@ -46,7 +46,7 @@ app.register_blueprint(image_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(gemini_bp)
 app.register_blueprint(help_bp)
-
+app.register_blueprint(help_frontend_bp)
 from .database import db, init_db, User, Experience, Match, UserSwipe, UserImage
 
 # Setup Flask app with proper static folder configuration for production deployment
