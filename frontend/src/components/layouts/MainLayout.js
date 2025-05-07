@@ -82,6 +82,18 @@ const MainLayout = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </Link>
+              <Link 
+                to="/help" 
+                className={`ml-2 p-2 rounded-full transition-all ${
+                  isActive('/help') 
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 shadow-md' 
+                    : 'text-gray-700 hover:bg-orange-50'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isActive('/help') ? 'text-white' : 'text-gray-700'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </Link>
             </nav>
             
             {/* Mobile menu button */}
@@ -153,6 +165,17 @@ const MainLayout = () => {
               >
                 Profile
               </Link>
+              <Link
+                to="/help"
+                className={`block px-3 py-2 rounded-lg text-base font-medium ${
+                  isActive('/help') 
+                    ? 'text-white bg-gradient-to-r from-orange-500 to-orange-600' 
+                    : 'text-gray-700 hover:bg-orange-50'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Help
+              </Link>
             </div>
           </div>
         )}
@@ -176,7 +199,7 @@ const MainLayout = () => {
       <footer className="bg-white/80 backdrop-blur-md border-t border-orange-100 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} DateABase · Made with 🧡
+            &copy; {new Date().getFullYear()} DateABase · Made with 🧡 · <Link to="/help" className="text-orange-500 hover:text-orange-600">Help & Guide</Link>
           </p>
         </div>
       </footer>

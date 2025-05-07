@@ -15,6 +15,7 @@ import CASCallback from './pages/CASCallback';
 import CASSuccess from './pages/CASSuccess';
 import Onboarding from './pages/Onboarding';
 import Preferences from './pages/Preferences';
+import Help from './pages/Help';
 import axios from 'axios';
 
 // Context Provider
@@ -119,6 +120,7 @@ function App() {
             <Route path="experiences/add" element={<AddExperience />} />
             <Route path="swipe" element={<Swipe />} />
             <Route path="matches" element={<Matches />} />
+            <Route path="help" element={<Help />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
