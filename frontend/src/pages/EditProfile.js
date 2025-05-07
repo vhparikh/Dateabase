@@ -125,7 +125,22 @@ const EditProfile = () => {
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+        // Required fields validation
+
+    const requiredFields = ['name', 'location', 'hometown', 'phone_number', 'major', 'answer1', 'answer2', 'answer3'];
+    if (requiredFields.includes(name) && value.trim() === '') {
+      const fieldNames = {
+        name: 'Name',
+        location: 'Current Location',
+        hometown: 'Hometown',
+        phone_number: 'Phone Number',
+        major: 'Major',
+        answer1: 'First Prompt',
+        answer2: 'Second Prompt',
+        answer3: 'Third Prompt'
+      };    
+      setError(`${fieldNames[name]} is required.`);
+    }
     // Special validation for height field
     if (name === 'height') {
       // Check if height is a valid number within the acceptable range
@@ -211,6 +226,36 @@ const EditProfile = () => {
       setLoading(false);
       return;
     }
+
+    if(!formData.firstName.trim()) {
+      setError("First Name is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.lastName.trim()) {
+      setError("Last Name is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.major.trim()) {
+      setError("Major is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.location.trim()) {
+      setError("Location is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.hometown.trim()) {
+      setError("Hometown is required.");
+      setLoading(false);
+      return;
+    }
     
     // Validate email - now required
     if (!formData.preferred_email.trim()) {
@@ -234,6 +279,24 @@ const EditProfile = () => {
         setLoading(false);
         return;
       }
+    }
+    // Check that none of the answers are empty
+    if (!formData.answer1.trim()) {
+      setError('First prompt answer is required.');
+      setLoading(false);
+      return;
+    }
+   
+    if (!formData.answer2.trim()) {
+      setError('Second prompt answer is required.');
+      setLoading(false);
+      return;
+    }
+        
+    if (!formData.answer3.trim()) {
+      setError('Third prompt answer is required.');
+      setLoading(false);
+      return;
     }
     
     // Validate that prompts are not duplicated
