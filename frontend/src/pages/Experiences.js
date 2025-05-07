@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API_URL } from '../config';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -676,7 +676,7 @@ const Experiences = () => {
   const csrfToken = useCSRFToken();
 
   // Define fetchExperiences at component level so it can be used in multiple functions
-  const fetchExperiences = async () => {
+  const fetchExperiences = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/api/my-experiences`, { 
@@ -697,12 +697,12 @@ const Experiences = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [csrfToken]);
 
   // Fetch user's experiences when component mounts
   useEffect(() => {
     fetchExperiences();
-  }, [csrfToken]);
+  }, [fetchExperiences]);
 
   const handleAddExperience = () => {
     setCurrentExperience(null);
