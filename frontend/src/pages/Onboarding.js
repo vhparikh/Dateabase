@@ -305,8 +305,8 @@ const Onboarding = () => {
       
       if (response.status !== 200) {
         const errorData = response.data;
-        console.error('Onboarding completion failed:', errorData);
-        setError(errorData.detail || 'Failed to complete onboarding. Please try again.');
+        console.error('Onboarding failed with status:', response.status, errorData);
+        setError('Failed to complete onboarding. Please try again.');
         setLoading(false);
         return false;
       }
@@ -333,7 +333,7 @@ const Onboarding = () => {
       window.location.href = '/swipe';
       return true;
     } catch (error) {
-      console.error('Error during onboarding completion:', error);
+      console.error('Error during onboarding:', error);
       setError('An unexpected error occurred. Please try again.');
       setLoading(false);
       return false;

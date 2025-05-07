@@ -333,12 +333,12 @@ const EditProfile = () => {
         });
         
         if (axiosError.response) {
-          setError(axiosError.response.data?.detail || `Server error: ${axiosError.response.status}`);
+          setError(`Please try again in a moment.`);
         } else if (axiosError.request) {
           console.error('No response received:', axiosError.request);
-          setError('No response from server. Please check your internet connection.');
+          setError('Please check your internet connection.');
         } else {
-          setError(`Error setting up request: ${axiosError.message}`);
+          setError(`Please try again in a moment.`);
         }
       }
     } catch (err) {

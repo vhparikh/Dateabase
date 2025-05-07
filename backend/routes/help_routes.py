@@ -88,10 +88,6 @@ faq_data = [
         "answer": "There's no hard limit on the number of experiences you can create. However, we recommend focusing on quality over quantity."
     },
     {
-        "question": "How can I delete my account?",
-        "answer": "Please contact support at support@dateabase.princeton.edu to request account deletion."
-    },
-    {
         "question": "What information is shared when I match with someone?",
         "answer": "When you match, both users can see each other's profile information, including name, profile pictures, and contact details you've provided."
     }

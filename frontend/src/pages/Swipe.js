@@ -47,7 +47,8 @@ const Swipe = () => {
       const response = await axios.get(`${API_URL}/api/swipe-experiences`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
       
       if (response.status !== 200) {
-        throw new Error(`Failed to fetch experiences: ${response.status}`);
+        console.error(`Failed to fetch experiences: ${response.status}`);
+        throw new Error('Failed to fetch experiences');
       }
       
       const data = response.data;
@@ -166,7 +167,7 @@ const Swipe = () => {
 
       if (response.status !== 200) {
         const errorData = response.data;
-        throw new Error(errorData.detail || 'Failed to record swipe');
+        throw new Error('Failed to record swipe');
       }
       
       // Parse response data

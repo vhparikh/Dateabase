@@ -83,8 +83,8 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
         }});
       
       if (response.status !== 200 && response.status !== 201) {
-        throw new Error(response.data.detail || 'Failed to upload image');
-
+        console.error('Upload error details:', response.data);
+        throw new Error('Failed to upload image');
       }
       
       const data = response.data;
@@ -124,7 +124,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       event.target.value = null;
     } catch (err) {
       console.error('Error uploading image:', err);
-      setError(err.message);
+      setError('Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -144,7 +144,8 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       });
       
       if (response.status !== 200) {
-        throw new Error(response.data.detail || 'Failed to delete image');
+        console.error('Delete error details:', response.data);
+        throw new Error('Failed to delete image');
       }
       
       // Remove the deleted image from state
@@ -154,7 +155,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       fetchUserImages();
     } catch (err) {
       console.error('Error deleting image:', err);
-      setError(err.message || 'Failed to delete image. Please try again.');
+      setError('Failed to delete image. Please try again.');
     }
   };
   
@@ -172,7 +173,8 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       });
       
       if (response.status !== 200) {
-        throw new Error(response.data.detail || 'Failed to update image position');
+        console.error('Update position error details:', response.data);
+        throw new Error('Failed to update image position');
       }
       
       // Also update the user's profile_image field to use this as the main profile image
@@ -201,7 +203,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       fetchUserImages();
     } catch (err) {
       console.error('Error updating image position:', err);
-      setError(err.message || 'Failed to update image position. Please try again.');
+      setError('Failed to update image position. Please try again.');
     }
   };
 

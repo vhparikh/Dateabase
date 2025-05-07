@@ -119,7 +119,7 @@ const CompleteProfile = () => {
       }
     } catch (err) {
       console.error('Profile update error:', err);
-      setError('An error occurred. Please try again.');
+      setError('An error occurred while updating your profile. Please try again.');
     } finally {
       setLoading(false);
     }

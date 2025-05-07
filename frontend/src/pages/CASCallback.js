@@ -51,12 +51,12 @@ const CASCallback = () => {
             navigate(result.callback_url || callbackUrl || '/');
           }
         } else {
-          console.error('CAS callback unsuccessful:', result);
-          setError(result?.message || 'CAS authentication failed');
+          console.error('Authentication failed:', result);
+          setError('Login failed. Please try again.');
         }
       } catch (err) {
-        console.error('Error processing CAS callback:', err);
-        setError('An error occurred during CAS authentication. Please try again.');
+        console.error('CAS authentication error:', err);
+        setError('An error occurred during login. Please try again.');
       }
     };
 

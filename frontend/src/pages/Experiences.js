@@ -734,7 +734,7 @@ const Experiences = () => {
         
         if (response.status !== 200) {
           const errorData = response.data;
-          throw new Error(errorData.detail || 'Failed to update experience');
+          throw new Error('Failed to update experience');
         }
         
         const data = response.data;
@@ -757,7 +757,9 @@ const Experiences = () => {
         
         if (response.status !== 200) {
           const errorData = response.data;
-          throw new Error(errorData.detail || 'Failed to create experience');
+
+          console.error('Error data:', errorData);
+          throw new Error('Failed to create experience');
         }
         
         const data = response.data;
@@ -774,6 +776,7 @@ const Experiences = () => {
       setLoading(false);
     } catch (err) {
       console.error('Error saving experience:', err);
+
       setError('Failed to save experience. Please try again.');
       setLoading(false);
     }
@@ -798,7 +801,7 @@ const Experiences = () => {
       if (response.status !== 200) {
         const errorData = response.data;
         console.error('Server returned non-200 status:', response.status, errorData);
-        throw new Error(errorData.detail || 'Failed to delete experience');
+        throw new Error('Failed to delete experience');
       }
       
       console.log('Experience deleted successfully');
@@ -814,9 +817,10 @@ const Experiences = () => {
       console.error('Error deleting experience:', err);
       if (err.response) {
         console.error('Error response:', err.response.status, err.response.data);
-        setError(`Failed to delete experience. Server error: ${err.response.status} ${err.response.data?.detail || ''}`);
+        // Use a simple user-friendly error message without technical details
+        setError('Failed to delete experience. Please try again.');
       } else {
-        setError(`Failed to delete experience: ${err.message}`);
+        setError('Failed to delete experience. Please try again.');
       }
       setLoading(false);
       // Close the modal even on error

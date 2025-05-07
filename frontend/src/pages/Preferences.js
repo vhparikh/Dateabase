@@ -105,7 +105,7 @@ const Preferences = () => {
         }, 1200);
       } else {
         const errorData = response.data;
-        setError(errorData.detail || 'Failed to update preferences');
+        setError('Failed to update preferences');
       }
     } catch (err) {
       console.error('Error saving preferences:', err);

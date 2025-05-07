@@ -31,11 +31,11 @@ const Login = () => {
       console.error('CAS login error:', err);
       // Provide more helpful error messages for common issues
       if (err.message && err.message.includes('Network Error')) {
-        setError('Network error connecting to the app server. The Heroku dyno may be sleeping or restarting. Please try again in a moment.');
+        setError('Please try again in a moment.');
       } else if (err.response && err.response.status === 404) {
-        setError('Error 404: App server not found. The Heroku app may have been moved or renamed. Please contact the administrator.');
+        setError('Please contact the administrator.');
       } else {
-        setError(`Error: ${err.message}`);
+        setError(`Please try again in a moment.`);
       }
     } finally {
       setCasLoading(false);
