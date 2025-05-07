@@ -269,6 +269,8 @@ const Onboarding = () => {
           name="name"
           value={formData.name}
           onChange={handleChange}
+          required
+          maxLength={30}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
       </div>
@@ -281,6 +283,7 @@ const Onboarding = () => {
             name="gender"
             value={formData.gender}
             onChange={handleChange}
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
           >
             <option value="Male">Male</option>
@@ -297,6 +300,7 @@ const Onboarding = () => {
             name="sexuality"
             value={formData.sexuality}
             onChange={handleChange}
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
           >
             <option value="Straight">Straight</option>
@@ -320,6 +324,7 @@ const Onboarding = () => {
           max="300"
           value={formData.height}
           onChange={handleChange}
+          required
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
         <p className="text-xs text-gray-500 mt-1">
@@ -340,6 +345,8 @@ const Onboarding = () => {
           name="location"
           value={formData.location}
           onChange={handleChange}
+          required
+          maxLength={45}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
       </div>
@@ -352,6 +359,8 @@ const Onboarding = () => {
           name="hometown"
           value={formData.hometown}
           onChange={handleChange}
+          required
+          maxLength={45}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
       </div>
@@ -362,13 +371,15 @@ const Onboarding = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
+            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
             <input
               type="tel"
               id="phone_number"
               name="phone_number"
               value={formData.phone_number}
               onChange={handleChange}
+              required
+              maxLength={15}
               placeholder="(123) 456-7890"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             />
@@ -385,6 +396,7 @@ const Onboarding = () => {
               name="preferred_email"
               value={formData.preferred_email}
               onChange={handleChange}
+              maxLength={45}
               placeholder="Enter your email address"
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
@@ -405,6 +417,8 @@ const Onboarding = () => {
             name="major"
             value={formData.major}
             onChange={handleChange}
+            required
+            maxLength={30}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
           />
         </div>
@@ -416,6 +430,7 @@ const Onboarding = () => {
             name="class_year"
             value={formData.class_year}
             onChange={handleChange}
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
           >
             <option value="2024">2024</option>
@@ -464,6 +479,8 @@ const Onboarding = () => {
           rows="2"
           value={formData.answer1}
           onChange={handleChange}
+          maxLength={150}
+          required
           placeholder="Your answer..."
           className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
         />
@@ -487,6 +504,8 @@ const Onboarding = () => {
           name="answer2"
           rows="2"
           value={formData.answer2}
+          required
+          maxLength={150}
           onChange={handleChange}
           placeholder="Your answer..."
           className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
@@ -511,6 +530,8 @@ const Onboarding = () => {
           name="answer3"
           rows="2"
           value={formData.answer3}
+          required
+          maxLength={150}
           onChange={handleChange}
           placeholder="Your answer..."
           className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
