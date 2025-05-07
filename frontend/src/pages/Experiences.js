@@ -83,8 +83,13 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
           }
         } catch (error) {
           console.error('Error fetching image URL:', error);
-          // Fallback to the stored URL if there's an error
-          setLocationImageUrl(experience.location_image);
+          // If the error is a 404, it means the experience was deleted
+          if (error.response && error.response.status === 404) {
+            console.log(`Experience ${experience.id} not found, likely deleted`);
+          } else {
+            // For other errors, fallback to the stored URL
+            setLocationImageUrl(experience.location_image);
+          }
         } finally {
           setIsLoadingImage(false);
         }
@@ -670,29 +675,32 @@ const Experiences = () => {
 
   const csrfToken = useCSRFToken();
 
-  // Fetch user's experiences when component mounts
-  useEffect(() => {
-    const fetchExperiences = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {
+  // Define fetchExperiences at component level so it can be used in multiple functions
+  const fetchExperiences = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/api/my-experiences`, { 
+        withCredentials: true, 
+        headers: {
           'X-CsrfToken': csrfToken
         } 
       });
-        if (response.status !== 200) {
-          throw new Error('Failed to fetch experiences');
-        }
-        const data = response.data;
-        setExperiences(data);
-        setError('');
-      } catch (err) {
-        console.error('Error fetching experiences:', err);
-        setError('Failed to fetch experiences. Please try again later.');
-      } finally {
-        setLoading(false);
+      if (response.status !== 200) {
+        throw new Error('Failed to fetch experiences');
       }
-    };
+      const data = response.data;
+      setExperiences(data);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching experiences:', err);
+      setError('Failed to fetch experiences. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Fetch user's experiences when component mounts
+  useEffect(() => {
     fetchExperiences();
   }, [csrfToken]);
 
@@ -760,23 +768,6 @@ const Experiences = () => {
       }
       
       // Refresh experiences after save
-      const fetchExperiences = async () => {
-        try {
-          setLoading(true);
-          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {'X-CsrfToken': csrfToken } });
-          if (response.status !== 200) {
-            throw new Error('Failed to fetch experiences');
-          }
-          const data = response.data;
-          setExperiences(data);
-          setError('');
-        } catch (err) {
-          console.error('Error fetching experiences:', err);
-          setError('Failed to fetch experiences. Please try again later.');
-        } finally {
-          setLoading(false);
-        }
-      };
       fetchExperiences();
       
       setIsModalOpen(false);
@@ -812,28 +803,10 @@ const Experiences = () => {
       
       console.log('Experience deleted successfully');
       
-      // Refresh experiences after successful deletion
-      const fetchExperiences = async () => {
-        try {
-          setLoading(true);
-          const response = await axios.get(`${API_URL}/api/my-experiences`, { withCredentials: true, headers: {
-            'X-CsrfToken': csrfToken
-          } 
-        });
-          if (response.status !== 200) {
-            throw new Error('Failed to fetch experiences');
-          }
-          const data = response.data;
-          setExperiences(data);
-          setError('');
-        } catch (err) {
-          console.error('Error fetching experiences:', err);
-          setError('Failed to fetch experiences. Please try again later.');
-        } finally {
-          setLoading(false);
-        }
-      };
+      // Update state directly to immediately remove the deleted experience
+      setExperiences(prev => prev.filter(exp => exp.id !== experienceId));
       
+      // Then refresh experiences from server
       fetchExperiences();
       setDeleteModal({ isOpen: false, experienceId: null });
       setLoading(false);

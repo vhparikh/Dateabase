@@ -170,7 +170,7 @@ def get_experience_image(experience_id, current_user_id=None):
         # Fetch the experience
         experience = Experience.query.get(experience_id)
         if not experience:
-            return jsonify({'detail': 'Experience not found'}), 404
+            return jsonify({'detail': 'Experience not found', 'error': 'not_found'}), 404
         
         image_url = None
         
@@ -212,7 +212,7 @@ def get_experience_image(experience_id, current_user_id=None):
         return jsonify({'image_url': image_url})
     except Exception as e:
         print(f"Error getting experience image: {e}")
-        return jsonify({'detail': str(e), 'image_url': None}), 500
+        return jsonify({'detail': str(e), 'error': 'server_error', 'image_url': None}), 500
 
 @experience_bp.route('/api/experiences/<int:experience_id>', methods=['DELETE'])
 @login_required()
