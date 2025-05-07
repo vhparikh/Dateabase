@@ -189,16 +189,6 @@ const Help = () => {
           </div>
         </div>
       )}
-      
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mt-6">
-        <h2 className="text-xl font-semibold text-orange-600 mb-2">Need More Help?</h2>
-        <p>
-          {helpData?.contact?.message || "If you have any questions or encounter any issues while using DateABase, please reach out to our support team at"}{' '}
-          <a href={`mailto:${helpData?.contact?.email || "support@dateabase.princeton.edu"}`} className="text-orange-600 underline">
-            {helpData?.contact?.email || "support@dateabase.princeton.edu"}
-          </a>.
-        </p>
-      </div>
     </div>
   );
 };
