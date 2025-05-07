@@ -219,6 +219,20 @@ const Onboarding = () => {
           return;
         }
       }
+      // Check that none of the answers are empty
+      if (!formData.answer1.trim()) {
+        setError('First prompt answer is required.');
+        return;
+      }     
+      if (!formData.answer2.trim()) {
+        setError('Second prompt answer is required.');
+        return;
+      }
+            
+      if (!formData.answer3.trim()) {
+        setError('Third prompt answer is required.');
+        return;
+      }
       
       // Call the completeOnboarding function to handle server communication
       const success = await completeOnboarding();
