@@ -166,7 +166,6 @@ const Swipe = () => {
       });
 
       if (response.status !== 200) {
-        const errorData = response.data;
         throw new Error('Failed to record swipe');
       }
       

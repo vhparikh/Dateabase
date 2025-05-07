@@ -104,7 +104,6 @@ const Preferences = () => {
           navigate('/profile');
         }, 1200);
       } else {
-        const errorData = response.data;
         setError('Failed to update preferences');
       }
     } catch (err) {
