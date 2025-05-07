@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 from ..utils.auth_utils import login_required
 
-help_bp = Blueprint('help', __name__, url_prefix='/api/help')
+# Create a separate blueprint for the frontend help route without a URL prefix
+help_bp = Blueprint('help', __name__)
 
 # Sample help data - this can be expanded or modified as needed
 help_data = {
@@ -105,10 +106,7 @@ def get_faq(current_user_id):
     """Get frequently asked questions"""
     return jsonify(faq_data)
 
-# Additional route that can handle any id
-@help_bp.route('/<path:path>', methods=['GET'])
-@login_required()
-def get_help_fallback(path, current_user_id):
-    """Fallback route for any help related requests"""
-    # Just return the main help data for any path
-    return jsonify(help_data) 
+# Route to handle direct access to /help in the browser
+@help_bp.route('/help')
+def serve_help():
+    return current_app.send_static_file('index.html') 
