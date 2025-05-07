@@ -69,36 +69,46 @@ help_data = {
     }
 }
 
+# FAQ data
+faq_data = [
+    {
+        "question": "How does matching work?",
+        "answer": "When you 'like' an experience, the system checks if the owner of that experience has also liked one of your experiences. If so, it's a match! You'll be able to see each other's contact information."
+    },
+    {
+        "question": "Can I edit my experiences after creating them?",
+        "answer": "Yes! Go to the 'Experiences' tab, find the experience you want to edit, and click the edit (pencil) icon."
+    },
+    {
+        "question": "How many experiences can I create?",
+        "answer": "There's no hard limit on the number of experiences you can create. However, we recommend focusing on quality over quantity."
+    },
+    {
+        "question": "How can I delete my account?",
+        "answer": "Please contact support at support@dateabase.princeton.edu to request account deletion."
+    },
+    {
+        "question": "What information is shared when I match with someone?",
+        "answer": "When you match, both users can see each other's profile information, including name, profile pictures, and contact details you've provided."
+    }
+]
+
 @help_bp.route('', methods=['GET'])
 @login_required()
-def get_help_content():
+def get_help_content(current_user_id):
     """Get help content for the application"""
     return jsonify(help_data)
 
 @help_bp.route('/faq', methods=['GET'])
 @login_required()
-def get_faq():
+def get_faq(current_user_id):
     """Get frequently asked questions"""
-    faq_data = [
-        {
-            "question": "How does matching work?",
-            "answer": "When you 'like' an experience, the system checks if the owner of that experience has also liked one of your experiences. If so, it's a match! You'll be able to see each other's contact information."
-        },
-        {
-            "question": "Can I edit my experiences after creating them?",
-            "answer": "Yes! Go to the 'Experiences' tab, find the experience you want to edit, and click the edit (pencil) icon."
-        },
-        {
-            "question": "How many experiences can I create?",
-            "answer": "There's no hard limit on the number of experiences you can create. However, we recommend focusing on quality over quantity."
-        },
-        {
-            "question": "How can I delete my account?",
-            "answer": "Please contact support at support@dateabase.princeton.edu to request account deletion."
-        },
-        {
-            "question": "What information is shared when I match with someone?",
-            "answer": "When you match, both users can see each other's profile information, including name, profile pictures, and contact details you've provided."
-        }
-    ]
-    return jsonify(faq_data) 
+    return jsonify(faq_data)
+
+# Additional route that can handle any id
+@help_bp.route('/<path:path>', methods=['GET'])
+@login_required()
+def get_help_fallback(path, current_user_id):
+    """Fallback route for any help related requests"""
+    # Just return the main help data for any path
+    return jsonify(help_data) 

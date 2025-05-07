@@ -7,11 +7,15 @@ const Help = () => {
   const [helpData, setHelpData] = useState(null);
   const [faqData, setFaqData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const csrfToken = useCSRFToken();
 
   useEffect(() => {
     const fetchHelpData = async () => {
       try {
+        setLoading(true);
+        setError(false);
+        
         // Fetch help content from the API
         const helpResponse = await axios.get(`${API_URL}/api/help`, {
           headers: {
@@ -20,19 +24,29 @@ const Help = () => {
           withCredentials: true
         });
         
-        setHelpData(helpResponse.data);
+        if (helpResponse.data) {
+          setHelpData(helpResponse.data);
+        }
         
-        // Also fetch FAQ data
-        const faqResponse = await axios.get(`${API_URL}/api/help/faq`, {
-          headers: {
-            'X-CSRFToken': csrfToken
-          },
-          withCredentials: true
-        });
-        
-        setFaqData(faqResponse.data);
+        try {
+          // Also fetch FAQ data - in a nested try/catch to not fail the whole component
+          const faqResponse = await axios.get(`${API_URL}/api/help/faq`, {
+            headers: {
+              'X-CSRFToken': csrfToken
+            },
+            withCredentials: true
+          });
+          
+          if (faqResponse.data) {
+            setFaqData(faqResponse.data);
+          }
+        } catch (faqError) {
+          console.error('Error fetching FAQ data:', faqError);
+          // Don't set the main error state, just continue without FAQ data
+        }
       } catch (error) {
         console.error('Error fetching help data:', error);
+        setError(true);
         // If API fails, we'll fall back to static content (already in the render)
       } finally {
         setLoading(false);
@@ -41,6 +55,9 @@ const Help = () => {
 
     if (csrfToken) {
       fetchHelpData();
+    } else {
+      // If no CSRF token is available yet, just stop loading
+      setLoading(false);
     }
   }, [csrfToken]);
 
@@ -59,6 +76,12 @@ const Help = () => {
     <div className="container mx-auto px-4 py-6 max-w-4xl">
       <h1 className="text-3xl font-bold text-orange-600 mb-6">Help & User Guide</h1>
       
+      {error && (
+        <div className="bg-orange-50 border border-orange-300 text-orange-700 px-4 py-3 rounded mb-6" role="alert">
+          <p>We're having trouble loading the help content. Showing static content instead.</p>
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-2xl font-semibold text-orange-500 mb-4">Getting Started</h2>
         <p className="mb-4">
@@ -67,9 +90,13 @@ const Help = () => {
         </p>
         
         <ol className="list-decimal pl-5 space-y-2 mb-4">
-          {helpData?.sections?.[0]?.steps?.map((step, index) => (
-            <li key={index}><strong>{step.split('-')[0]}</strong>{step.includes('-') ? '- ' + step.split('-')[1] : ''}</li>
-          )) || (
+          {helpData?.sections?.[0]?.steps && helpData.sections[0].steps.length > 0 ? 
+            helpData.sections[0].steps.map((step, index) => (
+              <li key={index}>
+                <strong>{step.split('-')[0]}</strong>
+                {step.includes('-') ? '- ' + step.split('-')[1] : ''}
+              </li>
+            )) : (
             <>
               <li><strong>Complete Your Profile</strong> - Make sure your profile is complete with your preferences and images to get better matches.</li>
               <li><strong>Add Experiences</strong> - Share the places and activities you've enjoyed around Princeton.</li>
@@ -82,20 +109,21 @@ const Help = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Map through section data from API if available, otherwise use static content */}
-        {helpData?.sections?.slice(1)?.map((section, index) => (
-          <div className="bg-white rounded-lg shadow-md p-6" key={index}>
-            <h2 className="text-xl font-semibold text-orange-500 mb-3">
-              <span className="inline-block w-8 h-8 bg-orange-100 text-orange-600 rounded-full text-center leading-8 mr-2">{index + 1}</span>
-              {section.title}
-            </h2>
-            <p className="mb-3">{section.content}</p>
-            <ul className="list-disc pl-5 space-y-1">
-              {section.steps.map((step, stepIndex) => (
-                <li key={stepIndex}>{step}</li>
-              ))}
-            </ul>
-          </div>
-        )) || (
+        {helpData?.sections && helpData.sections.length > 1 ? 
+          helpData.sections.slice(1).map((section, index) => (
+            <div className="bg-white rounded-lg shadow-md p-6" key={index}>
+              <h2 className="text-xl font-semibold text-orange-500 mb-3">
+                <span className="inline-block w-8 h-8 bg-orange-100 text-orange-600 rounded-full text-center leading-8 mr-2">{index + 1}</span>
+                {section.title}
+              </h2>
+              <p className="mb-3">{section.content}</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {section.steps.map((step, stepIndex) => (
+                  <li key={stepIndex}>{step}</li>
+                ))}
+              </ul>
+            </div>
+          )) : (
           <>
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-orange-500 mb-3">
@@ -159,12 +187,13 @@ const Help = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mt-6">
         <h2 className="text-2xl font-semibold text-orange-500 mb-4">Tips & Best Practices</h2>
         <ul className="list-disc pl-5 space-y-2">
-          {helpData?.tips?.map((tip, index) => (
-            <li key={index}>
-              <strong>{tip.split('-')[0]}</strong>
-              {tip.includes('-') ? '- ' + tip.split('-')[1] : ''}
-            </li>
-          )) || (
+          {helpData?.tips && helpData.tips.length > 0 ? 
+            helpData.tips.map((tip, index) => (
+              <li key={index}>
+                <strong>{tip.split('-')[0]}</strong>
+                {tip.includes('-') ? '- ' + tip.split('-')[1] : ''}
+              </li>
+            )) : (
             <>
               <li><strong>Add Detailed Experiences</strong> - The more information you provide about your experiences, the better your matches will be.</li>
               <li><strong>Upload Clear Photos</strong> - Having good profile images helps other users connect with you.</li>
@@ -175,8 +204,8 @@ const Help = () => {
         </ul>
       </div>
       
-      {/* FAQ Section */}
-      {faqData && (
+      {/* FAQ Section - only show if data is available */}
+      {faqData && faqData.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-6 mt-6">
           <h2 className="text-2xl font-semibold text-orange-500 mb-4">Frequently Asked Questions</h2>
           <div className="space-y-4">
