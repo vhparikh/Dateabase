@@ -17,6 +17,8 @@ const Swipe = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial page load
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation is in progress
   const [allExperiencesCompleted, setAllExperiencesCompleted] = useState(false); // Track if user has swiped through all experiences
+  const [freshLocationImage, setFreshLocationImage] = useState(null); // Store the fresh image URL
+  const [isLoadingImage, setIsLoadingImage] = useState(false); // Track image loading state
   const originalExperiencesRef = useRef([]); // Keep original experiences order for cycling
   const animationStepRef = useRef(0); // Track animation progress
   const { user } = useContext(AuthContext);
@@ -239,6 +241,42 @@ const Swipe = () => {
     fetchExperiences();
   };
 
+  // Fetch fresh location image 
+  const fetchFreshLocationImage = useCallback(async (experienceId) => {
+    if (!experienceId) return;
+    
+    try {
+      setIsLoadingImage(true);
+      const response = await axios.get(`${API_URL}/api/experiences/get-image/${experienceId}`, { 
+        withCredentials: true 
+      });
+      
+      if (response.data && response.data.image_url) {
+        setFreshLocationImage(response.data.image_url);
+      } else {
+        // If API doesn't return a fresh image, clear the state
+        setFreshLocationImage(null);
+      }
+    } catch (error) {
+      console.error('Error fetching fresh location image:', error);
+      // Clear the image state on error
+      setFreshLocationImage(null);
+    } finally {
+      setIsLoadingImage(false);
+    }
+  }, []);
+
+  // Load fresh image when current experience changes
+  useEffect(() => {
+    if (experiences.length > 0 && currentIndex < experiences.length) {
+      const currentExperience = experiences[currentIndex];
+      if (currentExperience && currentExperience.id) {
+        // Fetch a fresh image for the current experience
+        fetchFreshLocationImage(currentExperience.id);
+      }
+    }
+  }, [experiences, currentIndex, fetchFreshLocationImage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] bg-gradient-to-br from-orange-50 to-orange-100">
@@ -398,7 +436,21 @@ const Swipe = () => {
         >
           {/* Card Background Image */}
           <div className="hinge-card-image">
-            {currentExperience.location_image ? (
+            {isLoadingImage ? (
+              <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                <div className="text-white text-xl font-medium">Loading...</div>
+              </div>
+            ) : freshLocationImage ? (
+              <img
+                src={freshLocationImage}
+                alt={currentExperience.location}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = currentExperience.location_image || `https://source.unsplash.com/featured/?${encodeURIComponent(currentExperience.location || 'restaurant')}`;
+                }}
+              />
+            ) : currentExperience.location_image ? (
               <img
                 src={currentExperience.location_image}
                 alt={currentExperience.location}
