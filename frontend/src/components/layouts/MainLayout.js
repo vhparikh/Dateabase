@@ -199,7 +199,7 @@ const MainLayout = () => {
       <footer className="bg-white/80 backdrop-blur-md border-t border-orange-100 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} DateABase · Made with 🧡 · <Link to="/help" className="text-orange-500 hover:text-orange-600">Help & Guide</Link>
+            &copy; {new Date().getFullYear()} DateABase · Made with 🧡
           </p>
         </div>
       </footer>
