@@ -49,6 +49,23 @@ const Onboarding = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+        
+    // Required fields validation
+    const requiredFields = ['name', 'location', 'hometown', 'phone_number', 'major', 'answer1', 'answer2', 'answer3'];
+    if (requiredFields.includes(name) && value.trim() === '') {
+      const fieldNames = {
+        name: 'Name',
+        location: 'Current Location',
+        hometown: 'Hometown',
+        phone_number: 'Phone Number',
+        major: 'Major',
+        answer1: 'First Prompt',
+        answer2: 'Second Prompt',
+        answer3: 'Third Prompt'
+      };
+      
+      setError(`${fieldNames[name]} is required.`);
+    }
     
     // Specific validation for height input
     if (name === 'height') {
@@ -70,7 +87,7 @@ const Onboarding = () => {
         if (!emailRegex.test(value)) {
           setError('Please enter a valid email address.');
         } else {
-          setError('');
+          setError('');        
         }
       }
     }
@@ -108,6 +125,13 @@ const Onboarding = () => {
   const nextStep = () => {
     // Validate height before proceeding to next step if we're on step 1
     if (currentStep === 1) {
+      // Check that name isn't empty
+      if (!formData.name.trim()) {
+        setError('Name is required.');
+        return;
+      }
+
+      // Validate height
       const heightVal = parseInt(formData.height, 10);
       if (isNaN(heightVal) || heightVal < 0 || heightVal > 300) {
         setError('Height must be a number between 0 and 300 cm.');
@@ -115,8 +139,30 @@ const Onboarding = () => {
       }
     }
     
-    // Validate email before proceeding to step 3
+    // Validate fields for step 2 (location and education)
     if (currentStep === 2) {
+      // Check that required fields aren't empty
+      if (!formData.location.trim()) {
+        setError('Current Location is required.');
+        return;
+      }
+      
+      if (!formData.hometown.trim()) {
+        setError('Hometown is required.');
+        return;
+      }
+      
+      if (!formData.phone_number.trim()) {
+        setError('Phone Number is required.');
+        return;
+      }
+      
+      if (!formData.major.trim()) {
+        setError('Major is required.');
+        return;
+      }
+      
+      // Validate email
       if (!formData.preferred_email) {
         setError('Email address is required.');
         return;
@@ -125,6 +171,25 @@ const Onboarding = () => {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(formData.preferred_email)) {
         setError('Please enter a valid email address.');
+        return;
+      }
+    }
+    
+    // Validate fields for step 3 (prompts and answers)
+    if (currentStep === 3) {
+      // Check that none of the answers are empty
+      if (!formData.answer1.trim()) {
+        setError('First prompt answer is required.');
+        return;
+      }
+      
+      if (!formData.answer2.trim()) {
+        setError('Second prompt answer is required.');
+        return;
+      }
+      
+      if (!formData.answer3.trim()) {
+        setError('Third prompt answer is required.');
         return;
       }
     }
@@ -153,6 +218,23 @@ const Onboarding = () => {
           setLoading(false);
           return;
         }
+      }
+      // Check that none of the answers are empty
+      if (!formData.answer1.trim()) {
+        setError('First prompt answer is required.');
+        setLoading(false);
+        return;
+      }     
+      if (!formData.answer2.trim()) {
+        setError('Second prompt answer is required.');
+        setLoading(false);
+        return;
+      }
+            
+      if (!formData.answer3.trim()) {
+        setError('Third prompt answer is required.');
+        setLoading(false);
+        return;
       }
       
       // Call the completeOnboarding function to handle server communication
