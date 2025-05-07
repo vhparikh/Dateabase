@@ -155,6 +155,14 @@ def get_or_update_current_user():
                 user.prompt3 = data['prompt3']
             if 'answer3' in data:
                 user.answer3 = data['answer3']
+            
+            # Handle contact information
+            if 'phone_number' in data:
+                user.phone_number = data['phone_number']
+                print(f"Updated phone number for user {user.id}")
+            if 'preferred_email' in data:
+                user.preferred_email = data['preferred_email']
+                print(f"Updated email for user {user.id}")
                 
             # Handle preference fields
             if 'gender_pref' in data:

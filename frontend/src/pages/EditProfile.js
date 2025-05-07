@@ -125,7 +125,22 @@ const EditProfile = () => {
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+        // Required fields validation
+
+    const requiredFields = ['name', 'location', 'hometown', 'phone_number', 'major', 'answer1', 'answer2', 'answer3'];
+    if (requiredFields.includes(name) && value.trim() === '') {
+      const fieldNames = {
+        name: 'Name',
+        location: 'Current Location',
+        hometown: 'Hometown',
+        phone_number: 'Phone Number',
+        major: 'Major',
+        answer1: 'First Prompt',
+        answer2: 'Second Prompt',
+        answer3: 'Third Prompt'
+      };    
+      setError(`${fieldNames[name]} is required.`);
+    }
     // Special validation for height field
     if (name === 'height') {
       // Check if height is a valid number within the acceptable range
@@ -211,8 +226,38 @@ const EditProfile = () => {
       setLoading(false);
       return;
     }
+
+    if(!formData.firstName.trim()) {
+      setError("First Name is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.lastName.trim()) {
+      setError("Last Name is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.major.trim()) {
+      setError("Major is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.location.trim()) {
+      setError("Location is required.");
+      setLoading(false);
+      return;
+    }
+
+    if(!formData.hometown.trim()) {
+      setError("Hometown is required.");
+      setLoading(false);
+      return;
+    }
     
-    // Validate email - now required
+    // Validate email
     if (!formData.preferred_email.trim()) {
       setError('Email address is required.');
       setLoading(false);
@@ -226,14 +271,36 @@ const EditProfile = () => {
       return;
     }
     
-    // Validate phone number if provided
-    if (formData.phone_number) {
-      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
-      if (!phoneRegex.test(formData.phone_number)) {
-        setError('Please enter a valid phone number.');
-        setLoading(false);
-        return;
-      }
+    // Validate phone number
+    if (!formData.phone_number.trim()) {
+      setError('Phone number is required.');
+      setLoading(false);
+      return;
+    }
+
+    const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+    if (!phoneRegex.test(formData.phone_number)) {
+      setError('Please enter a valid phone number.');
+      setLoading(false);
+      return;
+    }
+    // Check that none of the answers are empty
+    if (!formData.answer1.trim()) {
+      setError('First prompt answer is required.');
+      setLoading(false);
+      return;
+    }
+   
+    if (!formData.answer2.trim()) {
+      setError('Second prompt answer is required.');
+      setLoading(false);
+      return;
+    }
+        
+    if (!formData.answer3.trim()) {
+      setError('Third prompt answer is required.');
+      setLoading(false);
+      return;
     }
     
     // Validate that prompts are not duplicated
@@ -425,6 +492,7 @@ const EditProfile = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     maxLength={30}
                     placeholder="Enter your last name"
+                    required
                   />
                 </div>
               </div>
@@ -484,6 +552,7 @@ const EditProfile = () => {
                     max="300"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your height in cm"
+                    required
                   />
                   {formData.height && (
                     <p className="text-xs text-gray-500 mt-1">
@@ -530,6 +599,7 @@ const EditProfile = () => {
                     maxLength={30}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Where you currently live"
+                    required
                   />
                 </div>
                 
@@ -546,6 +616,7 @@ const EditProfile = () => {
                     maxLength={30}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Where you're from"
+                    required
                   />
                 </div>
               </div>
@@ -564,6 +635,7 @@ const EditProfile = () => {
                   maxLength={30}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   placeholder="Your field of study"
+                  required
                 />
               </div>
               
@@ -616,7 +688,8 @@ const EditProfile = () => {
                     onChange={handleInputChange}
                     maxLength={15}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    placeholder="Enter your phone number (optional)"
+                    placeholder="Enter your phone number"
+                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Will be shown to your matches for contact purposes
@@ -681,6 +754,7 @@ const EditProfile = () => {
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
               ></textarea>
             </div>
             
@@ -712,6 +786,7 @@ const EditProfile = () => {
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
               ></textarea>
             </div>
             
@@ -743,6 +818,7 @@ const EditProfile = () => {
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
               ></textarea>
             </div>
           </div>
