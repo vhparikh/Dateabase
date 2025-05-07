@@ -59,7 +59,7 @@ def test_db_connection():
             print("\nTest 4: Updating data...")
             user_query.interests = "updated testing interests"
             db.session.commit()
-            print("✓ Updated user interests")
+            print("Updated user interests")
             
             # Test 5: Delete test data
             print("\nTest 5: Cleaning up test data...")
@@ -68,10 +68,10 @@ def test_db_connection():
             db.session.commit()
             print("✓ Deleted test data")
             
-            print("\n✅ All tests completed successfully!")
+            print("All tests completed successfully!")
             
         except Exception as e:
-            print(f"\n❌ Error during testing: {str(e)}")
+            print(f"Error during testing: {str(e)}")
             db.session.rollback()
             raise e
 
