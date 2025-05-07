@@ -49,6 +49,23 @@ const Onboarding = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+        
+    // Required fields validation
+    const requiredFields = ['name', 'location', 'hometown', 'phone_number', 'major', 'answer1', 'answer2', 'answer3'];
+    if (requiredFields.includes(name) && value.trim() === '') {
+      const fieldNames = {
+        name: 'Name',
+        location: 'Current Location',
+        hometown: 'Hometown',
+        phone_number: 'Phone Number',
+        major: 'Major',
+        answer1: 'First Prompt',
+        answer2: 'Second Prompt',
+        answer3: 'Third Prompt'
+      };
+      
+      setError(`${fieldNames[name]} is required.`);
+    }
     
     // Specific validation for height input
     if (name === 'height') {
@@ -70,7 +87,7 @@ const Onboarding = () => {
         if (!emailRegex.test(value)) {
           setError('Please enter a valid email address.');
         } else {
-          setError('');
+          setError('');        
         }
       }
     }
