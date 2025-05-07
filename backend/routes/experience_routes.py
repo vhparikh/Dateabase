@@ -231,13 +231,11 @@ def delete_experience(experience_id, current_user_id=None):
         
         # Get related matches and swipes for cleanup
         matches = Match.query.filter(
-            (Match.experience_id == experience_id) | 
-            (Match.matching_experience_id == experience_id)
+            (Match.experience_id == experience_id)
         ).all()
         
         swipes = UserSwipe.query.filter(
-            (UserSwipe.experience_id == experience_id) | 
-            (UserSwipe.swiped_experience_id == experience_id)
+            (UserSwipe.experience_id == experience_id)
         ).all()
         
         # Delete related records
