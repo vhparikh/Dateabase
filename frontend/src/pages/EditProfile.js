@@ -257,7 +257,7 @@ const EditProfile = () => {
       return;
     }
     
-    // Validate email - now required
+    // Validate email
     if (!formData.preferred_email.trim()) {
       setError('Email address is required.');
       setLoading(false);
@@ -271,14 +271,18 @@ const EditProfile = () => {
       return;
     }
     
-    // Validate phone number if provided
-    if (formData.phone_number) {
-      const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
-      if (!phoneRegex.test(formData.phone_number)) {
-        setError('Please enter a valid phone number.');
-        setLoading(false);
-        return;
-      }
+    // Validate phone number
+    if (!formData.phone_number.trim()) {
+      setError('Phone number is required.');
+      setLoading(false);
+      return;
+    }
+
+    const phoneRegex = /^(\+\d{1,3}[- ]?)?\(?(\d{3})\)?[- ]?(\d{3})[- ]?(\d{4})$/;
+    if (!phoneRegex.test(formData.phone_number)) {
+      setError('Please enter a valid phone number.');
+      setLoading(false);
+      return;
     }
     // Check that none of the answers are empty
     if (!formData.answer1.trim()) {
@@ -684,7 +688,7 @@ const EditProfile = () => {
                     onChange={handleInputChange}
                     maxLength={15}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    placeholder="Enter your phone number (optional)"
+                    placeholder="Enter your phone number"
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
