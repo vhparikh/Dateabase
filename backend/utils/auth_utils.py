@@ -22,7 +22,7 @@ def login_required():
             
             # Get user info from session
             user_info = session.get('user_info')
-            netid = user_info.get('user', '')
+            netid = user_info.get('user', '').lower()
             print(f"Found session for user {netid}")
             
             # Get the user from database
@@ -45,7 +45,7 @@ def get_current_user_id():
         return None
     
     user_info = session.get('user_info')
-    netid = user_info.get('user', '')
+    netid = user_info.get('user', '').lower()
     
     user = User.query.filter_by(netid=netid).first()
     if not user:

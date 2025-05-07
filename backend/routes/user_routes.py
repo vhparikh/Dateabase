@@ -54,7 +54,7 @@ def get_or_update_current_user():
             return jsonify({'detail': 'Authentication required'}), 401
             
         user_info = session.get('user_info', {})
-        netid = user_info.get('user', '')
+        netid = user_info.get('user', '').lower()
         
         # First try to find the user by netid
         user = User.query.filter_by(netid=netid).first()
@@ -289,7 +289,7 @@ def complete_onboarding():
         
         user_info = session.get('user_info', {})
         print(f"User info from session: {user_info}")
-        netid = user_info.get('user', '')
+        netid = user_info.get('user', '').lower()
         
         if not netid:
             print("No netid found in session")

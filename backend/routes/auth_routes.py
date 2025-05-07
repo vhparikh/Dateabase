@@ -70,7 +70,7 @@ def cas_callback():
         
         # Store user info in session
         session['user_info'] = user_info
-        netid = user_info.get('user', '')
+        netid = user_info.get('user', '').lower()
         
         # Check if user exists in our database
         user = User.query.filter_by(netid=netid).first()
