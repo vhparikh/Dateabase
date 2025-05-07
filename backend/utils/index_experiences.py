@@ -12,8 +12,7 @@ from cohere import Client as CohereClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-
-from database import User, Experience
+from backend.database import User, Experience
 
 
 if len(sys.argv) > 1:
