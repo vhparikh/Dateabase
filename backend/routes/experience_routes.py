@@ -6,7 +6,7 @@ from datetime import datetime
 # Import files
 from ..utils.auth_utils import login_required
 from ..database import db, User, Experience, Match, UserSwipe
-from ..utils.recommender_utils import index_experience
+from ..utils.recommender_utils import index_experience, delete_experience_from_pinecone
 import backend.utils.recommender_utils
 from ..utils.image_utils import get_photo_url, get_place_details, find_place_from_text, select_best_photo
 
@@ -78,13 +78,17 @@ def create_experience(current_user_id=None):
         # Index the experience in the recommender system
         try:
             # Only index if pinecone is enabled
-            if hasattr(backend.utils.recommender_utils, 'get_pinecone_index'):
+            if backend.utils.recommender_utils.pinecone_initialized:
                 index_success = index_experience(new_experience)
                 if not index_success:
                     print(f"Warning: Failed to index experience {new_experience.id} in Pinecone")
+                else:
+                    print(f"Experience {new_experience.id} successfully indexed in Pinecone")
+            else:
+                print(f"Experience {new_experience.id} not indexed: Pinecone is not initialized")
         except Exception as e:
             print(f"Error indexing experience: {e}")
-            # Don't return an error to the client - the experience was created
+
         
         return jsonify(response_data)
     except Exception as e:
@@ -249,6 +253,17 @@ def delete_experience(experience_id, current_user_id=None):
         db.session.delete(experience)
         db.session.commit()
         
+        # Delete the experience from Pinecone
+        try:
+            if backend.utils.recommender_utils.pinecone_initialized:
+                delete_success = delete_experience_from_pinecone(experience_id)
+                if not delete_success:
+                    print(f"Warning: Failed to delete experience {experience_id} from Pinecone")
+                else:
+                    print(f"Experience {experience_id} successfully deleted from Pinecone")
+        except Exception as e:
+            print(f"Error deleting experience from Pinecone: {e}")
+        
         return jsonify({'message': 'Experience deleted successfully'}), 200
     except Exception as e:
         print(f"Error deleting experience: {e}")
@@ -301,6 +316,23 @@ def update_experience(experience_id, current_user_id=None):
             experience.location_image = data['location_image']
         
         db.session.commit()
+        
+        # Reindex the updated experience in Pinecone
+        try:
+            if backend.utils.recommender_utils.pinecone_initialized:
+                # First delete the old record
+                delete_success = delete_experience_from_pinecone(experience_id)
+                if not delete_success:
+                    print(f"Warning: Failed to delete old experience {experience_id} from Pinecone before updating")
+                
+                # Then index the updated experience
+                index_success = index_experience(experience)
+                if not index_success:
+                    print(f"Warning: Failed to reindex updated experience {experience_id} in Pinecone")
+                else:
+                    print(f"Experience {experience_id} successfully reindexed in Pinecone")
+        except Exception as e:
+            print(f"Error reindexing experience in Pinecone: {e}")
         
         return jsonify({
             'message': 'Experience updated successfully',

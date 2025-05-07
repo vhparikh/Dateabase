@@ -150,6 +150,28 @@ def index_experience(experience, creator=None):
         print(f"Experience {experience.id}: Error preparing data for Pinecone indexing: {e}")
         return False
 
+def delete_experience_from_pinecone(experience_id):
+    """
+    Delete an experience from Pinecone vector index.
+    """
+    if not pinecone_initialized or not pinecone_index:
+        print(f"Experience {experience_id}: Pinecone not initialized. Cannot delete experience from index.")
+        return False
+    
+    try:
+        # Format the ID as it appears in Pinecone
+        pinecone_id = f"exp_{experience_id}"
+        
+        # Delete the vector from Pinecone
+        print(f"Experience {experience_id}: Attempting to delete from Pinecone")
+        result = pinecone_index.delete(ids=[pinecone_id])
+        
+        print(f"Experience {experience_id}: Successfully deleted from Pinecone. Response: {result}")
+        return True
+    except Exception as e:
+        print(f"Experience {experience_id}: Error deleting from Pinecone: {e}")
+        return False
+
 def get_personalized_experiences(user, top_k=20):
     """
     Query Pinecone with user preferences to get personalized experience recommendations.
