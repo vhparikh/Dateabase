@@ -502,7 +502,10 @@ def get_user_contact_info(user_id, current_user_id=None):
     except Exception as e:
         print(f"Error getting user contact info: {e}")
         return jsonify({'detail': str(e)}), 500
-    
+
+@user_bp.route('/onboarding')
+def serve_onboarding():
+    return current_app.send_static_file('index.html')
 @user_bp.route('/profile')
 def serve_profile():
     return current_app.send_static_file('index.html')
