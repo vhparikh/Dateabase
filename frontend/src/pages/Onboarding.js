@@ -222,15 +222,18 @@ const Onboarding = () => {
       // Check that none of the answers are empty
       if (!formData.answer1.trim()) {
         setError('First prompt answer is required.');
+        setLoading(false);
         return;
       }     
       if (!formData.answer2.trim()) {
         setError('Second prompt answer is required.');
+        setLoading(false);
         return;
       }
             
       if (!formData.answer3.trim()) {
         setError('Third prompt answer is required.');
+        setLoading(false);
         return;
       }
       
