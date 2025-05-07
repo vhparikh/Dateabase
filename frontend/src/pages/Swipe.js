@@ -350,7 +350,7 @@ const Swipe = () => {
             </svg>
           </div>
           <h2 className="text-2xl font-bold mb-3 text-orange-800">No experiences found</h2>
-          <p className="text-gray-600 mb-6">We couldn't find any experiences for you right now. Check back later or create your own.</p>
+          <p className="text-gray-600 mb-6">We couldn't find any experiences for you right now. Check back later.</p>
           <button 
             onClick={handleRetry}
             className="px-6 py-3 bg-gradient-to-r from-orange-start to-orange-end text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
