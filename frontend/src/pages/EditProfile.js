@@ -488,6 +488,7 @@ const EditProfile = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     maxLength={30}
                     placeholder="Enter your last name"
+                    required
                   />
                 </div>
               </div>
@@ -547,6 +548,7 @@ const EditProfile = () => {
                     max="300"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your height in cm"
+                    required
                   />
                   {formData.height && (
                     <p className="text-xs text-gray-500 mt-1">
@@ -593,6 +595,7 @@ const EditProfile = () => {
                     maxLength={30}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Where you currently live"
+                    required
                   />
                 </div>
                 
@@ -609,6 +612,7 @@ const EditProfile = () => {
                     maxLength={30}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Where you're from"
+                    required
                   />
                 </div>
               </div>
@@ -627,6 +631,7 @@ const EditProfile = () => {
                   maxLength={30}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   placeholder="Your field of study"
+                  required
                 />
               </div>
               
@@ -680,6 +685,7 @@ const EditProfile = () => {
                     maxLength={15}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="Enter your phone number (optional)"
+                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Will be shown to your matches for contact purposes
@@ -744,6 +750,7 @@ const EditProfile = () => {
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
               ></textarea>
             </div>
             
@@ -775,6 +782,7 @@ const EditProfile = () => {
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
               ></textarea>
             </div>
             
@@ -806,6 +814,7 @@ const EditProfile = () => {
                 placeholder="Your answer..."
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
               ></textarea>
             </div>
           </div>
