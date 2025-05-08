@@ -111,7 +111,6 @@ def get_faq(current_user_id):
 @login_required()
 def get_help_fallback(path, current_user_id):
     """Fallback route for any help related requests"""
-    # Just return the main help data for any path
     return jsonify(help_data)
 
 # Route to handle direct access to /help in the browser

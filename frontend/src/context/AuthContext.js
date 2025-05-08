@@ -52,10 +52,6 @@ export const AuthProvider = ({ children }) => {
               // Check if user is authenticated but not registered
               if (profileData.registered === false) {
                 setUser(null); // No user object yet
-                // Store the netid in session storage for onboarding flow
-                // sessionStorage.setItem('tempNetid', profileData.netid);
-                // Will need to redirect to registration/onboarding
-                // window.location.href = '/onboarding';
               } else {
                 // Normal case - user is registered
                 console.log('User profile loaded');
