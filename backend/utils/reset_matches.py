@@ -9,8 +9,8 @@ import sys
 from flask import Flask
 import argparse
 
-# Add the backend directory to the path to allow importing database models
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+# Add the parent directory to the path to allow importing database models
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from backend.database import db, Match, UserSwipe
 
 def reset_matches_and_swipes(confirm=False):

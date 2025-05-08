@@ -1,0 +1,37 @@
+2025-05-08 03:13:45,047 - WDM - INFO - ====== WebDriver manager ======
+2025-05-08 03:13:45,177 - WDM - INFO - Get LATEST chromedriver version for google-chrome
+2025-05-08 03:13:45,218 - WDM - INFO - Get LATEST chromedriver version for google-chrome
+2025-05-08 03:13:45,247 - WDM - INFO - Driver [/Users/anishkataria/.wdm/drivers/chromedriver/mac64/135.0.7049.114/chromedriver-mac-arm64/chromedriver] found in cache
+2025-05-08 03:13:47,183 - ExperienceTest - INFO - Chrome browser initialized
+2025-05-08 03:14:40,150 - ExperienceTest - INFO - Screenshot saved: test_screenshots/manual_authentication_completed_20250508_031439.png
+2025-05-08 03:14:40,160 - ExperienceTest - INFO - Found authenticated element with selector: ('xpath', '//nav')
+2025-05-08 03:14:42,247 - ExperienceTest - INFO - Added 2 second delay for visibility
+2025-05-08 03:14:42,586 - ExperienceTest - INFO - Screenshot saved: test_screenshots/experiences_page_loaded_20250508_031442.png
+2025-05-08 03:14:42,599 - ExperienceTest - INFO - Found experiences header: Experiences
+2025-05-08 03:14:42,603 - ExperienceTest - INFO - Found Add Experience button
+2025-05-08 03:14:42,911 - ExperienceTest - INFO - Screenshot saved: test_screenshots/before_add_experience_click_20250508_031442.png
+2025-05-08 03:14:43,420 - ExperienceTest - INFO - Added 0.5 second delay for visibility
+2025-05-08 03:14:43,421 - ExperienceTest - INFO - Scrolled element into view
+2025-05-08 03:14:43,475 - ExperienceTest - INFO - Clicked Add Experience button
+2025-05-08 03:14:45,481 - ExperienceTest - INFO - Added 2 second delay for visibility
+2025-05-08 03:14:45,779 - ExperienceTest - INFO - Screenshot saved: test_screenshots/add_experience_form_modal_20250508_031445.png
+2025-05-08 03:14:45,784 - ExperienceTest - INFO - Found experience form
+2025-05-08 03:14:46,296 - ExperienceTest - INFO - Added 0.5 second delay for visibility
+2025-05-08 03:14:46,296 - ExperienceTest - INFO - Scrolled element into view
+2025-05-08 03:14:46,350 - ExperienceTest - INFO - Selected Cafe as experience type
+2025-05-08 03:14:46,864 - ExperienceTest - INFO - Added 0.5 second delay for visibility
+2025-05-08 03:14:46,864 - ExperienceTest - INFO - Scrolled element into view
+2025-05-08 03:14:46,990 - ExperienceTest - INFO - Entered name in experience name field
+2025-05-08 03:14:47,503 - ExperienceTest - INFO - Added 0.5 second delay for visibility
+2025-05-08 03:14:47,503 - ExperienceTest - INFO - Scrolled element into view
+2025-05-08 03:14:47,560 - ExperienceTest - INFO - Entered location field
+2025-05-08 03:14:48,072 - ExperienceTest - INFO - Added 0.5 second delay for visibility
+2025-05-08 03:14:48,072 - ExperienceTest - INFO - Scrolled element into view
+2025-05-08 03:14:48,106 - ExperienceTest - INFO - Entered description field
+2025-05-08 03:14:49,611 - ExperienceTest - INFO - Added 1.5 second delay for visibility
+2025-05-08 03:14:49,896 - ExperienceTest - INFO - Screenshot saved: test_screenshots/filled_experience_form_20250508_031449.png
+2025-05-08 03:14:49,901 - ExperienceTest - INFO - Found Cancel button
+2025-05-08 03:14:50,408 - ExperienceTest - INFO - Added 0.5 second delay for visibility
+2025-05-08 03:14:50,409 - ExperienceTest - INFO - Scrolled element into view
+2025-05-08 03:14:50,456 - ExperienceTest - INFO - Clicked Cancel button
+2025-05-08 03:14:50,570 - ExperienceTest - INFO - Browser closed
