@@ -31,14 +31,12 @@ const Onboarding = () => {
     hometown: user?.hometown || '',
     major: user?.major || '',
     class_year: user?.class_year || 2025,
-    interests: user?.interests || '{"hiking": true, "dining": true, "movies": true, "study": true}',
     prompt1: user?.prompt1 || promptOptions[0],
     answer1: user?.answer1 || '',
     prompt2: user?.prompt2 || promptOptions[1],
     answer2: user?.answer2 || '',
     prompt3: user?.prompt3 || promptOptions[2],
     answer3: user?.answer3 || '',
-    classYear: user?.class_year ? user.class_year.toString() : '',
     phone_number: user?.phone_number || '',
     preferred_email: user?.preferred_email || ''
   });
@@ -162,6 +160,15 @@ const Onboarding = () => {
         return;
       }
       
+      // Validate class year
+      if (formData.class_year) {
+        const classYearNum = parseInt(formData.class_year, 10);
+        if (isNaN(classYearNum) || classYearNum < 2000 || classYearNum > 2030) {
+          setError('Please enter a valid class year between 2000 and 2030');
+          return;
+        }
+      }
+      
       // Validate email
       if (!formData.preferred_email) {
         setError('Email address is required.');
@@ -211,8 +218,8 @@ const Onboarding = () => {
     // Validate step 3 inputs
     if (currentStep === 3) {
       // Validate class year
-      if (formData.classYear) {
-        const classYearNum = parseInt(formData.classYear, 10);
+      if (formData.class_year) {
+        const classYearNum = parseInt(formData.class_year, 10);
         if (isNaN(classYearNum) || classYearNum < 2000 || classYearNum > 2030) {
           setError('Please enter a valid class year between 2000 and 2030');
           setLoading(false);
@@ -280,8 +287,7 @@ const Onboarding = () => {
         location: formData.location || '',
         hometown: formData.hometown || '',
         major: formData.major || '',
-        class_year: parseInt(formData.classYear || formData.class_year, 10) || 2025,
-        interests: formData.interests,
+        class_year: parseInt(formData.class_year, 10) || 2025,
         // Ensure prompts are explicitly included
         prompt1: formData.prompt1 || '',
         answer1: formData.answer1 || '',

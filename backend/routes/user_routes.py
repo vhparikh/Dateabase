@@ -138,7 +138,16 @@ def get_or_update_current_user():
             if 'major' in data:
                 user.major = data['major']
             if 'class_year' in data:
-                user.class_year = data['class_year']
+                print(f"Setting class_year to: {data['class_year']}")
+                try:
+                    # Ensure class_year is stored as an integer
+                    user.class_year = int(data['class_year'])
+                    print(f"Converted class_year to int: {user.class_year}")
+                except (ValueError, TypeError):
+                    print(f"Error converting class_year {data['class_year']} to int, using default")
+                    user.class_year = 2025
+            else:
+                print("No class_year data found in request")
             if 'interests' in data:
                 user.interests = data['interests']
             if 'profile_image' in data:
@@ -322,7 +331,7 @@ def complete_onboarding():
             if 'gender' in data and data['gender']:
                 user.gender = data['gender']
                 
-            # CRITICAL: Handle sexuality explicitly - one of the fields not being saved
+            # Handle sexuality
             if 'sexuality' in data:
                 print(f"Setting sexuality to: {data['sexuality']}")
                 user.sexuality = data['sexuality']
@@ -348,10 +357,16 @@ def complete_onboarding():
             if 'major' in data and data['major']:
                 user.major = data['major']
                 
-            # CRITICAL: Handle class_year explicitly - one of the fields not being saved
+            # Handle class_year explicitly
             if 'class_year' in data:
                 print(f"Setting class_year to: {data['class_year']}")
-                user.class_year = data['class_year']
+                try:
+                    # Ensure class_year is stored as an integer
+                    user.class_year = int(data['class_year'])
+                    print(f"Converted class_year to int: {user.class_year}")
+                except (ValueError, TypeError):
+                    print(f"Error converting class_year {data['class_year']} to int, using default")
+                    user.class_year = 2025
             else:
                 print("No class_year data found in request")
                 
@@ -361,7 +376,7 @@ def complete_onboarding():
             if 'profile_image' in data and data['profile_image']:
                 user.profile_image = data['profile_image']
                 
-            # CRITICAL: Handle prompts explicitly - one of the fields not being saved
+            # Handle prompts explicitly
             # Remove the requirement for non-empty data to still save empty values
             if 'prompt1' in data:
                 print(f"Setting prompt1 to: {data['prompt1']}")
