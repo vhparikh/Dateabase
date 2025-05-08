@@ -50,7 +50,7 @@ const AppWrapper = ({ children }) => {
   // Check if user needs to complete onboarding
   // Using explicit check for false to avoid issues with undefined/null
   if (user.onboarding_completed === false) {
-    console.log("User needs to complete onboarding, redirecting...");
+    // console.log("User needs to complete onboarding, redirecting...");
     return <Navigate to="/onboarding" />;
   }
   
@@ -70,10 +70,10 @@ function App() {
         if (response.status === 200) {
           setCSRFToken(response.data.csrf_token);
         } else {
-          console.error('Failed to fetch CSRF token');
+          // console.error('Failed to fetch CSRF token');
         }
       } catch (error) {
-        console.error('Error fetching CSRF token:', error);
+        // console.error('Error fetching CSRF token:', error);
       } finally {
         setTokenLoading(false);
       }

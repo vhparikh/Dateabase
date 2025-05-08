@@ -54,22 +54,22 @@ export const AuthProvider = ({ children }) => {
                 setUser(null); // No user object yet
               } else {
                 // Normal case - user is registered
-                console.log('User profile loaded');
+                // console.log('User profile loaded');
                 setUser(profileData);
               }
             }
           } else {
             // Not authenticated with CAS, clear user data
-            console.log('Not authenticated with CAS, redirecting to login');
+            // console.log('Not authenticated with CAS, redirecting to login');
             setUser(null);
           }
         } else {
           // Failed to check authentication status
-          console.log('Failed to check authentication status');
+          // console.log('Failed to check authentication status');
           setUser(null);
         }
       } catch (err) {
-        console.error('Auth status check error:', err);
+        // console.error('Auth status check error:', err);
         setUser(null);
       } finally {
         setLoading(false);
@@ -83,35 +83,35 @@ export const AuthProvider = ({ children }) => {
   // load user profile - gets current user profile from backend
   const loadUserProfile = useCallback(async () => {
     try {
-      console.log('Loading user profile...');
+      // console.log('Loading user profile...');
       // Use our API service with the new endpoint
       const { getCurrentUser } = await import('../services/api');
-      console.log('Calling getCurrentUser API endpoint');
+      // console.log('Calling getCurrentUser API endpoint');
       const response = await getCurrentUser();
       
       if (response && response.data) {
-        console.log('Profile loaded successfully:', response.data);
+        // console.log('Profile loaded successfully:', response.data);
         // Make sure we have the onboarding_completed status
         if (response.data.onboarding_completed === undefined) {
-          console.warn('onboarding_completed status missing in user profile');
+          // console.warn('onboarding_completed status missing in user profile');
         }
         // ensure we update the user state with the complete profile data
         setUser(response.data);
         return response.data;
       } else {
-        console.error('Error loading profile: No data returned', response);
+        // console.error('Error loading profile: No data returned', response);
         // earlier, returning a fallback profile, now show error instead
         setUser(null);
         return null;
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response,
-        responseData: error.response?.data,
-        status: error.response?.status
-      });
+      // console.error('Error loading user profile:', error);
+      // console.error('Error details:', {
+      //   message: error.message,
+      //   response: error.response,
+      //   responseData: error.response?.data,
+      //   status: error.response?.status
+      // });
       setUser(null);
       return null;
     }
@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }) => {
           'X-CsrfToken': csrfToken
         }
       });
-      console.log('CAS login response:', response.status);
+      // console.log('CAS login response:', response.status);
       if (response.status === 200) {
         const data = response.data;
         // Redirect to CAS login URL
@@ -135,7 +135,7 @@ export const AuthProvider = ({ children }) => {
       }
       return false;
     } catch (error) {
-      console.error('Error initiating CAS login:', error);
+      // console.error('Error initiating CAS login:', error);
       return false;
     }
   };
@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }) => {
   // Handle CAS callback with ticket
   const handleCASCallback = async (ticket, params) => {
     try {
-      console.log('Starting handleCASCallback with ticket present:', !!ticket);
+      // console.log('Starting handleCASCallback with ticket present:', !!ticket);
       
       // Get needs_onboarding from URL params if available
       const needsOnboarding = params?.get('needs_onboarding') === 'true';
@@ -152,14 +152,14 @@ export const AuthProvider = ({ children }) => {
       // If we have cas_success=true, we know the backend has already authenticated the user
       // This happens when redirected from the backend CAS callback
       if (casSuccess) {
-        console.log('Authentication already confirmed by backend');
+        // console.log('Authentication already confirmed by backend');
         setCasAuthenticated(true);
       } else if (!ticket) {
-        console.warn('No CAS ticket and no success confirmation found');
+        // console.warn('No CAS ticket and no success confirmation found');
       }
       
       // First, check if the user is authenticated with CAS
-      console.log(`Checking authentication status with ${API_URL}/api/cas/status`);
+      // console.log(`Checking authentication status with ${API_URL}/api/cas/status`);
       const statusResponse = await axios.get(`${API_URL}/api/cas/status`, {
         withCredentials: true,
         headers: {
@@ -170,26 +170,26 @@ export const AuthProvider = ({ children }) => {
       
       if (statusResponse.status === 200) {
         const statusData = statusResponse.data;
-        console.log('Authentication status response:', statusData);
+        // console.log('Authentication status response:', statusData);
         
         if (statusData.authenticated) {
           setCasAuthenticated(true);
           
           // Load user profile
-          console.log('User is authenticated, loading profile...');
+          // console.log('User is authenticated, loading profile...');
           const userProfile = await loadUserProfile();
-          console.log('User profile loaded:', userProfile);
+          // console.log('User profile loaded:', userProfile);
           
           if (userProfile) {
             // Check if onboarding is needed (from URL param or user profile)
             const needsOnboardingFromProfile = userProfile.onboarding_completed === false;
             const redirectToOnboarding = needsOnboarding || needsOnboardingFromProfile;
             
-            console.log('Onboarding needed:', {
-              fromUrl: needsOnboarding,
-              fromProfile: needsOnboardingFromProfile,
-              finalDecision: redirectToOnboarding
-            });
+            // console.log('Onboarding needed:', {
+            //   fromUrl: needsOnboarding,
+            //   fromProfile: needsOnboardingFromProfile,
+            //   finalDecision: redirectToOnboarding
+            // });
             
             return {
               success: true,
@@ -197,25 +197,25 @@ export const AuthProvider = ({ children }) => {
               needs_onboarding: redirectToOnboarding
             };
           } else {
-            console.error('Failed to load user profile');
+            // console.error('Failed to load user profile');
             return { success: false, message: 'Failed to load user profile' };
           }
         } else {
-          console.error('Backend reports user is not authenticated');
+          // console.error('Backend reports user is not authenticated');
           return { success: false, message: 'Not authenticated with CAS' };
         }
       } else {
-        console.error('Failed to check authentication status with backend');
+        // console.error('Failed to check authentication status with backend');
         return { success: false, message: 'Failed to check authentication status' };
       }
     } catch (error) {
-      console.error('Error handling CAS callback:', error);
+      // console.error('Error handling CAS callback:', error);
       
       if (error.response) {
-        console.error('Error response details:', {
-          status: error.response.status,
-          data: error.response.data
-        });
+        // console.error('Error response details:', {
+        //   status: error.response.status,
+        //   data: error.response.data
+        // });
         return { 
           success: false, 
           message: `Server error (${error.response.status}): ${error.response.data?.detail || 'Unknown error'}` 
@@ -248,13 +248,13 @@ export const AuthProvider = ({ children }) => {
       // Get the CAS logout URL from response
       if (response.status === 200) {
         const data = response.data;
-        console.log('Logout successful, received logout URL:', data.logout_url);
+        // console.log('Logout successful, received logout URL:', data.logout_url);
         return data;  // Return data containing logout_url
       }
       
       return { logout_url: loginUrl }; // Fallback to direct login URL
     } catch (error) {
-      console.error('Error logging out:', error);
+      // console.error('Error logging out:', error);
       // Even on error, try to redirect to login
       return { logout_url: window.location.origin + '/login' };
     }

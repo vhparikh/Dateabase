@@ -29,7 +29,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       const data = response.data;
       setImages(data);
     } catch (err) {
-      console.error('Error fetching user images:', err);
+      // console.error('Error fetching user images:', err);
       setError('Failed to load images. Please try again.');
     }
   }, [csrfToken]);
@@ -83,7 +83,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
         }});
       
       if (response.status !== 200 && response.status !== 201) {
-        console.error('Upload error details:', response.data);
+        // console.error('Upload error details:', response.data);
         throw new Error('Failed to upload image');
       }
       
@@ -108,10 +108,10 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
           });
           
           if (updateProfileResponse !== 200) {
-            console.error('Failed to update profile image URL');
+            // console.error('Failed to update profile image URL');
           }
         } catch (err) {
-          console.error('Error updating profile image URL:', err);
+          // console.error('Error updating profile image URL:', err);
         }
       }
       
@@ -123,7 +123,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // Reset file input
       event.target.value = null;
     } catch (err) {
-      console.error('Error uploading image:', err);
+      // console.error('Error uploading image:', err);
       setError('Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
@@ -144,7 +144,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       });
       
       if (response.status !== 200) {
-        console.error('Delete error details:', response.data);
+        // console.error('Delete error details:', response.data);
         throw new Error('Failed to delete image');
       }
       
@@ -154,7 +154,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // Refetch images to ensure we have the latest data
       fetchUserImages();
     } catch (err) {
-      console.error('Error deleting image:', err);
+      // console.error('Error deleting image:', err);
       setError('Failed to delete image. Please try again.');
     }
   };
@@ -173,7 +173,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       });
       
       if (response.status !== 200) {
-        console.error('Update position error details:', response.data);
+        // console.error('Update position error details:', response.data);
         throw new Error('Failed to update image position');
       }
       
@@ -188,10 +188,10 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
         });
         
         if (updateProfileResponse.status !== 200) {
-          console.error('Failed to update profile image URL, but position was updated');
+          // console.error('Failed to update profile image URL, but position was updated');
         }
       } catch (err) {
-        console.error('Error updating profile image URL:', err);
+        // console.error('Error updating profile image URL:', err);
       }
       
       // If the parent component needs to know about this change
@@ -202,7 +202,7 @@ const ProfileImageUpload = ({ userId, onImageUploaded, maxImages = 4 }) => {
       // Refetch images to ensure we have the latest data
       fetchUserImages();
     } catch (err) {
-      console.error('Error updating image position:', err);
+      // console.error('Error updating image position:', err);
       setError('Failed to update image position. Please try again.');
     }
   };
