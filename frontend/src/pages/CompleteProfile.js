@@ -49,7 +49,7 @@ const CompleteProfile = () => {
       try {
         currentInterests = JSON.parse(formData.interests);
       } catch (parseError) {
-        console.error("Error parsing interests:", parseError);
+        // console.error("Error parsing interests:", parseError);
         currentInterests = {
           dining: false,
           hiking: false,
@@ -72,7 +72,7 @@ const CompleteProfile = () => {
         interests: JSON.stringify(updatedInterests)
       });
     } catch (err) {
-      console.error("Error handling interest change:", err);
+      // console.error("Error handling interest change:", err);
       setFormData({
         ...formData,
         interests: JSON.stringify({
@@ -118,7 +118,7 @@ const CompleteProfile = () => {
         setError(data.detail || 'Failed to update profile. Please try again.');
       }
     } catch (err) {
-      console.error('Profile update error:', err);
+      // console.error('Profile update error:', err);
       setError('An error occurred while updating your profile. Please try again.');
     } finally {
       setLoading(false);
@@ -154,7 +154,7 @@ const CompleteProfile = () => {
         </div>
       ));
     } catch (err) {
-      console.error("Error rendering interests:", err);
+      // console.error("Error rendering interests:", err);
       return null;
     }
   };

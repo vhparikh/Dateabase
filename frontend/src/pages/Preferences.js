@@ -21,7 +21,7 @@ const Preferences = () => {
     try {
       return JSON.parse(jsonString);
     } catch (e) {
-      console.error("Error parsing JSON:", e);
+      // console.error("Error parsing JSON:", e);
       return defaultValue;
     }
   };
@@ -107,7 +107,7 @@ const Preferences = () => {
         setError('Failed to update preferences');
       }
     } catch (err) {
-      console.error('Error saving preferences:', err);
+      // console.error('Error saving preferences:', err);
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);

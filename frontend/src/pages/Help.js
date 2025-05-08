@@ -41,11 +41,11 @@ const Help = () => {
             setFaqData(faqResponse.data);
           }
         } catch (faqError) {
-          console.error('Error fetching FAQ data:', faqError);
+          // console.error('Error fetching FAQ data:', faqError);
           // Don't set the main error state, just continue without FAQ data
         }
       } catch (error) {
-        console.error('Error fetching help data:', error);
+        // console.error('Error fetching help data:', error);
         setError(true);
         // If API fails, we'll fall back to static content (already in the render)
       } finally {

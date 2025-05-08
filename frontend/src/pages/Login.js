@@ -19,7 +19,7 @@ const Login = () => {
     setError('');
     
     try {
-      console.log('Initiating Princeton CAS login');
+      // console.log('Initiating Princeton CAS login');
       const success = await loginWithCAS(callbackUrl);
       
       if (!success) {
@@ -28,7 +28,7 @@ const Login = () => {
       }
       // No need to navigate - the loginWithCAS function redirects to CAS
     } catch (err) {
-      console.error('CAS login error:', err);
+      // console.error('CAS login error:', err);
       // Provide more helpful error messages for common issues
       if (err.message && err.message.includes('Network Error')) {
         setError('Please try again in a moment.');

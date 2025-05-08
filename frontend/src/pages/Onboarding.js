@@ -262,7 +262,7 @@ const Onboarding = () => {
     setLoading(true);
     
     try {
-      console.log('Starting onboarding completion process...');
+      // console.log('Starting onboarding completion process...');
       
       // Validate email
       if (!formData.preferred_email) {
@@ -299,7 +299,7 @@ const Onboarding = () => {
         preferred_email: formData.preferred_email
       };
       
-      console.log('Submitting onboarding data:', userData);
+      // console.log('Submitting onboarding data:', userData);
       
       // Make API call to complete onboarding
       const response = await axios.post(`${API_URL}/api/users/complete-onboarding`, userData, { withCredentials: true, 
@@ -311,21 +311,21 @@ const Onboarding = () => {
       
       if (response.status !== 200) {
         const errorData = response.data;
-        console.error('Onboarding failed with status:', response.status, errorData);
+        // console.error('Onboarding failed with status:', response.status, errorData);
         setError('Failed to complete onboarding. Please try again.');
         setLoading(false);
         return false;
       }
       
       const data = response.data;
-      console.log('Onboarding completed successfully:', data);
+      // console.log('Onboarding completed successfully:', data);
         
       // Force reload user profile and wait for it to complete
       const userProfile = await loadUserProfile();
-      console.log('User profile loaded after onboarding:', userProfile);
+      // console.log('User profile loaded after onboarding:', userProfile);
       
       if (userProfile) {
-        console.log('Updating user context with completed onboarding status');
+        // console.log('Updating user context with completed onboarding status');
         setUser({
           ...userProfile,
           onboarding_completed: true
@@ -333,13 +333,13 @@ const Onboarding = () => {
       }
       
       // Navigate to the home/swipe page
-      console.log('Navigating to home page...');
+      // console.log('Navigating to home page...');
       window.localStorage.setItem('onboardingCompleted', 'true');
       
       window.location.href = '/swipe';
       return true;
     } catch (error) {
-      console.error('Error during onboarding:', error);
+      // console.error('Error during onboarding:', error);
       setError('An unexpected error occurred. Please try again.');
       setLoading(false);
       return false;

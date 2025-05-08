@@ -39,12 +39,12 @@ const Profile = () => {
             setUserProfile(response.data);
           }
         } catch (imgErr) {
-          console.error('Failed to load user images', imgErr);
+          // console.error('Failed to load user images', imgErr);
           // Still set user profile even if images fetch fails
           setUserProfile(response.data);
         }
       } catch (err) {
-        console.error('Failed to load user profile', err);
+        // console.error('Failed to load user profile', err);
       }
     };
     
@@ -60,7 +60,7 @@ const Profile = () => {
         await getExperiences();
         // We don't need to store experiences in this component anymore
       } catch (err) {
-        console.error('Failed to load experiences', err);
+        // console.error('Failed to load experiences', err);
       }
     };
     
@@ -71,19 +71,19 @@ const Profile = () => {
     try {
       const result = await logoutUser();
       if (result && result.logout_url) {
-        console.log('Redirecting to CAS logout URL with redirect to login page:', result.logout_url);
+        // console.log('Redirecting to CAS logout URL with redirect to login page:', result.logout_url);
         // Add a local redirect first to ensure we clean up local state
         localStorage.removeItem('lastAuthenticated'); // Clear any auth timestamps
         
         // Redirect to CAS logout URL which will then redirect back to login page
         window.location.href = result.logout_url;
       } else {
-        console.log('No logout URL returned, redirecting directly to login page');
+        // console.log('No logout URL returned, redirecting directly to login page');
         // Fallback to just redirecting to login page
         navigate('/login');
       }
     } catch (error) {
-      console.error('Error during logout:', error);
+      // console.error('Error during logout:', error);
       // Fallback to just redirecting to login page
       navigate('/login');
     }

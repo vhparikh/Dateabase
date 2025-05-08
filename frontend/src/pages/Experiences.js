@@ -7,34 +7,34 @@ import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/
 
 // Add axios interceptors for debugging
 axios.interceptors.request.use(request => {
-  console.log('Starting Request', {
-    url: request.url,
-    method: request.method,
-    headers: request.headers,
-    data: request.data
-  });
+  // console.log('Starting Request', {
+  //   url: request.url,
+  //   method: request.method,
+  //   headers: request.headers,
+  //   data: request.data
+  // });
   return request;
 });
 
 axios.interceptors.response.use(
   response => {
-    console.log('Response:', {
-      status: response.status,
-      headers: response.headers,
-      data: response.data
-    });
+    //   console.log('Response:', {
+    //     status: response.status,
+    //     headers: response.headers,
+    //     data: response.data
+    // });
     return response;
   },
   error => {
-    console.error('Response Error:', {
-      message: error.message,
-      response: error.response ? {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers
-      } : 'No response',
-      request: error.request || 'No request'
-    });
+    // console.error('Response Error:', {
+    //   message: error.message,
+    //   response: error.response ? {
+    //     status: error.response.status,
+    //     data: error.response.data,
+    //     headers: error.response.headers
+    //   } : 'No response',
+    //   request: error.request || 'No request'
+    // });
     return Promise.reject(error);
   }
 );
@@ -82,10 +82,10 @@ const ExperienceCard = ({ experience, onEdit, onDelete, readOnly = false }) => {
             setLocationImageUrl(response.data.image_url);
           }
         } catch (error) {
-          console.error('Error fetching image URL:', error);
+          // console.error('Error fetching image URL:', error);
           // If the error is a 404, it means the experience was deleted
           if (error.response && error.response.status === 404) {
-            console.log(`Experience ${experience.id} not found, likely deleted`);
+            // console.log(`Experience ${experience.id} not found, likely deleted`);
           } else {
             // For other errors, fallback to the stored URL
             setLocationImageUrl(experience.location_image);
@@ -369,7 +369,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
           imageUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
           shouldFetchImage = false;
         } catch (error) {
-          console.error('Error getting place photo:', error);
+          // console.error('Error getting place photo:', error);
           shouldFetchImage = true;
         }
       }
@@ -418,18 +418,18 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted', formData);
+    // console.log('Form submitted', formData);
 
     if (await validateForm()) {
-      console.log('Form validated, calling onSave');
+      // console.log('Form validated, calling onSave');
       onSave(formData);
     } else {
-      console.log('Form validation failed', errors);
+      // console.log('Form validation failed', errors);
     }
   };
 
   const isInappropriate = async (text) => {
-    console.log('Checking for inappropriate content:', text);
+    // console.log('Checking for inappropriate content:', text);
     try {
       const response = await axios.post(`${API_URL}/api/check-inappropriate`, { text: text }, { 
         withCredentials: true,
@@ -442,7 +442,7 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
       const data = response.data;
       return data.is_inappropriate;
     } catch (error) {
-      console.error("Error checking inappropriate content:", error);
+      // console.error("Error checking inappropriate content:", error);
       // Fallback: if error, assume not inappropriate
       return false;
     }
@@ -451,10 +451,10 @@ const ExperienceModal = ({ isOpen, onClose, onSave, experience = null }) => {
   const handleButtonClick = async () => {
   // Explicitly validate the form and call onSave if valid
   if (await validateForm()) {
-    console.log('Submit button clicked, form validated');
+    // console.log('Submit button clicked, form validated');
     onSave(formData);
   } else {
-    console.log('Submit button clicked, validation failed', errors);
+    // console.log('Submit button clicked, validation failed', errors);
   }
 };
   
@@ -692,7 +692,7 @@ const Experiences = () => {
       setExperiences(data);
       setError('');
     } catch (err) {
-      console.error('Error fetching experiences:', err);
+      // console.error('Error fetching experiences:', err);
       setError('Failed to fetch experiences. Please try again later.');
     } finally {
       setLoading(false);
@@ -719,7 +719,7 @@ const Experiences = () => {
       setLoading(true);
       setError('');
       
-      console.log('Attempting to save experience:', experienceData);
+      // console.log('Attempting to save experience:', experienceData);
       
       
       if (experienceData.id) {
@@ -737,7 +737,7 @@ const Experiences = () => {
         }
         
         const data = response.data;
-        console.log('Experience updated successfully:', data);
+        // console.log('Experience updated successfully:', data);
         if (data) {
           setExperiences(prev => prev.map(exp => 
             exp.id === experienceData.id ? data.experience : exp
@@ -745,7 +745,7 @@ const Experiences = () => {
         }
       } else {
         // POST request for creating a new experience
-        console.log('Creating new experience');
+        // console.log('Creating new experience');
         const response = await axios.post(`${API_URL}/api/experiences`, experienceData, {
           withCredentials: true,
           headers: {
@@ -757,12 +757,12 @@ const Experiences = () => {
         if (response.status !== 200) {
           const errorData = response.data;
 
-          console.error('Error data:', errorData);
+          // console.error('Error data:', errorData);
           throw new Error('Failed to create experience');
         }
         
         const data = response.data;
-        console.log('Experience created successfully:', data);
+        // console.log('Experience created successfully:', data);
         if (data) {
           setExperiences(prev => [data.experience, ...prev]);
         }
@@ -774,7 +774,7 @@ const Experiences = () => {
       setIsModalOpen(false);
       setLoading(false);
     } catch (err) {
-      console.error('Error saving experience:', err);
+      // console.error('Error saving experience:', err);
 
       setError('Failed to save experience. Please try again.');
       setLoading(false);
@@ -784,7 +784,7 @@ const Experiences = () => {
   const handleDeleteExperience = async (experienceId) => {
     try {
       setLoading(true);
-      console.log(`Attempting to delete experience with ID: ${experienceId}`);
+      // console.log(`Attempting to delete experience with ID: ${experienceId}`);
       
       // Make DELETE request to delete the experience
       const response = await axios.delete(`${API_URL}/api/experiences/${experienceId}`, { 
@@ -795,15 +795,15 @@ const Experiences = () => {
         } 
       });
       
-      console.log('Delete response:', response);
+      // console.log('Delete response:', response);
       
       if (response.status !== 200) {
         const errorData = response.data;
-        console.error('Server returned non-200 status:', response.status, errorData);
+        // console.error('Server returned non-200 status:', response.status, errorData);
         throw new Error('Failed to delete experience');
       }
       
-      console.log('Experience deleted successfully');
+      // console.log('Experience deleted successfully');
       
       // Update state directly to immediately remove the deleted experience
       setExperiences(prev => prev.filter(exp => exp.id !== experienceId));
@@ -813,9 +813,9 @@ const Experiences = () => {
       setDeleteModal({ isOpen: false, experienceId: null });
       setLoading(false);
     } catch (err) {
-      console.error('Error deleting experience:', err);
+      // console.error('Error deleting experience:', err);
       if (err.response) {
-        console.error('Error response:', err.response.status, err.response.data);
+        // console.error('Error response:', err.response.status, err.response.data);
         // Use a simple user-friendly error message without technical details
         setError('Failed to delete experience. Please try again.');
       } else {

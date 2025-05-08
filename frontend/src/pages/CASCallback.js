@@ -18,44 +18,44 @@ const CASCallback = () => {
         const needsOnboarding = params.get('needs_onboarding') === 'true';
         const casSuccess = params.get('cas_success') === 'true';
 
-        console.log('CASCallback params:', {
-          ticket: ticket ? 'present' : 'missing',
-          callbackUrl,
-          needsOnboarding,
-          casSuccess
-        });
+        // console.log('CASCallback params:', {
+        //   ticket: ticket ? 'present' : 'missing',
+        //   callbackUrl,
+        //   needsOnboarding,
+        //   casSuccess
+        // });
 
         // If ticket is present, we're coming directly from CAS
         // If no ticket but needs_onboarding is set, we're coming from backend redirect
         // If cas_success is true, we're coming from backend redirect
         if (!ticket && !casSuccess) {
-          console.error('No CAS ticket or success parameters found in URL');
+          // console.error('No CAS ticket or success parameters found in URL');
           setError('Authentication information missing. Please try logging in again.');
           return;
         }
 
         // Process the CAS callback
-        console.log('Processing CAS callback...');
+        // console.log('Processing CAS callback...');
         const result = await handleCASCallback(ticket, params);
-        console.log('CAS callback result:', result);
+        // console.log('CAS callback result:', result);
         
         if (result && result.success) {
-          console.log('CAS authentication successful');
+          // console.log('CAS authentication successful');
           // Check if user needs to complete onboarding
           if (result.needs_onboarding) {
-            console.log('User needs onboarding, navigating to /onboarding');
+            // console.log('User needs onboarding, navigating to /onboarding');
             navigate('/onboarding');
           } else {
             // Navigate to the callback URL or home page
-            console.log(`Navigating to ${result.callback_url || callbackUrl || '/'}`);
+            // console.log(`Navigating to ${result.callback_url || callbackUrl || '/'}`);
             navigate(result.callback_url || callbackUrl || '/');
           }
         } else {
-          console.error('Authentication failed:', result);
+          // console.error('Authentication failed:', result);
           setError('Login failed. Please try again.');
         }
       } catch (err) {
-        console.error('CAS authentication error:', err);
+        // console.error('CAS authentication error:', err);
         setError('An error occurred during login. Please try again.');
       }
     };

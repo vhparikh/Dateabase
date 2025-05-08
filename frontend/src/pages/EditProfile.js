@@ -353,7 +353,7 @@ const EditProfile = () => {
         preferred_email: formData.preferred_email || ''
       };
       
-      console.log('Submitting profile update with data:', userData);
+      // console.log('Submitting profile update with data:', userData);
       
       try {
         // Make direct API call to update user using axios instead of the service
@@ -365,16 +365,16 @@ const EditProfile = () => {
           }
         });
         
-        console.log('Profile update response:', response);
+        // console.log('Profile update response:', response);
         
         if (response.data) {
-          console.log('Profile updated successfully:', response.data);
+          // console.log('Profile updated successfully:', response.data);
           // Verify the response includes contact information
           if (!response.data.preferred_email && formData.preferred_email) {
-            console.warn('Email was not returned in the response data');
+            // console.warn('Email was not returned in the response data');
           }
           if (!response.data.phone_number && formData.phone_number) {
-            console.warn('Phone number was not returned in the response data');
+            // console.warn('Phone number was not returned in the response data');
           }
           
           // Update AuthContext with new data
@@ -392,24 +392,24 @@ const EditProfile = () => {
           }, 2000);
         }
       } catch (axiosError) {
-        console.error('Axios error details:', {
-          message: axiosError.message,
-          status: axiosError.response?.status,
-          statusText: axiosError.response?.statusText,
-          data: axiosError.response?.data
-        });
+        //   console.error('Axios error details:', {
+        //     message: axiosError.message,
+        //     status: axiosError.response?.status,
+        //     statusText: axiosError.response?.statusText,
+        //     data: axiosError.response?.data
+        // });
         
         if (axiosError.response) {
           setError(`Please try again in a moment.`);
         } else if (axiosError.request) {
-          console.error('No response received:', axiosError.request);
+          // console.error('No response received:', axiosError.request);
           setError('Please check your internet connection.');
         } else {
           setError(`Please try again in a moment.`);
         }
       }
     } catch (err) {
-      console.error('Error in form submission:', err);
+      // console.error('Error in form submission:', err);
       setError('Form processing error. Please verify your inputs and try again.');
     } finally {
       setLoading(false);
@@ -452,7 +452,7 @@ const EditProfile = () => {
               userId={user?.id} 
               onImageUploaded={(image) => {
                 // No need to do anything special here since we'll refresh the profile after save
-                console.log('Image uploaded:', image);
+                // console.log('Image uploaded:', image);
               }}
             />
           </div>

@@ -19,14 +19,14 @@ const CASSuccess = () => {
         const profileData = await loadUserProfile();
         
         if (profileData) {
-          console.log('Profile loaded successfully after CAS login');
+          // console.log('Profile loaded successfully after CAS login');
           // Redirect to home or the callback URL
           navigate(callbackUrl);
         } else {
           setError('Failed to load your profile. Please try again.');
         }
       } catch (err) {
-        console.error('Error loading user profile after CAS login:', err);
+        // console.error('Error loading user profile after CAS login:', err);
         setError('An error occurred while loading your profile. Please try again.');
       }
     };

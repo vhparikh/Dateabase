@@ -47,26 +47,24 @@ const Swipe = () => {
       const response = await axios.get(`${API_URL}/api/swipe-experiences`, { withCredentials: true, headers: { 'X-CsrfToken': csrfToken }});
       
       if (response.status !== 200) {
-        console.error(`Failed to fetch experiences: ${response.status}`);
+        // console.error(`Failed to fetch experiences: ${response.status}`);
         throw new Error('Failed to fetch experiences');
       }
       
       const data = response.data;
       
       if (data && data.length > 0) {
-        console.log(`Received ${data.length} experiences from API`);
         setExperiences(data);
         // Store the original experiences order
         originalExperiencesRef.current = [...data];
         setCurrentIndex(0);
       } else {
         // If no experiences are returned, but we've completed a cycle, we should try again with include_swiped=true
-        console.log("No experiences found, showing empty state");
         setExperiences([]);
         originalExperiencesRef.current = [];
       }
     } catch (err) {
-      console.error('Error fetching experiences:', err);
+      // console.error('Error fetching experiences:', err);
       setError('Failed to load experiences. Please try again.');
     } finally {
       setLoading(false);
@@ -103,7 +101,7 @@ const Swipe = () => {
       animateSwipe(isLike);
 
     } catch (err) {
-      console.error('Error handling swipe:', err);
+      // console.error('Error handling swipe:', err);
       // Ensure we still reset state on error
       setCurrentPosition({ x: 0, y: 0 });
       setSwipeDirection(null);
@@ -171,12 +169,10 @@ const Swipe = () => {
       
       // Parse response data
       const responseData = response.data;
-      console.log('Swipe response:', responseData);
       
       // Remove the match modal functionality
       if (responseData && responseData.match) {
-        console.log('Match created with ID:', responseData.match.id, 'with user:', responseData.match.other_user.username);
-        // No longer show the match modal
+        // console.log('Match created with ID:', responseData.match.id, 'with user:', responseData.match.other_user.username);
       }
 
       // Give more time for the animation to complete visually before transitioning
@@ -191,7 +187,7 @@ const Swipe = () => {
         } else if (nextIndex >= experiences.length) {
           // Reached the end of available experiences
           setAllExperiencesCompleted(true);
-          console.log("Reached end of experiences, showing completion message");
+          // console.log("Reached end of experiences, showing completion message");
         } else {
           // Still have more experiences to show
           setCurrentIndex(nextIndex);
@@ -205,7 +201,7 @@ const Swipe = () => {
       }, 350); // Reduced from 450ms to 350ms for faster transition
       
     } catch (err) {
-      console.error('Error in swipe handling:', err.toJSON());
+      // console.error('Error in swipe handling:', err.toJSON());
       // Even if there's an error, we should still move to the next card if possible
       setTimeout(() => {
         // Calculate the next index
@@ -218,7 +214,7 @@ const Swipe = () => {
         } else if (nextIndex >= experiences.length) {
           // Reached the end of available experiences
           setAllExperiencesCompleted(true);
-          console.log("Reached end of experiences, showing completion message");
+          // console.log("Reached end of experiences, showing completion message");
         } else {
           // Still have more experiences to show
           setCurrentIndex(nextIndex);
@@ -236,7 +232,7 @@ const Swipe = () => {
     setCurrentIndex(0);
     // Reset the completed state
     setAllExperiencesCompleted(false);
-    console.log("User clicked retry - resetting and fetching fresh experiences");
+    // console.log("User clicked retry - resetting and fetching fresh experiences");
     // Fetch fresh experiences
     fetchExperiences();
   };
@@ -258,7 +254,7 @@ const Swipe = () => {
         setFreshLocationImage(null);
       }
     } catch (error) {
-      console.error('Error fetching fresh location image:', error);
+      // console.error('Error fetching fresh location image:', error);
       // Clear the image state on error
       setFreshLocationImage(null);
     } finally {

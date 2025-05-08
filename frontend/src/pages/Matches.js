@@ -32,7 +32,7 @@ const UserProfileModal = ({ userId, isOpen, onClose, backgroundImage }) => {
       const data = response.data;
       setUserProfile(data);
     } catch (err) {
-      console.error('Error fetching user profile:', err);
+      // console.error('Error fetching user profile:', err);
       setError('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
@@ -284,7 +284,7 @@ const ContactInfoModal = ({ user, isOpen, onClose }) => {
       const data = await response.data;
       setContactInfo(data);
     } catch (err) {
-      console.error('Error fetching contact info:', err);
+      // console.error('Error fetching contact info:', err);
       setError('Failed to load contact information. Please try again.');
     } finally {
       setLoading(false);
@@ -512,7 +512,7 @@ const GroupedMatchCard = ({ user, experiences }) => {
               images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
             }
           } catch (error) {
-            console.error('Error fetching image URL:', error);
+            // console.error('Error fetching image URL:', error);
             if (exp.experience.location_image) {
               images[exp.experience.id] = exp.experience.location_image;
             } else if (exp.experience.location) {
@@ -745,7 +745,7 @@ const GroupedPotentialMatchCard = ({ user, experiences, onAccept, onReject }) =>
               images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
             }
           } catch (error) {
-            console.error('Error fetching image URL:', error);
+            // console.error('Error fetching image URL:', error);
             // Fallback to the stored URL if there's an error
             if (exp.experience.location_image) {
               images[exp.experience.id] = exp.experience.location_image;
@@ -942,7 +942,7 @@ const GroupedPendingSentMatchCard = ({ user, experiences }) => {
               images[exp.experience.id] = `https://source.unsplash.com/random/800x600/?${locationForImage.replace(/\s+/g, '+')}`;
             }
           } catch (error) {
-            console.error('Error fetching image URL:', error);
+            // console.error('Error fetching image URL:', error);
             // Fallback to the stored URL if there's an error
             if (exp.experience.location_image) {
               images[exp.experience.id] = exp.experience.location_image;
@@ -1136,7 +1136,7 @@ const Matches = () => {
       }
       
       const data = response.data;
-      console.log('Matches data:', data);
+      // console.log('Matches data:', data);
       
       // Set the matches by category
       setPendingReceivedMatches(data.pending_received || []);
@@ -1167,7 +1167,7 @@ const Matches = () => {
       setGroupedPendingSentMatches(groupMatchesByUser(data.pending_sent || []));
       
     } catch (err) {
-      console.error('Error fetching matches:', err);
+      // console.error('Error fetching matches:', err);
       setError('Failed to load matches. Please try again.');
     } finally {
       setLoading(false);
@@ -1193,7 +1193,7 @@ const Matches = () => {
       fetchMatches();
       
     } catch (err) {
-      console.error('Error accepting match:', err);
+      // console.error('Error accepting match:', err);
       setError('Failed to accept match. Please try again.');
     }
   };
@@ -1217,7 +1217,7 @@ const Matches = () => {
       fetchMatches();
       
     } catch (err) {
-      console.error('Error rejecting match:', err);
+      // console.error('Error rejecting match:', err);
       setError('Failed to reject match. Please try again.');
     }
   };
