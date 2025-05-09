@@ -17,7 +17,7 @@ logger = logging.getLogger("DatingAppTest")
 class ExperienceTesting:
     """Test the Experiences functionality"""
     def __init__(self, config: Dict[str, Any] = None, setup_driver=False):
-        from dating_app_test import DatingAppTest
+        from testing.dating_app_test import DatingAppTest
         # Create empty parent class since we're using this as a drop-in replacement
         self.parent = DatingAppTest(config, setup_driver)
         self.driver = None

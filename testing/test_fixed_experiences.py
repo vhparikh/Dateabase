@@ -7,8 +7,8 @@ import os
 import logging
 import argparse
 from pathlib import Path
-from dating_app_test import DatingAppTest
-from fixed_experience_testing import ExperienceTesting
+from testing.dating_app_test import DatingAppTest
+from testing.fixed_experience_testing import ExperienceTesting
 
 # Configure logging
 logging.basicConfig(
